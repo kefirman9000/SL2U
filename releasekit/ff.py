@@ -5,8 +5,27 @@ import re
 import shutil
 import subprocess
 
-FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
-FFPROBE = os.environ.get("FFPROBE", "ffprobe")
+import sys
+
+
+def _find(name):
+    """ffmpeg/ffprobe: env var, then a copy bundled next to the app (one-click builds), then PATH."""
+    env = os.environ.get(name.upper())
+    if env:
+        return env
+    exe = name + (".exe" if os.name == "nt" else "")
+    roots = [getattr(sys, "_MEIPASS", None), os.path.dirname(sys.executable),
+             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))]
+    for r in roots:
+        if r:
+            p = os.path.join(r, "bin", exe)
+            if os.path.isfile(p):
+                return p
+    return shutil.which(name) or name
+
+
+FFMPEG = _find("ffmpeg")
+FFPROBE = _find("ffprobe")
 
 
 class FFError(RuntimeError):
@@ -14,8 +33,56 @@ class FFError(RuntimeError):
 
 
 def check_tools():
-    missing = [t for t in (FFMPEG, FFPROBE) if shutil.which(t) is None]
-    return missing
+    return [os.path.basename(t) for t in (FFMPEG, FFPROBE) if not (os.path.isfile(t) or shutil.which(t))]
+
+
+def tags(path):
+    """Embedded metadata (ID3 / Vorbis / iTunes atoms) normalised to Release Kit track fields."""
+    try:
+        info = probe(path)
+    except FFError:
+        return {}
+    raw = {}
+    for src in [info.get("format", {})] + info.get("streams", []):
+        for k, v in (src.get("tags") or {}).items():
+            raw.setdefault(k.lower(), v)
+    out = {}
+    mapping = {"title": ["title"], "artist": ["artist", "album_artist"], "album": ["album"], "genre": ["genre"],
+               "bpm": ["tbpm", "bpm"], "key": ["tkey", "initialkey", "key"], "isrc": ["tsrc", "isrc"],
+               "composer": ["composer", "tcom"], "lyrics": ["lyrics", "unsyncedlyrics", "uslt"],
+               "date": ["date", "year"], "copyright": ["copyright"]}
+    for field, keys in mapping.items():
+        for k in keys:
+            if raw.get(k):
+                out[field] = str(raw[k]).strip()
+                break
+    if "bpm" in out:
+        try:
+            out["bpm"] = round(float(out["bpm"]))
+        except ValueError:
+            out.pop("bpm")
+    return out
+
+
+FRIENDLY = [
+    ("No such file or directory", "A file it needs is missing or was moved. Check the file paths in the Release tab."),
+    ("No space left on device", "Your disk is full. Free up space or change the output folder in Settings."),
+    ("Permission denied", "Release Kit isn't allowed to write there. Choose another output folder in Settings."),
+    ("Invalid data found when processing input", "One of the files isn't a readable audio/image file (it may be damaged or a different format than its name says)."),
+    ("does not contain any stream", "That file has no audio in it."),
+    ("Unknown encoder", "Your ffmpeg is missing an encoder. Install a full ffmpeg build (see README)."),
+    ("Cancelled", "Stopped."),
+]
+
+
+def friendly(err):
+    s = str(err)
+    if isinstance(err, FileNotFoundError) and ("ffmpeg" in s or "ffprobe" in s):
+        return "ffmpeg isn't installed or can't be found. See the README."
+    for needle, msg in FRIENDLY:
+        if needle in s:
+            return msg
+    return None
 
 
 def probe(path):

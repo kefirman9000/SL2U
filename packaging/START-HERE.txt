@@ -1,0 +1,13 @@
+RELEASE KIT
+
+1. Double-click ReleaseKit.exe.
+2. Your web browser opens the app at http://127.0.0.1:5577
+   (if it doesn't, open that address yourself).
+3. Leave the black window open while you work. Close it to quit.
+
+Your releases, settings and renders are saved in your user folder under ReleaseKit.
+
+If Windows shows "Windows protected your PC": click "More info", then "Run anyway".
+This appears because the app isn't code-signed, not because anything is wrong.
+
+ffmpeg is included in the "bin" folder (see bin\FFMPEG-LICENSE.txt).

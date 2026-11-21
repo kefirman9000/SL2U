@@ -4,18 +4,21 @@ import json
 import os
 import platform
 import queue
+import shutil
 import subprocess
 import threading
 import time
 import traceback
 import uuid
+import zlib
 
 from flask import Flask, abort, jsonify, request, send_file
 
-from . import art, audio, ff, links, meta, packages, video, youtube
+from . import art, audio, ff, links, meta, packages, sl2link, video, youtube
 
 DATA_DIR = os.environ.get("RELEASEKIT_HOME", os.path.join(os.path.expanduser("~"), "ReleaseKit"))
 PROJECTS = os.path.join(DATA_DIR, "projects")
+INBOX = os.path.join(DATA_DIR, "inbox")
 SETTINGS = os.path.join(DATA_DIR, "settings.json")
 for d in (DATA_DIR, PROJECTS):
     os.makedirs(d, exist_ok=True)
@@ -52,15 +55,46 @@ def out_dir_for(r):
 JOBS = {}
 Q = queue.Queue()
 LOCK = threading.Lock()
+JOBS_FILE = os.path.join(DATA_DIR, "jobs.json")
 
 
-def new_job(kind, label, fn):
+def persist_jobs():
+    """Keep the last 200 jobs on disk so the list survives closing the app."""
+    with LOCK:
+        keep = sorted(JOBS.values(), key=lambda j: -j["created"])[:200]
+        data = [{k: v for k, v in j.items() if k not in ("cancel", "trace")} for j in keep]
+    try:
+        with open(JOBS_FILE + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(data, f, default=str)
+        os.replace(JOBS_FILE + ".tmp", JOBS_FILE)
+    except OSError:
+        pass
+
+
+def load_jobs():
+    if not os.path.exists(JOBS_FILE):
+        return
+    try:
+        with open(JOBS_FILE, encoding="utf-8") as f:
+            for j in json.load(f):
+                if j["status"] in ("queued", "running"):
+                    j["status"] = "interrupted"
+                    j["error"] = "Release Kit was closed before this finished. Run it again."
+                j["cancel"] = False
+                JOBS[j["id"]] = j
+    except Exception:
+        pass
+
+
+def new_job(kind, label, fn, status="queued", result=None):
     jid = uuid.uuid4().hex[:8]
-    job = {"id": jid, "kind": kind, "label": label, "status": "queued", "progress": 0.0,
-           "created": time.time(), "result": None, "error": None, "cancel": False}
+    job = {"id": jid, "kind": kind, "label": label, "status": status, "progress": 1.0 if status == "done" else 0.0,
+           "created": time.time(), "result": result, "error": None, "cancel": False}
     with LOCK:
         JOBS[jid] = job
-    Q.put((jid, fn))
+    if fn:
+        Q.put((jid, fn))
+    persist_jobs()
     return job
 
 
@@ -70,9 +104,11 @@ def worker():
         job = JOBS[jid]
         if job["cancel"]:
             job["status"] = "cancelled"
+            persist_jobs()
             continue
         job["status"] = "running"
         job["started"] = time.time()
+        persist_jobs()
 
         def prog(f, job=job):
             job["progress"] = round(float(f), 4)
@@ -84,8 +120,27 @@ def worker():
         except Exception as e:
             job["status"] = "cancelled" if job["cancel"] else "error"
             job["error"] = str(e)
+            job["hint"] = ff.friendly(e)
             job["trace"] = traceback.format_exc()[-3000:]
         job["finished"] = time.time()
+        persist_jobs()
+
+
+load_jobs()
+
+
+def estimate_long_bytes(hours, resolution="1080p", visual="static"):
+    video_kbps = {"720p": 150, "1080p": 250, "1440p": 450, "4k": 900}.get(resolution, 250)
+    if visual != "static":
+        video_kbps *= 6
+    return int(float(hours) * 3600 * (320 + video_kbps) * 1000 / 8)
+
+
+def check_space(path, need):
+    free = shutil.disk_usage(path).free
+    if free < need * 1.3:
+        raise ValueError(f"Not enough disk space: this needs about {need / 1e9:.1f} GB plus working room, "
+                         f"but only {free / 1e9:.1f} GB is free in {path}.")
 
 
 threading.Thread(target=worker, daemon=True).start()
@@ -177,6 +232,7 @@ def build_job(kind, r, p):
         img = _first_image(r, p)
         if visual != "slideshow":
             _require(img, "Set a cover or choose an image.")
+        check_space(out, estimate_long_bytes(hours, p.get("resolution", "1080p"), visual))
         name_title = chosen[0].get("title") if len(chosen) == 1 else title
         label_h = f"{hours:g}"
         name = packages.safe(f"{artist} - {name_title} ({label_h} Hours)") + ".mp4"
@@ -185,6 +241,38 @@ def build_job(kind, r, p):
             name_title, artist, text, p.get("resolution", "1080p"), float(p.get("crossfade", 4)),
             p.get("ambient") or None, float(p.get("ambient_db", -18)), slide_seconds=float(p.get("slide_seconds", 8)),
             progress=prog, cancel=cancel)
+
+    if kind == "batch_item":
+        # one track of an overnight batch: (cover) + loop video + paste-ready text file
+        hours = float(p.get("hours", 10))
+        res = p.get("resolution", "1080p")
+        check_space(out, estimate_long_bytes(hours, res, p.get("visual", "static")))
+        t = track
+
+        def fn(prog, cancel):
+            img = p.get("image")
+            if not img:
+                cov = os.path.join(out, "artwork", "cover_batch.jpg")
+                os.makedirs(os.path.dirname(cov), exist_ok=True)
+                art.make_cover(None, "generate", cov, generate_style=p.get("style", "aurora"),
+                               seed=zlib.crc32(t["path"].encode()))
+                img = cov
+            name = packages.safe(f"{artist} - {t['title']} ({hours:g} Hours)")
+            vid = os.path.join(out, "youtube", name + ".mp4")
+            res_v = video.long_video([t["path"]], vid, hours, p.get("visual", "static"), img, None, t["title"],
+                                     artist, p.get("text", True), res, float(p.get("crossfade", 4)),
+                                     p.get("ambient") or None, float(p.get("ambient_db", -18)),
+                                     progress=prog, cancel=cancel)
+            rr = dict(r, title=t["title"])
+            kind_t = p.get("title_kind", "ten_hours")
+            txt = os.path.join(out, "youtube", name + " - YouTube text.txt")
+            with open(txt, "w", encoding="utf-8") as f:
+                f.write(meta.youtube_title(rr, kind_t, hours=f"{hours:g}") + "\n\n" +
+                        meta.youtube_description(rr, load_settings().get("profile"), kind_t, None, f"{hours:g}") +
+                        "\n\nTAGS: " + ", ".join(meta.tags(rr)))
+            res_v["text_file"] = txt
+            return res_v
+        return f"Batch {hours:g}h: {t['title']}", fn
 
     if kind == "short":
         _require(track, "Add a track first.")
@@ -245,6 +333,15 @@ def index():
     return send_file(os.path.join(os.path.dirname(__file__), "templates", "index.html"))
 
 
+@app.get("/static/<path:name>")
+def static_file(name):
+    base = os.path.join(os.path.dirname(__file__), "static")
+    path = os.path.normpath(os.path.join(base, name))
+    if not path.startswith(base) or not os.path.isfile(path):
+        abort(404)
+    return send_file(path, max_age=86400)
+
+
 @app.get("/api/init")
 def api_init():
     return jsonify({
@@ -253,6 +350,7 @@ def api_init():
         "has_client_secret": os.path.exists(os.path.join(DATA_DIR, "client_secret.json")),
         "projects": sorted(f[:-5] for f in os.listdir(PROJECTS) if f.endswith(".json")),
         "home": os.path.expanduser("~"), "title_kinds": meta.TITLE_TEMPLATES,
+        "sl2_default_home": sl2link.default_home(), "inbox": INBOX,
     })
 
 
@@ -420,6 +518,218 @@ def api_open():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------- drag & drop, tags, previews
+
+def _kind(name):
+    low = name.lower()
+    return "audio" if low.endswith(AUDIO_EXT) else "image" if low.endswith(art.IMAGE_EXT) else \
+        "video" if low.endswith((".mp4", ".mov", ".mkv")) else "other"
+
+
+@app.post("/api/upload")
+def api_upload():
+    """Files dropped on the page are copied into ~/ReleaseKit/inbox/<date>/ (keeping sub-folders)."""
+    batch = os.path.join(INBOX, time.strftime("%Y-%m-%d"))
+    out = []
+    for f in request.files.getlist("files"):
+        rel = (f.filename or "file").replace("\\", "/")
+        parts = [packages.safe(x) for x in rel.split("/") if x not in ("", ".", "..")]
+        if not parts:
+            continue
+        dst = os.path.join(batch, *parts)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        base, ext = os.path.splitext(dst)
+        n = 1
+        while os.path.exists(dst):
+            dst = f"{base} ({n}){ext}"
+            n += 1
+        f.save(dst)
+        item = {"path": dst, "name": parts[-1], "kind": _kind(dst)}
+        if item["kind"] == "audio":
+            item["tags"] = ff.tags(dst)
+        out.append(item)
+    return jsonify({"files": out, "folder": batch})
+
+
+@app.post("/api/tags")
+def api_tags():
+    return jsonify({p: ff.tags(p) for p in (request.json or {}).get("paths", []) if os.path.isfile(p)})
+
+
+@app.post("/api/list_audio")
+def api_list_audio():
+    folder = (request.json or {}).get("folder", "")
+    if not os.path.isdir(folder):
+        return jsonify({"error": "Folder not found"}), 400
+    files = []
+    for root, _, names in os.walk(folder):
+        for n in sorted(names):
+            if n.lower().endswith(AUDIO_EXT):
+                p = os.path.join(root, n)
+                files.append({"path": p, "tags": ff.tags(p)})
+    return jsonify({"files": files})
+
+
+@app.post("/api/preview")
+def api_preview():
+    b = request.json or {}
+    img = b.get("image")
+    if not img or not os.path.isfile(img):
+        return jsonify({"error": "Set a cover or choose an image first."}), 400
+    vertical = bool(b.get("vertical"))
+    w, h = (540, 960) if vertical else (960, 540)
+    tmp = os.path.join(DATA_DIR, "preview.png")
+    video.make_frame(img, tmp, w, h, b.get("title", ""), b.get("artist", ""), b.get("layout", "cover"),
+                     b.get("text", True))
+    return send_file(tmp, mimetype="image/png", max_age=0)
+
+
+@app.post("/api/covers")
+def api_covers():
+    r = request.json or {}
+    d = os.path.join(out_dir_for(r), "artwork")
+    if not os.path.isdir(d):
+        return jsonify({"covers": []})
+    items = [os.path.join(d, f) for f in os.listdir(d) if f.lower().endswith((".jpg", ".png")) and f.startswith("cover")]
+    items.sort(key=os.path.getmtime, reverse=True)
+    return jsonify({"covers": items})
+
+
+@app.post("/api/estimate")
+def api_estimate():
+    b = request.json or {}
+    need = estimate_long_bytes(b.get("hours", 10), b.get("resolution", "1080p"), b.get("visual", "static"))
+    out = load_settings().get("output_dir") or DATA_DIR
+    os.makedirs(out, exist_ok=True)
+    return jsonify({"bytes": need, "free": shutil.disk_usage(out).free})
+
+
+# ---------------------------------------------------------------- readiness
+
+@app.post("/api/readiness")
+def api_readiness():
+    import datetime as dt
+    r = request.json or {}
+    checks = []
+
+    def add(status, label, fix=None):
+        checks.append({"status": status, "label": label, "fix": fix})
+
+    tracks = r.get("tracks", [])
+    add("ok" if r.get("title") and r.get("artist") else "bad", "Title and artist filled in", "release")
+    if not tracks:
+        add("bad", "At least one track", "release")
+    missing = [t for t in tracks if not os.path.isfile(t.get("path", ""))]
+    if missing:
+        add("bad", f"{len(missing)} track file(s) can't be found (moved or deleted?)", "release")
+    lossy = []
+    for t in tracks:
+        if os.path.isfile(t.get("path", "")):
+            try:
+                if ff.audio_info(t["path"])["codec"] in audio.LOSSY:
+                    lossy.append(t.get("title"))
+            except Exception:
+                pass
+    if tracks:
+        add("warn" if lossy else "ok", "Lossless masters (WAV/FLAC)" + (f": {', '.join(lossy)} are lossy" if lossy else ""), "release")
+    an = {a.get("title"): a for a in (r.get("analysis") or [])}
+    if tracks and not an:
+        add("warn", "Loudness not checked yet (press Analyze)", "release")
+    elif an:
+        bad = [k for k, a in an.items() if a.get("warnings")]
+        add("warn" if bad else "ok", "Loudness & peaks" + (f": check {', '.join(bad)}" if bad else ""), "release")
+    if r.get("art_path") and os.path.isfile(r["art_path"]):
+        v = art.validate_cover(r["art_path"])
+        add("bad" if v["issues"] else "ok", "Cover art 3000×3000 RGB" + (f": {v['issues'][0]}" if v["issues"] else ""), "art")
+    else:
+        add("bad", "Cover art", "art")
+    no_writer = [t.get("title") for t in tracks if not t.get("composer")]
+    add("warn" if no_writer else "ok", "Songwriter legal names (needed for publishing royalties)" +
+        (f": missing on {len(no_writer)} track(s)" if no_writer else ""), "release")
+    add("ok" if r.get("copyright_p") else "warn", "(P) line", "release")
+    if r.get("release_date"):
+        days = (dt.date.fromisoformat(r["release_date"]) - dt.date.today()).days
+        if days < 0:
+            add("ok", f"Release date passed ({-days} days ago)", "plan")
+        elif days < 7:
+            add("bad", f"Release is in {days} days: too late for Spotify editorial pitching (needs 7+ days)", "plan")
+        elif days < 21:
+            add("warn", f"Release is in {days} days: most distributors want 2–4 weeks", "plan")
+        else:
+            add("ok", f"Release date in {days} days", "plan")
+    else:
+        add("warn", "Release date", "release")
+    s = load_settings()
+    add("ok" if any((s.get("profile") or {}).values()) else "warn", "Your links for descriptions (Settings)", "set")
+    done = {k for k, v in (s.get("signups") or {}).items() if v.get("done")}
+    distros = [i["name"] for i in links.DIRECTORY[0]["items"]]
+    add("ok" if done & set(distros) else "warn", "Signed up with a distributor", "links")
+    return jsonify({"checks": checks, "score": sum(c["status"] == "ok" for c in checks), "total": len(checks)})
+
+
+# ---------------------------------------------------------------- SL2
+
+def _project_path(name):
+    return os.path.join(PROJECTS, packages.safe(name) + ".json")
+
+
+def import_sl2(song, project=None):
+    s = load_settings()
+    if project and os.path.exists(_project_path(project)):
+        with open(_project_path(project), encoding="utf-8") as f:
+            r = json.load(f)
+        r.setdefault("tracks", []).append(sl2link.to_track(song))
+        name = project
+    else:
+        r = sl2link.to_release(song, s.get("defaults"))
+        name = f"{r.get('artist') or 'Artist'} - {r['title']}"
+        if os.path.exists(_project_path(name)):
+            name += f" ({song['id'][-4:]})"
+    with open(_project_path(name), "w", encoding="utf-8") as f:
+        json.dump(r, f, indent=2)
+    s["sl2_imported"] = sorted(set(s.get("sl2_imported", [])) | {song["id"]})
+    save_settings(s)
+    new_job("sl2_import", f"Imported from SL2: {song.get('title')}", None, status="done",
+            result={"project": name})
+    return name
+
+
+_sl2_lock = threading.Lock()
+
+
+def _watch_new(song):
+    with _sl2_lock:
+        if song["id"] not in load_settings().get("sl2_imported", []):
+            import_sl2(song)
+
+
+sl2link.Watcher(load_settings, _watch_new)
+
+
+@app.post("/api/sl2/songs")
+def api_sl2_songs():
+    b = request.json or {}
+    home = b.get("home") or load_settings().get("sl2_home") or sl2link.default_home()
+    songs = sl2link.list_songs(home, not b.get("all_versions"))
+    imported = set(load_settings().get("sl2_imported", []))
+    for x in songs:
+        x["imported"] = x["id"] in imported
+    return jsonify({"home": home, "songs": songs})
+
+
+@app.post("/api/sl2/import")
+def api_sl2_import():
+    b = request.json or {}
+    home = b.get("home") or load_settings().get("sl2_home")
+    by_id = {s["id"]: s for s in sl2link.list_songs(home, latest_only=False)}
+    names = []
+    with _sl2_lock:
+        for sid in b.get("ids", []):
+            if sid in by_id:
+                names.append(import_sl2(by_id[sid], b.get("project")))
+    return jsonify({"projects": names})
 
 
 def main():

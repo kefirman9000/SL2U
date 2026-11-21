@@ -32,6 +32,7 @@ AAC = ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
 
 def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True):
     """Background frame. layout: cover (square art centred on blurred bg), full (photo fills frame)."""
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     im = art.open_rgb(image)
     if layout == "full":
         frame = ImageOps.fit(im, (w, h), Image.LANCZOS)

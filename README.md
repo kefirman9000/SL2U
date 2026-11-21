@@ -1,64 +1,103 @@
-# Release Kit
+<p align="center"><img src="assets/icon.png" width="96" alt="Release Kit icon"></p>
 
-A local app for releasing music everywhere from one place. It runs on your computer, opens in your browser, and uses ffmpeg to render audio and video.
+# Release Kit (SL2U)
+
+**Release your music everywhere from one place.** Make covers, YouTube videos, 10-hour loops, Shorts and Spotify Canvases. Build upload-ready packages for distributors, Bandcamp, SoundCloud and stock sites. Upload to YouTube. Everything runs on your own computer.
+
+Built as the companion uploader for **[SL2](https://github.com/kefirman9000/SL2)**: songs you star in SL2 can turn into releases automatically.
+
+![Release tab with the ready-to-release checklist](docs/screenshots/release.png)
+
+## Download (Windows)
+
+**[⬇ Get the latest Windows release](https://github.com/kefirman9000/SL2U/releases/latest)**
+
+1. Download `ReleaseKit-windows-x64.zip`.
+2. Unzip it anywhere and double-click **`ReleaseKit.exe`**.
+3. Your browser opens the app. Keep the black window open while you work; close it to quit.
+
+No Python or ffmpeg install needed; ffmpeg is bundled. The first time, Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
+
+Mac and Linux: see [Run from source](#run-from-source).
+
+## Screenshots
+
+| | |
+|---|---|
+| ![New release wizard](docs/screenshots/wizard.png) | ![Choosing outputs in the wizard](docs/screenshots/wizard-destinations.png) |
+| **New release wizard:** music, cover, where it's going, one button. | Tick the outputs you want; it queues everything. |
+| ![Artwork](docs/screenshots/artwork.png) | ![Video](docs/screenshots/video.png) |
+| **Artwork:** photos ranked from a folder, smart crops, generated art, cover history. | **Video:** instant preview frames before you render. |
+| ![SL2 songs](docs/screenshots/sl2.png) | ![Upload](docs/screenshots/upload.png) |
+| **SL2 songs:** import songs from SL2, or auto-import the ones you star. | **Upload:** title, description and tags written for you. |
+| ![Sign-ups](docs/screenshots/signups.png) | |
+| **Sign-ups:** every distributor, store, stock library and royalty organization, with checkboxes. | |
 
 ## What it does
 
 | Tab | What you get |
 |---|---|
-| **Release** | One form for title, artist, genre, mood, dates, (P)/(C) lines, UPC, and per-track ISRC, credits, BPM, key and lyrics. **Analyze** checks loudness (LUFS), true peak, sample rate, lossy sources, and estimates BPM. |
-| **Artwork** | Pick a photo folder. Photos are ranked by resolution, sharpness and contrast. Make a 3000×3000 cover with smart crop, center crop, or fit plus blurred fill. You can add title text and an explicit label. You can also **generate** art in 6 styles, optionally using colors from one of your photos. Export sizes for every platform, and make a contact sheet of a folder. |
-| **YouTube & video** | Release videos (static, waveform, frequency bars, line, spectrum). Full-album videos with chapters. **10-hour (or 1–12 h) loop videos** with a seamless crossfaded loop point: one track or a playlist, static, slow-zoom or photo-slideshow visuals, plus an optional rain or vinyl ambient layer. Shorts, Reels and TikTok clips that auto-pick the strongest section. Spotify Canvas loops. |
-| **Packages** | **Distributor** (WAV, cover, metadata.csv/json, lyrics, pre-submit checklist). **Bandcamp + SoundCloud** (FLAC, covers, paste-ready text). **Stock music** (WAVs, 60/30/15 s cut-downs, Shutterstock MP3s, keyword CSV). **Stock photo pack** (cleaned JPGs plus a Shutterstock-format CSV). |
-| **Upload** | Writes the YouTube title, description (with your links, credits, chapters and hashtags) and tags, with length counters. Uploads through the YouTube API with scheduling, thumbnail and playlist (optional setup). |
-| **Plan** | A release timeline worked back from your date, downloadable as a calendar (.ics). |
-| **Sign-ups** | Links to every distributor, artist-profile claim, store, stock library, royalty organization (ASCAP/BMI, The MLC, SoundExchange) and the YouTube API setup. Includes checkboxes and a notes field for your login emails. |
+| **Release** | One form for title, artist, genre, mood, dates, (P)/(C) lines and UPC, plus per-track ISRC, credits, BPM, key and lyrics. A **Ready to release?** checklist flags what's missing. **Analyze** checks loudness (LUFS), true peak, sample rate and lossy sources, and estimates BPM. |
+| **Artwork** | Pick a photo folder; photos are ranked by resolution, sharpness and contrast. Make a 3000×3000 cover (smart crop, center crop, or fit + blurred fill) with optional title text and explicit label, or **generate** art in 6 styles. Export every platform size. All your covers stay in a gallery. |
+| **YouTube & video** | Release videos (static, waveform, frequency bars, line, spectrum). Full-album videos with chapters. **10-hour (1–12 h) loop videos** with a seamless crossfaded loop point, static/slow-zoom/slideshow visuals and an optional ambient layer. **Overnight batch**: a loop video and paste-ready YouTube text for every track in a folder. Shorts/Reels/TikTok clips. Spotify Canvas. |
+| **Packages** | **Distributor** (WAV, cover, metadata.csv/json, lyrics, checklist), **Bandcamp + SoundCloud**, **Stock music** (WAVs, 60/30/15 s cut-downs, MP3s, keyword CSV), **Stock photo pack**. |
+| **Upload** | YouTube title, description (with your links, credits, chapters, hashtags) and tags; uploads through the YouTube API with scheduling, thumbnail and playlist (optional setup). |
+| **Plan** | A timeline worked back from your release date, downloadable as a calendar (.ics). |
+| **SL2 songs** | Lists your SL2 songs (newest version of each) with genre, BPM and key. Import as singles, as one album, or into the current release. Turn on auto-import to make a release for every song you star. |
+| **Sign-ups** | Links to distributors, artist-profile claims, stores, stock libraries, royalty organizations (ASCAP/BMI, The MLC, SoundExchange) and the YouTube API setup, with checkboxes and notes. |
 
-## Install
+**Ease of use:** drag and drop audio, photos or whole folders anywhere (titles, BPM, key and ISRC are read from the files' tags); saved defaults for new releases; remembered video settings; jobs that survive closing the app; optional pop-up and sound when a job finishes; disk-space check before long renders; plain-English error messages; Studio (black & green) and Ember themes.
 
-1. **Python 3.10+**: python.org (on Windows, tick "Add to PATH").
-2. **ffmpeg**:
-   - Mac: `brew install ffmpeg`
-   - Windows: `winget install Gyan.FFmpeg`
-   - Linux: `sudo apt install ffmpeg`
-3. **Start the app**:
-   - Mac/Linux: run `./start-mac-linux.sh`
-   - Windows: double-click `start-windows.bat`
+## Run from source
 
-   The first start installs Flask, Pillow and numpy into a private `.venv` folder. Your browser then opens http://127.0.0.1:5577.
+1. **Python 3.10+** from python.org (Windows: tick "Add to PATH").
+2. **ffmpeg**: Mac `brew install ffmpeg`, Windows `winget install Gyan.FFmpeg`, Linux `sudo apt install ffmpeg`.
+3. Run `./start-mac-linux.sh` (Mac/Linux) or double-click `start-windows.bat`. The first start installs Flask, Pillow and numpy into `.venv`, then opens http://127.0.0.1:5577.
 
 Your projects, settings and renders live in `~/ReleaseKit` (change the output folder in Settings).
 
+## Connecting SL2
+
+Open the **SL2 songs** tab and point it at SL2's `songs` folder (next to `sl2.py`, or wherever `SL2_HOME` points). Tick **Watch the folder** to auto-import. By default only songs you ★ in SL2 are imported, because SL2 saves every edit as a new version.
+
 ## Optional: one-click YouTube uploads
 
-1. `.venv/bin/pip install -r requirements-youtube.txt` (Windows: `.venv\Scripts\pip ...`)
-2. Follow **Sign-ups, section 7**: enable YouTube Data API v3, then create an OAuth client of type **Desktop app**. Add yourself as a test user and download the JSON as `~/ReleaseKit/client_secret.json`.
-3. The first upload opens a Google sign-in window. After that it remembers you.
+1. From source: `.venv/bin/pip install -r requirements-youtube.txt` (the Windows build already includes it).
+2. Follow **Sign-ups → section 7**: enable YouTube Data API v3, create an OAuth client of type **Desktop app**, add yourself as a test user, and save the JSON as `~/ReleaseKit/client_secret.json`.
+3. The first upload opens a Google sign-in window.
 
-Things to know: API projects that Google hasn't audited upload as **Private only**, so flip them to Public in YouTube Studio or apply for an audit with the form linked in the app. Uploads are also capped per day. Custom thumbnails need a verified channel.
+Uploads from API projects Google hasn't audited are **Private only** (make them Public in YouTube Studio, or apply for an audit with the form linked in the app). Daily upload limits apply. Custom thumbnails need a verified channel.
 
-## Important platform facts
+## Good to know
 
-- **Spotify, Apple Music, Amazon Music, YouTube Music, TikTok, Deezer and Tidal have no direct upload for independent artists.** You upload once to a distributor, and it delivers everywhere. The Distributor package is made for that.
-- **Content ID vs stock libraries**: if you license a track on stock sites or use it as a free background loop, opt it **out** of YouTube Content ID at your distributor. Otherwise buyers' videos get claimed.
-- **Shutterstock Music** buys all rights outright. A track you sell there can't be used or sold anywhere else.
+- **Spotify, Apple Music, Amazon Music, YouTube Music, TikTok, Deezer and Tidal only take music through a distributor.** Upload the Distributor package to one distributor and it delivers everywhere.
+- **Content ID vs stock libraries:** if you license a track on stock sites or use it as a free background loop, opt it **out** of YouTube Content ID at your distributor.
+- **Shutterstock Music** buys all rights outright; those tracks can't be used or sold anywhere else afterwards.
 - Most stock libraries and PROs don't accept fully AI-generated music.
 
-## How the 10-hour videos stay fast
+## How 10-hour videos stay fast
 
-The audio loop is built once, with its tail crossfaded into its own start so there's no click at each repeat. It's then looped and encoded to AAC in a single pass. The picture is a short clip rendered once and stream-copied, with no re-encoding. Time is mostly the audio encode: a 10-hour video takes roughly 5–20 minutes depending on your CPU, and about 1–2 GB of disk.
+The audio loop is built once, with its tail crossfaded into its own start so there's no click at each repeat, then looped and encoded to AAC in one pass. The picture is a short clip rendered once and stream-copied. Most of the time is the audio encode: roughly 5–20 minutes for 10 hours, and about 2.5 GB at 1080p.
 
-## Files
+## Building the Windows release
+
+Pushing a tag like `v1.1.0` runs [.github/workflows/windows-release.yml](.github/workflows/windows-release.yml): it builds `ReleaseKit.exe` with PyInstaller on Windows, bundles ffmpeg, starts the app and renders a test video, then publishes the zip as a GitHub Release.
+
+## Layout
 
 ```
 releasekit/
-  app.py        web server and job queue
+  app.py        web server, job queue, uploads, readiness checks, SL2 import
   audio.py      analysis, conversions, cut-downs, seamless loops
   art.py        photo ranking, crops, generated art, text, variants
   video.py      all video renderers
   packages.py   platform export folders
   meta.py       titles, descriptions, tags, keywords, timeline, .ics
+  sl2link.py    reads SL2's songs folder
   links.py      sign-up directory (plain data: edit it freely)
   youtube.py    YouTube API uploader
+  ff.py         ffmpeg helpers (finds a bundled copy first)
   templates/index.html   the interface
+  static/fonts/ Space Grotesk + VT323 (SIL Open Font License)
+packaging/      Windows build launcher and release notes
 ```

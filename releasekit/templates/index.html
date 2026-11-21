@@ -7,24 +7,33 @@
 <link rel="icon" href="data:,">
 <style>
 :root{
-  --bg:#0f1013; --panel:#17181d; --panel2:#1e2027; --line:#2a2c35; --text:#e9e9ee; --muted:#9a9cab;
-  --accent:#ff6a3d; --accent2:#ffb347; --ok:#3ecf8e; --warn:#ffc857; --err:#ff5d73; --radius:12px;
+  --bg:#000; --panel:#070a07; --panel2:#0d120d; --line:#1b2a1b; --text:#d8f5d0; --muted:#7f9a7a;
+  --accent:#39ff14; --accent2:#9dff7a; --ontext:#031203; --ok:#39ff14; --warn:#e8c24a; --err:#ff5d3a; --radius:6px;
+  --font:"Space Grotesk","Segoe UI",system-ui,sans-serif; --pix:"VT323",ui-monospace,monospace;
 }
+@font-face{font-family:"Space Grotesk";src:url("/static/fonts/SpaceGrotesk.ttf") format("truetype");font-weight:300 700;font-display:swap}
+@font-face{font-family:"VT323";src:url("/static/fonts/VT323.ttf") format("truetype");font-display:swap}
+body.ember{--bg:#0f1013;--panel:#17181d;--panel2:#1e2027;--line:#2a2c35;--text:#e9e9ee;--muted:#9a9cab;--accent:#ff6a3d;--accent2:#ffb347;--ontext:#fff;--ok:#3ecf8e;--warn:#ffc857;--err:#ff5d73;--radius:12px}
+body.ember .logo,body.ember h2,body.ember .pill{font-family:var(--font)}
+body.ember header,body.ember aside{background:#121318}
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
-header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);background:#121318;position:sticky;top:0;z-index:5}
-.logo{font-weight:800;letter-spacing:.5px;font-size:17px}
+body{margin:0;font:14px/1.45 var(--font);background:var(--bg);color:var(--text)}
+body:not(.ember){background:radial-gradient(ellipse at 50% 0%,#071207 0%,#000 60%) fixed}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);background:#000;position:sticky;top:0;z-index:5}
+.logo{font-family:var(--pix);font-size:28px;letter-spacing:1px;color:var(--accent);text-shadow:0 0 8px rgba(57,255,20,.45);line-height:1}
+.logo span{color:var(--text)!important}
 .logo span{color:var(--accent)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:none;border:0;color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit}
-nav button.on{background:var(--panel2);color:var(--text)}
+nav button.on{background:var(--panel2);color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
 nav button:hover{color:var(--text)}
 .proj{margin-left:auto;display:flex;gap:8px;align-items:center}
 main{display:grid;grid-template-columns:1fr 360px;gap:0;min-height:calc(100vh - 57px)}
 section.tab{display:none;padding:22px 26px 60px;max-width:1150px}
 section.tab.on{display:block}
-aside{border-left:1px solid var(--line);background:#121318;padding:16px;position:sticky;top:57px;height:calc(100vh - 57px);overflow:auto}
-h2{margin:0 0 4px;font-size:21px}
+aside{border-left:1px solid var(--line);background:#000;padding:16px;position:sticky;top:57px;height:calc(100vh - 57px);overflow:auto}
+h2{margin:0 0 4px;font-family:var(--pix);font-weight:400;font-size:32px;letter-spacing:1px;color:var(--accent);text-shadow:0 0 6px rgba(57,255,20,.35)}
+body.ember h2{font-size:21px;font-weight:700;color:var(--text);text-shadow:none}
 h3{margin:0 0 10px;font-size:15px}
 .sub{color:var(--muted);margin:0 0 18px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
@@ -38,13 +47,18 @@ input[type=checkbox]{width:auto;margin-right:6px;accent-color:var(--accent)}
 .chk{display:flex;align-items:center;color:var(--text);font-size:13px;margin:6px 0}
 button.b{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit;white-space:nowrap}
 button.b:hover{border-color:#444757}
-button.p{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.p{background:linear-gradient(180deg,#c8ffb8,#5fd94a 55%,#2f8f20);border-color:#1d5c14;color:var(--ontext);font-weight:700}
+body.ember button.p{background:var(--accent);border-color:var(--accent)}
 button.p:hover{filter:brightness(1.08)}
 button.s{padding:4px 9px;font-size:12px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .row>.grow{flex:1}
 .muted{color:var(--muted)} .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
-.pill{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+.pill{display:inline-block;padding:0 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:15px;font-family:var(--pix);color:var(--muted)}
+.pill.ok{color:var(--ok);border-color:#1d5c14}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px rgba(57,255,20,.25)}
+body:not(.ember) .bar i{box-shadow:0 0 6px var(--accent)}
+body:not(.ember) .counter,body:not(.ember) #readyScore{font-family:var(--pix);font-size:17px;color:var(--accent)}
 .track{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--panel2)}
 .track .n{font-weight:700;color:var(--muted);padding-top:6px}
 .track details summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px}
@@ -64,29 +78,46 @@ button.s{padding:4px 9px;font-size:12px}
 .links .it:first-child{border-top:0}
 .links a{color:var(--accent2);font-weight:600;text-decoration:none}
 .links a:hover{text-decoration:underline}
-.note{background:#211d14;border:1px solid #4a3d1d;color:#f3dfb0;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.note{background:#0b1206;border:1px solid #2e4a1d;color:#cfe8b0;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:20}
 .modal.on{display:flex}
 .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(760px,94vw);max-height:84vh;display:flex;flex-direction:column}
 .fb-list{overflow:auto;padding:8px 14px;flex:1;min-height:300px}
 .fb-item{padding:6px 8px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:center}
 .fb-item:hover{background:var(--panel2)}
-.fb-item.sel{background:#3a2218}
+.fb-item.sel{background:#0f2a0b}
 .fb-item.dim{opacity:.4;cursor:default}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .kv{font-size:12px;color:var(--muted)} .kv b{color:var(--text);font-weight:600}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222530;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:30}
 .counter{font-size:11px;color:var(--muted);text-align:right}
+.drop{position:fixed;inset:0;background:rgba(57,255,20,.08);font-family:var(--pix);font-size:34px;color:var(--accent);border:3px dashed var(--accent);z-index:40;display:none;align-items:center;justify-content:center;font-size:22px;font-weight:700;pointer-events:none}
+.drop.on{display:flex}
+.ready{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 16px}
+.ready div{font-size:13px;cursor:pointer}
+.ready .i{display:inline-block;width:18px}
+.wiz .steps{display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.wiz .steps span{flex:1;height:4px;border-radius:4px;background:var(--panel2)}
+.wiz .steps span.on{background:var(--accent)}
+.wiz .body{padding:18px;overflow:auto}
+.choice{border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;background:var(--panel2)}
+.choice:hover,.choice.on{border-color:var(--accent)}
+.covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+.covers img{width:100%;border-radius:8px;cursor:pointer;border:2px solid transparent}
+.covers img.on{border-color:var(--accent)}
+.prev{margin-top:10px;max-width:100%;border-radius:8px;border:1px solid var(--line);display:none}
+details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
+.big{font-size:15px;padding:11px 18px}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">Release<span>Kit</span></div>
+  <div class="logo">RELEASE<span>KIT</span></div>
   <nav id="nav"></nav>
   <div class="proj">
     <select id="projSel" style="width:180px" title="Saved releases"></select>
-    <button class="b s" onclick="newProject()">New</button>
+    <button class="b s" onclick="newProject()">New</button><button class="b s p" onclick="wizOpen()">＋ New release wizard</button>
   </div>
 </header>
 <main>
@@ -95,8 +126,10 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
 <!-- RELEASE -->
 <section class="tab" id="t-release">
   <h2>Release</h2>
-  <p class="sub">Everything else (videos, packages, descriptions) is built from this. Saved automatically.</p>
+  <p class="sub">Everything else (videos, packages, descriptions) is built from this. Saved automatically. Tip: drag audio files or whole folders anywhere onto this window.</p>
   <div id="toolWarn"></div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">Ready to release? <span class="muted" id="readyScore"></span></h3><button class="b s" onclick="readiness()">Re-check</button></div>
+    <div class="ready" id="readyList"><span class="muted">Add a title, tracks and a cover to see what's missing.</span></div></div>
   <div class="card grid g3">
     <div><label>Release title</label><input data-k="title" placeholder="Night Drive"></div>
     <div><label>Primary artist</label><input data-k="artist"></div>
@@ -137,6 +170,7 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
         <div class="row" style="margin-top:10px">
           <button class="b s" onclick="pick({kind:'image'},p=>{R.art_path=p;save();renderCover()})">Use existing file…</button>
           <button class="b s" onclick="job('variants')">Export platform sizes</button></div>
+        <h3 style="margin-top:14px">Your covers</h3><div class="covers" id="coverHist"><span class="muted" style="font-size:12px">Covers you make appear here.</span></div>
         <p class="muted" style="font-size:12px;margin:10px 0 0">Platform sizes: 3000 cover, Bandcamp 1400, square 1080, story 1080×1920, YouTube thumbnail 1280×720 (under 2 MB), channel banner.</p>
       </div>
     </div>
@@ -184,8 +218,9 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
       <div><label>Layout</label><select id="rvLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills frame</option></select></div>
     </div>
     <label class="chk"><input type="checkbox" id="rvText" checked>Show title &amp; artist</label>
-    <div class="row"><button class="b p" onclick="job('release_video',{track_index:rvTrack.value,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()})">Render</button>
+    <div class="row"><button class="b" onclick="preview('rvPrev',{layout:rvLayout.value,text:rvText.checked})">Preview frame</button><button class="b p" onclick="job('release_video',{track_index:rvTrack.value,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()})">Render</button>
       <button class="b" onclick="R.tracks.forEach((t,i)=>job('release_video',{track_index:i,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()}))">Render one for every track</button></div>
+    <img class="prev" id="rvPrev">
   </div>
   <div class="card">
     <h3>10-hour / extended loop</h3>
@@ -203,8 +238,23 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
       <div><label>Ambient level (dB)</label><input id="lvAmbDb" type="number" value="-18"></div>
     </div>
     <label class="chk"><input type="checkbox" id="lvText" checked>Show title &amp; artist</label>
-    <button class="b p" onclick="renderLong()">Render loop video</button>
+    <div class="row"><button class="b" onclick="preview('lvPrev',{text:lvText.checked})">Preview frame</button><button class="b p" onclick="renderLong()">Render loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
+    <img class="prev" id="lvPrev">
     <p class="muted" style="font-size:12px">The loop point is crossfaded into itself so there's no click or gap at each repeat. A 10-hour 1080p static video is roughly 1–2 GB.</p>
+  </div>
+  <div class="card">
+    <h3>Overnight batch: a loop video for every track in a folder</h3>
+    <p class="muted" style="font-size:12px;margin-top:0">Each track gets its own loop video and a "YouTube text" file with the title, description and tags ready to paste. Track titles come from the files' tags or names.</p>
+    <div class="grid g4">
+      <div style="grid-column:span 2"><label>Folder of tracks</label><div class="row"><input class="grow" id="btFolder"><button class="b s" onclick="pick({kind:'dir'},p=>btFolder.value=p)">…</button></div></div>
+      <div><label>Hours each</label><select id="btHours"><option>1</option><option>3</option><option>8</option><option selected>10</option></select></div>
+      <div><label>Visual</label><select id="btVisual"><option value="static">Static</option><option value="zoom">Slow zoom</option></select></div>
+      <div><label>Picture</label><select id="btCover"><option value="generate">Generate unique art per track</option><option value="cover">Use this release's cover</option><option value="image">Use the "image for videos" below</option></select></div>
+      <div><label>Art style</label><select id="btStyle"><option>aurora</option><option>gradient</option><option>grain</option><option>geometric</option><option>sunset</option><option>mono</option></select></div>
+      <div><label>Title style</label><select id="btKind"><option value="ten_hours">Title - 10 Hours | Mood Genre Loop</option><option value="study">10 Hours of Mood Genre for Study, Sleep…</option><option value="ten_hours_plain">Artist - Title [10 Hour Version]</option></select></div>
+      <div><label>Resolution</label><select class="resSel" id="btRes"></select></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="b p" onclick="batch()">Queue batch</button><span class="muted" id="btEst" style="font-size:12px"></span></div>
   </div>
   <div class="grid g2">
     <div class="card">
@@ -225,7 +275,8 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
       </div>
       <p class="muted" style="font-size:12px">Auto picks the most energetic section.</p>
       <div class="row"><button class="b p" onclick="job('short',{track_index:shTrack.value,seconds:shSec.value,start:shStart.value,image:vidImage()})">Render clip</button>
-      <button class="b" onclick="[15,30,60].forEach(s=>job('short',{track_index:shTrack.value,seconds:s,image:vidImage()}))">15 + 30 + 60 s set</button></div>
+      <button class="b" onclick="[15,30,60].forEach(s=>job('short',{track_index:shTrack.value,seconds:s,image:vidImage()}))">15 + 30 + 60 s set</button><button class="b" onclick="preview('shPrev',{vertical:true})">Preview</button></div>
+      <img class="prev" id="shPrev" style="max-width:200px">
     </div>
   </div>
   <div class="card">
@@ -299,6 +350,22 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
     <div id="planOut" style="margin-top:12px"></div></div>
 </section>
 
+<!-- SL2 -->
+<section class="tab" id="t-sl2">
+  <h2>SL2 songs</h2>
+  <p class="sub">Turn songs made in SL2 into releases. Genre, BPM and key come across automatically; only the newest version of each song is shown.</p>
+  <div class="card">
+    <div class="grid g2">
+      <div><label>SL2 songs folder (the <code>songs</code> folder inside SL2)</label><div class="row"><input class="grow" id="sl2Home"><button class="b s" onclick="pick({kind:'dir'},p=>{sl2Home.value=p;sl2Save();sl2List()})">…</button></div></div>
+      <div><label>Auto-import</label>
+        <label class="chk"><input type="checkbox" id="sl2Watch" onchange="sl2Save()">Watch the folder and make a release for each new song</label>
+        <label class="chk"><input type="checkbox" id="sl2Star" checked onchange="sl2Save()">Only songs I star in SL2</label></div>
+    </div>
+    <div class="row"><button class="b" onclick="sl2List()">Refresh list</button><button class="b" onclick="sl2Import('new')">Import selected as separate releases</button><button class="b" onclick="sl2Import('album')">Import selected as one album</button><button class="b" onclick="sl2Import('append')">Add selected to current release</button></div>
+  </div>
+  <div class="card"><div id="sl2List" class="muted">Set the folder above.</div></div>
+</section>
+
 <!-- SIGNUPS -->
 <section class="tab" id="t-links">
   <h2>Sign-ups &amp; registrations</h2>
@@ -313,6 +380,9 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
     <div><label>Output folder</label><div class="row"><input class="grow" id="sOut"><button class="b s" onclick="pick({kind:'dir'},p=>sOut.value=p)">…</button></div></div>
     <div><label>Stock author name (used in stock file names)</label><input id="sAuthor"></div>
   </div>
+  <div class="card"><h3>Defaults for new releases</h3><div class="grid g3" id="defFields"></div></div>
+  <div class="card"><h3>Look</h3><select id="sTheme" style="max-width:260px" onchange="applyTheme(this.value)"><option value="studio">Studio (black &amp; green, like SL2)</option><option value="ember">Ember (dark &amp; orange)</option></select></div>
+  <div class="card"><h3>Notifications</h3><label class="chk"><input type="checkbox" id="sNotify">Pop-up and sound when a job finishes</label></div>
   <div class="card"><h3>Your links (added to every description)</h3><div class="grid g3" id="profileFields"></div></div>
   <button class="b p" onclick="saveSettings()">Save settings</button>
   <p class="muted" id="dataDir" style="font-size:12px"></p>
@@ -325,16 +395,23 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
 </aside>
 </main>
 
-<div class="modal" id="fb"><div class="box">
+<div class="modal" id="fb" style="z-index:25"><div class="box">
   <div style="padding:14px;border-bottom:1px solid var(--line)" class="row"><b class="grow" id="fbTitle">Choose</b><button class="b s" onclick="fbClose()">✕</button></div>
   <div style="padding:10px 14px" class="row"><button class="b s" onclick="fbGo(FB.parent)">↑ Up</button><input class="grow" id="fbPath" onkeydown="if(event.key==='Enter')fbGo(this.value)"></div>
   <div class="fb-list" id="fbList"></div>
   <div style="padding:12px 14px;border-top:1px solid var(--line)" class="row"><span class="muted grow" id="fbHint"></span><button class="b" onclick="fbClose()">Cancel</button><button class="b p" onclick="fbOk()">Select</button></div>
 </div></div>
 <div class="toast" id="toast"></div>
+<div class="drop" id="drop">Drop audio, photos or folders</div>
+<div class="modal wiz" id="wiz"><div class="box" style="width:min(820px,94vw)">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--line)" class="row"><b class="grow">New release</b><button class="b s" onclick="wizClose()">✕</button></div>
+  <div class="steps" id="wizSteps"></div>
+  <div class="body" id="wizBody"></div>
+  <div style="padding:12px 16px;border-top:1px solid var(--line)" class="row"><button class="b" id="wizBack" onclick="wizGo(-1)">Back</button><span class="grow"></span><button class="b p big" id="wizNext" onclick="wizGo(1)">Next</button></div>
+</div></div>
 
 <script>
-const TABS=[["release","Release"],["art","Artwork"],["video","YouTube & video"],["pkg","Packages"],["up","Upload"],["plan","Plan"],["links","Sign-ups"],["set","Settings"]];
+const TABS=[["release","Release"],["art","Artwork"],["video","YouTube & video"],["pkg","Packages"],["up","Upload"],["plan","Plan"],["sl2","SL2 songs"],["links","Sign-ups"],["set","Settings"]];
 const PROFILE=[["smart_link","Smart link / pre-save"],["spotify","Spotify"],["apple","Apple Music"],["bandcamp","Bandcamp"],["soundcloud","SoundCloud"],["instagram","Instagram"],["tiktok","TikTok"],["website","Website"]];
 let INIT={},S={},R=blank(),PROJ="",selPhotos=[],PLAN=null;
 const $=id=>document.getElementById(id);
@@ -348,15 +425,17 @@ function toast(m,ms=2600){const t=$("toast");t.textContent=m;t.style.display="bl
 $("nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join("");
 $("nav").onclick=e=>{const k=e.target.dataset.t;if(k)show(k)};
 function show(k){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===k));
-  document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;
-  if(k==="art")renderCover();if(k==="video")renderLvTracks();}
+  document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;scrollTo(0,0);syncForm();
+  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate()}if(k==="release")readiness();if(k==="sl2")sl2List();}
 
 // ---------- init / projects
 async function init(){
   INIT=await api("/api/init");S=INIT.settings;
   if(INIT.missing_tools.length)$("toolWarn").innerHTML=`<div class="note">Missing: <b>${INIT.missing_tools.join(", ")}</b>. Install ffmpeg (see README) and restart, or rendering won't work.</div>`;
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
-  ["rvRes","lvRes"].forEach(id=>$(id).innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
+  document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
+  $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
+  rememberInputs();setupDrop();sl2Init();
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -369,12 +448,12 @@ async function init(){
 function refreshProjList(list){$("projSel").innerHTML=(list.length?"":"<option value=''>(unsaved)</option>")+list.map(p=>`<option ${p===PROJ?"selected":""}>${esc(p)}</option>`).join("")}
 $("projSel").onchange=e=>e.target.value&&loadProject(e.target.value);
 async function loadProject(n){R=await api("/api/project/"+encodeURIComponent(n));R.tracks=R.tracks||[];PROJ=n;localStorage.setItem("rk_proj",n);bind();refreshProjList(INIT.projects)}
-function newProject(){R=blank();PROJ="";bind();refreshProjList(INIT.projects);toast("New release – type a title and artist to save it")}
+function newProject(){R=withDefaults(blank());PROJ="";bind();refreshProjList(INIT.projects);toast("New release – type a title and artist to save it")}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
   const name=(R.artist||"Artist")+" - "+(R.title||"Untitled");
   if(!R.title&&!R.artist)return;
   if(PROJ&&PROJ!==name){/* renamed: keep old file, save new name */}
-  PROJ=name;localStorage.setItem("rk_proj",name);await api("/api/project/"+encodeURIComponent(name),R);
+  PROJ=name;localStorage.setItem("rk_proj",name);await api("/api/project/"+encodeURIComponent(name),R);readinessSoon();
   if(!INIT.projects.includes(name)){INIT.projects.push(name);INIT.projects.sort()}refreshProjList(INIT.projects)},500)}
 
 // ---------- release form
@@ -383,9 +462,14 @@ function bind(){
     if(el.type==="checkbox")el.checked=!!R[k];else el.value=R[k]||"";
     el.oninput=el.onchange=()=>{R[k]=el.type==="checkbox"?el.checked:el.value;save()}});
   $("photoFolder").value=R.photo_folder||"";$("lvFolder").value=R.photo_folder||"";$("psFolder").value=R.photo_folder||"";
-  renderTracks();renderCover();$("analysis").innerHTML="";$("photos").innerHTML="";if(R.photo_folder)scanPhotos(true);
+  renderTracks();renderCover();$("analysis").innerHTML="";readinessSoon();$("photos").innerHTML="";if(R.photo_folder)scanPhotos(true);
 }
-function addTracks(paths){paths=[].concat(paths);paths.forEach(p=>R.tracks.push({path:p,title:p.split(/[\\/]/).pop().replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,"")}));renderTracks();save()}
+async function addTracks(paths,tagsByPath){paths=[].concat(paths);
+  if(!tagsByPath){try{tagsByPath=await api("/api/tags",{paths})}catch(e){tagsByPath={}}}
+  paths.forEach(p=>{const tg=tagsByPath[p]||{};const t={path:p,title:tg.title||p.split(/[\\/]/).pop().replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,"")};
+    ["bpm","key","isrc","composer","lyrics"].forEach(k=>{if(tg[k])t[k]=tg[k]});R.tracks.push(t);
+    if(!R.artist&&tg.artist)R.artist=tg.artist;if(!R.title&&(tg.album||tg.title))R.title=tg.album||tg.title;if(!R.genre&&tg.genre)R.genre=tg.genre});
+  bind();save()}
 const TF=[["title","Title"],["version","Version (Remix, Live…)"],["featuring","Featuring"],["isrc","ISRC"],["composer","Composer(s) legal names"],["lyricist","Lyricist(s)"],["producer","Producer(s)"],["bpm","BPM"],["key","Key"],["preview_start","Preview start (s)"]];
 function renderTracks(){
   $("tracks").innerHTML=R.tracks.length?R.tracks.map((t,i)=>`<div class="track"><div class="n">${i+1}</div><div>
@@ -404,7 +488,8 @@ function renderAnalysis(res){$("analysis").innerHTML=`<table><tr><th>Track</th><
   res.tracks.map(a=>`<tr><td>${esc(a.title)}</td><td>${a.codec} ${a.sample_rate/1000}kHz ${a.bits?a.bits+"-bit":""}</td><td>${a.lufs?.toFixed(1)} LUFS</td><td>${a.true_peak?.toFixed(1)} dBTP</td><td>${a.bpm_estimate??""}</td>
   <td>${a.warnings.length?a.warnings.map(w=>`<div class="warn">• ${esc(w)}</div>`).join(""):'<span class="ok">Looks good</span>'}</td></tr>`).join("")+`</table>
   <p class="muted" style="font-size:12px">Spotify and YouTube play everything back at about -14 LUFS, so louder masters just get turned down.</p>`;
-  res.tracks.forEach((a,i)=>{if(R.tracks[i]&&!R.tracks[i].bpm&&a.bpm_estimate)R.tracks[i].bpm=a.bpm_estimate});save()}
+  res.tracks.forEach((a,i)=>{if(R.tracks[i]&&!R.tracks[i].bpm&&a.bpm_estimate)R.tracks[i].bpm=a.bpm_estimate});
+  R.analysis=res.tracks.map(a=>({title:a.title,lufs:a.lufs,true_peak:a.true_peak,warnings:a.warnings}));save()}
 
 // ---------- artwork
 const thumb=(p,s=360)=>"/api/thumb?size="+s+"&path="+encodeURIComponent(p);
@@ -440,7 +525,7 @@ async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];
 let seen={};
 async function pollJobs(){clearTimeout(pollJobs.t);let jobs=[];try{jobs=await api("/api/jobs")}catch(e){}
   renderJobs(jobs);
-  jobs.forEach(j=>{if(j.status==="done"&&!seen[j.id]){seen[j.id]=1;onDone(j)}});
+  jobs.forEach(j=>{if(j.status==="done"&&!seen[j.id]){seen[j.id]=1;onDone(j)}else if(j.status==="error"&&!seen[j.id]){seen[j.id]=1;if(!FIRSTPOLL)notifyDone(j)}});FIRSTPOLL=false;
   pollJobs.t=setTimeout(pollJobs,jobs.some(j=>j.status==="running"||j.status==="queued")?1000:4000)}
 const JOBHTML={};
 function renderJobs(jobs){const box=$("jobs");
@@ -465,12 +550,18 @@ function jobHtml(j){const r=j.result||{},pct=Math.round(j.progress*100);let body
     if(r.url)body+=`<div><a href="${r.url}" target="_blank" style="color:var(--accent2)">${r.url}</a></div>`+(r.notes||[]).map(n=>`<div class="warn" style="font-size:12px">${esc(n)}</div>`).join("");
     if(r.tracks)body+=`<div class="muted" style="font-size:12px">See results under Tracks.</div>`;
     const open=p||(r.files&&r.files[0]);if(open)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(open)}')">Show in folder</button>${/\.mp4$/i.test(p)?`<button class="b s" onclick="toUpload('${jsq(p)}','${j.kind}')">Upload this…</button>`:""}</div>`;}
-  if(j.status==="error")body=`<pre>${esc(j.error)}</pre>`;
-  return `<div class="job"><div class="row"><span class="t grow">${esc(j.label)}</span><span class="pill ${j.status==="done"?"ok":j.status==="error"?"err":""}">${j.status}</span>
+  if(j.status==="error"||j.status==="interrupted")body=(j.hint?`<div class="err" style="font-size:13px;margin-top:4px">${esc(j.hint)}</div><details class="raw"><summary>Technical details</summary><pre>${esc(j.error)}</pre></details>`:`<pre>${esc(j.error)}</pre>`);
+  if(j.kind==="sl2_import"&&r.project)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="loadProject('${jsq(r.project)}').then(()=>show('release'))">Open release</button></div>`;
+  if(r.text_file)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(r.text_file)}')">YouTube text file</button></div>`;
+  return `<div class="job"><div class="row"><span class="t grow">${esc(j.label)}</span><span class="pill ${j.status==="done"?"ok":j.status==="error"||j.status==="interrupted"?"err":""}">${j.status}</span>
     ${j.status==="running"||j.status==="queued"?`<button class="b s" onclick="api('/api/jobs/${j.id}/cancel',{}).then(pollJobs)">Stop</button>`:""}</div>
     ${j.status==="running"||j.status==="queued"?`<div class="bar"><i style="width:${pct}%"></i></div><div class="muted" style="font-size:11px">${pct}%${eta}</div>`:""}${body}</div>`}
 const jsq=s=>String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-function onDone(j){if(j.kind==="analyze")renderAnalysis(j.result);if(j.kind==="album_video"&&j.result.chapters)CHAPTERS=j.result.chapters}
+function onDone(j){if(j.kind==="analyze")renderAnalysis(j.result);if(j.kind==="album_video"&&j.result.chapters)CHAPTERS=j.result.chapters;
+  if(j.kind==="cover"){coverHist();if(WZ.wantCover&&j.result&&j.result.path){WZ.wantCover=false;useCover(j.result.path);if(WZ.open)wizRender()}}
+  if(j.kind==="sl2_import"){api("/api/init").then(x=>{INIT.projects=x.projects;refreshProjList(INIT.projects)})}
+  if(!FIRSTPOLL)notifyDone(j)}
+let FIRSTPOLL=true;
 let CHAPTERS="";
 async function openPath(p){try{await api("/api/open",{path:p})}catch(e){toast("Folder: "+p,5000)}}
 function outDir(){return (S.output_dir||"")+(R.artist||R.title?"/"+(R.artist||"Artist")+" - "+(R.title||"Release"):"")}
@@ -501,9 +592,13 @@ function renderLinks(){const st=S.signups||{};
 async function sig(k,f,v){S.signups=S.signups||{};S.signups[k]=S.signups[k]||{};S.signups[k][f]=v;await api("/api/settings",{signups:S.signups})}
 
 // ---------- settings
-function fillSettings(){$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
+function applyTheme(t){document.body.classList.toggle('ember',t==='ember');localStorage.setItem('rk_theme',t)}
+applyTheme(localStorage.getItem('rk_theme')||'studio');
+function fillSettings(){$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
 async function saveSettings(){const profile={};document.querySelectorAll("[data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
-  S=await api("/api/settings",{output_dir:$("sOut").value.trim(),stock_author:$("sAuthor").value.trim(),profile});toast("Saved")}
+  const defaults={};document.querySelectorAll("[data-d]").forEach(el=>defaults[el.dataset.d]=el.value.trim());
+  if($("sNotify").checked&&window.Notification&&Notification.permission==="default")Notification.requestPermission();
+  S=await api("/api/settings",{output_dir:$("sOut").value.trim(),stock_author:$("sAuthor").value.trim(),profile,defaults,notify:$("sNotify").checked});toast("Saved")}
 
 // ---------- file browser
 let FB={};
@@ -519,6 +614,137 @@ function fbSel(el,n){const p=FB.path+"/"+n;if(!FB.opts.multi){FB.sel=[];document
 function fbOk(){let v;if(FB.opts.kind==="dir")v=FB.path;else{if(!FB.sel.length)return toast("Pick a file");v=FB.opts.multi?FB.sel:FB.sel[0]}
   localStorage.setItem("rk_dir_"+FB.opts.kind,FB.path);fbClose();FB.cb(v)}
 function fbClose(){$("fb").classList.remove("on")}
+
+// ================= ease-of-use additions =================
+const DEFS=[["artist","Artist name"],["label","Label / imprint"],["copyright_p","(P) line, e.g. 2026 Your Name"],["copyright_c","(C) line"],["genre","Usual genre"],["language","Language"]];
+function withDefaults(r){const d=S.defaults||{};const y=new Date().getFullYear();
+  ["artist","label","genre","language"].forEach(k=>{if(d[k]&&!r[k])r[k]=d[k]});
+  ["copyright_p","copyright_c"].forEach(k=>{if(d[k]&&!r[k])r[k]=d[k].replace(/^\d{4}/,y)});return r}
+
+// remember the last-used options in every video/package form
+function rememberInputs(){document.querySelectorAll("#t-video select,#t-video input:not([type=checkbox]),#t-video input[type=checkbox],#t-pkg select,#t-pkg input,#t-art select").forEach(el=>{
+  if(!el.id||el.classList.contains("trackSel")||el.classList.contains("lvT"))return;const k="rk_f_"+el.id;const v=localStorage.getItem(k);
+  if(v!==null){if(el.type==="checkbox")el.checked=v==="1";else el.value=v}
+  el.addEventListener("change",()=>{localStorage.setItem(k,el.type==="checkbox"?(el.checked?"1":"0"):el.value);if(["lvHours","lvRes","lvVisual","btHours","btRes","btVisual"].includes(el.id))estimate()})})}
+
+// ---------- drag & drop anywhere
+function setupDrop(){let depth=0;
+  addEventListener("dragenter",e=>{if(e.dataTransfer.types.includes("Files")){depth++;$("drop").classList.add("on")}});
+  addEventListener("dragleave",()=>{if(--depth<=0){depth=0;$("drop").classList.remove("on")}});
+  addEventListener("dragover",e=>e.preventDefault());
+  addEventListener("drop",async e=>{e.preventDefault();depth=0;$("drop").classList.remove("on");
+    const files=await collectFiles(e.dataTransfer);if(!files.length)return;
+    toast(`Copying ${files.length} file(s)…`,60000);
+    const fd=new FormData();files.forEach(([f,rel])=>fd.append("files",f,rel));
+    let res;try{res=await (await fetch("/api/upload",{method:"POST",body:fd})).json()}catch(err){return toast("Upload failed: "+err)}
+    handleDropped(res)})}
+async function collectFiles(dt){const out=[];const entries=[...dt.items].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  if(!entries.length)return [...dt.files].map(f=>[f,f.name]);
+  async function walk(en,prefix){if(en.isFile){await new Promise(r=>en.file(f=>{out.push([f,prefix+f.name]);r()},r))}
+    else if(en.isDirectory){const rd=en.createReader();let batch;do{batch=await new Promise(r=>rd.readEntries(r,()=>r([])));for(const c of batch)await walk(c,prefix+en.name+"/")}while(batch.length)}}
+  for(const en of entries)await walk(en,"");return out}
+function handleDropped(res){const aud=res.files.filter(f=>f.kind==="audio"),img=res.files.filter(f=>f.kind==="image"),vid=res.files.filter(f=>f.kind==="video");
+  const msgs=[];
+  if(aud.length){const tags={};aud.forEach(f=>tags[f.path]=f.tags||{});
+    if(!R.tracks.length&&!R.title&&!WZ.open)R=withDefaults(blank());addTracks(aud.map(f=>f.path),tags);msgs.push(aud.length+" track(s) added")}
+  if(img.length){const dir=img[0].path.replace(/[\\/][^\\/]+$/,"");
+    if(img.length===1&&(!R.art_path||WZ.open&&WZ.step===1)){job("cover",{source:img[0].path,mode:"smart"});WZ.wantCover=true;msgs.push("making a cover from your image")}
+    else{$("photoFolder").value=dir;R.photo_folder=dir;$("lvFolder").value=dir;$("psFolder").value=dir;save();scanPhotos();msgs.push(img.length+" photo(s) ready in Artwork");if(!WZ.open)show("art")}}
+  if(vid.length){$("ytVideo").value=vid[0].path;msgs.push("video ready in Upload")}
+  toast(msgs.join(" · ")||"Nothing usable in that drop",4000);if(WZ.open)wizRender()}
+
+// ---------- readiness
+let readyT;function readinessSoon(){clearTimeout(readyT);readyT=setTimeout(readiness,900)}
+async function readiness(){if(!R.title&&!R.tracks.length){$("readyList").innerHTML='<span class="muted">Add a title, tracks and a cover to see what\'s missing.</span>';$("readyScore").textContent="";return}
+  let r;try{r=await api("/api/readiness",R)}catch(e){return}
+  $("readyScore").textContent=`${r.score}/${r.total}`;
+  $("readyList").innerHTML=r.checks.map(c=>`<div onclick="show('${c.fix||"release"}')" title="Go there"><span class="i ${c.status==="ok"?"ok":c.status==="warn"?"warn":"err"}">${c.status==="ok"?"✓":c.status==="warn"?"!":"✕"}</span>${esc(c.label)}</div>`).join("")}
+
+// ---------- cover history
+async function coverHist(){if(!R.title&&!R.artist)return;let r;try{r=await api("/api/covers",R)}catch(e){return}
+  $("coverHist").innerHTML=r.covers.length?r.covers.slice(0,30).map(p=>`<img src="${thumb(p,180)}" class="${p===R.art_path?"on":""}" title="Use this cover" onclick="useCover('${jsq(p)}');coverHist()">`).join(""):'<span class="muted" style="font-size:12px">Covers you make appear here.</span>'}
+
+// ---------- instant preview
+async function preview(id,o){const img=vidImage()||R.art_path;if(!img)return toast("Set a cover first");
+  const r=await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({image:img,title:(R.tracks[$("rvTrack").value]||{}).title||R.title,artist:R.artist},o))});
+  if(!r.ok)return toast((await r.json()).error);const el=$(id);el.src=URL.createObjectURL(await r.blob());el.style.display="block"}
+
+// ---------- size estimate
+async function estimate(){try{
+  const a=await api("/api/estimate",{hours:$("lvHours").value,resolution:$("lvRes").value,visual:$("lvVisual").value});
+  $("lvEst").textContent=`≈ ${(a.bytes/1e9).toFixed(1)} GB · ${(a.free/1e9).toFixed(0)} GB free`;
+  const b=await api("/api/estimate",{hours:$("btHours").value,resolution:$("btRes").value,visual:$("btVisual").value});
+  $("btEst").textContent=`≈ ${(b.bytes/1e9).toFixed(1)} GB per track · ${(b.free/1e9).toFixed(0)} GB free`}catch(e){}}
+
+// ---------- overnight batch
+async function batch(){const folder=$("btFolder").value.trim();if(!folder)return toast("Choose a folder of tracks");
+  let r;try{r=await api("/api/list_audio",{folder})}catch(e){return toast(e.message)}
+  if(!r.files.length)return toast("No audio files in that folder");
+  const d=S.defaults||{};const rel={title:"Batch "+new Date().toISOString().slice(0,10),artist:R.artist||d.artist||"Artist",genre:R.genre||d.genre||"",mood:R.mood||"",
+    tracks:r.files.map(f=>({path:f.path,title:(f.tags||{}).title||f.path.split(/[\\/]/).pop().replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,"")}))};
+  const mode=$("btCover").value,img=mode==="cover"?R.art_path:mode==="image"?vidImage():null;
+  if(mode!=="generate"&&!img)return toast("No image set for that picture option");
+  for(let i=0;i<rel.tracks.length;i++){await api("/api/jobs",{kinds:["batch_item"],release:rel,params:{track_index:i,hours:$("btHours").value,visual:$("btVisual").value,image:img,style:$("btStyle").value,title_kind:$("btKind").value,resolution:$("btRes").value}}).catch(e=>toast(e.message,6000))}
+  toast(`Queued ${rel.tracks.length} loop videos`);pollJobs()}
+
+// ---------- notifications
+function notifyDone(j){if(!S.notify)return;
+  try{const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.frequency.value=j.status==="done"?880:220;g.gain.setValueAtTime(.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.5);o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+.5)}catch(e){}
+  if(window.Notification&&Notification.permission==="granted"&&document.hidden)new Notification("Release Kit: "+(j.status==="done"?"finished":"failed"),{body:j.label})}
+
+// ---------- SL2
+let SL2=[];
+function sl2Init(){$("sl2Home").value=S.sl2_home||INIT.sl2_default_home||"";$("sl2Watch").checked=!!S.sl2_watch;$("sl2Star").checked=S.sl2_starred_only!==false}
+async function sl2Save(){S=await api("/api/settings",{sl2_home:$("sl2Home").value.trim(),sl2_watch:$("sl2Watch").checked,sl2_starred_only:$("sl2Star").checked})}
+async function sl2List(){const home=$("sl2Home").value.trim();if(!home){$("sl2List").innerHTML='<span class="muted">Set the SL2 songs folder above.</span>';return}
+  let r;try{r=await api("/api/sl2/songs",{home})}catch(e){return toast(e.message)}SL2=r.songs;
+  $("sl2List").innerHTML=SL2.length?`<table><tr><th></th><th>Title</th><th>Genre</th><th>BPM</th><th>Key</th><th>Length</th><th>Made</th><th></th></tr>`+SL2.map((x,i)=>`<tr>
+    <td><input type="checkbox" class="sl2c" value="${i}"></td><td>${x.starred?"★ ":""}<b>${esc(x.title)}</b></td><td>${esc(x.genre_name||x.genre)}</td><td>${x.bpm||""}</td><td>${esc(x.key||"")}</td>
+    <td>${x.duration?fmtDur(x.duration):""}</td><td class="muted">${x.created?new Date(x.created*1000).toLocaleDateString():""}</td>
+    <td>${x.imported?'<span class="pill ok">imported</span>':""} <audio controls preload="none" src="/api/file?path=${encodeURIComponent(x.wav)}" style="height:28px;vertical-align:middle"></audio></td></tr>`).join("")+"</table>"
+    :'<span class="muted">No songs found in that folder. In SL2 they live in the <code>songs</code> folder next to sl2.py (or wherever SL2_HOME points).</span>'}
+async function sl2Import(mode){const picked=[...document.querySelectorAll(".sl2c:checked")].map(c=>SL2[+c.value]);if(!picked.length)return toast("Tick some songs first");
+  const home=$("sl2Home").value.trim();
+  if(mode==="album"||mode==="append"){
+    if(mode==="album"){R=withDefaults(blank());R.title=prompt("Album title?",picked[0].title)||picked[0].title;R.genre=R.genre||picked[0].genre_name||"";R.language="Instrumental"}
+    for(const x of picked)R.tracks.push({path:x.wav,title:x.title,bpm:x.bpm||"",key:x.key||"",sl2_id:x.id});
+    await api("/api/sl2/import",{home,ids:[],project:null});bind();save();show("release");toast(`${picked.length} song(s) added`);return}
+  const r=await api("/api/sl2/import",{home,ids:picked.map(x=>x.id)});INIT.projects=(await api("/api/init")).projects;refreshProjList(INIT.projects);
+  toast(`Made ${r.projects.length} release(s)`);if(r.projects.length===1){await loadProject(r.projects[0]);show("release")}else sl2List()}
+
+// ---------- wizard
+const WZ={open:false,step:0,wantCover:false,dest:{yt:true,loop:true,shorts:true,canvas:true,distro:true,direct:false,stock:false}};
+const WZSTEPS=["Music","Cover","Where it's going","Go"];
+function wizOpen(){if(R.tracks.length&&!confirm("Start a new release? (Your current one is saved.)"))return;R=withDefaults(blank());PROJ="";bind();refreshProjList(INIT.projects);WZ.open=true;WZ.step=0;WZ.skip=false;WZ.wantCover=false;$("wiz").classList.add("on");wizRender()}
+function wizClose(){WZ.open=false;$("wiz").classList.remove("on");syncForm();renderTracks();renderCover()}
+function syncForm(){document.querySelectorAll("[data-k]").forEach(el=>{const v=R[el.dataset.k];if(el.type==="checkbox")el.checked=!!v;else if(document.activeElement!==el)el.value=v||""})}
+function wizGo(d){if(d>0&&WZ.step===0&&(!R.tracks.length||!R.title||!R.artist))return toast("Add at least one track, a title and an artist");
+  if(d>0&&WZ.step===1&&!R.art_path&&!WZ.wantCover&&!WZ.skip)return toast("Choose or make a cover (or press Skip)");
+  if(d>0&&WZ.step===3){wizLaunch();return}WZ.step=Math.max(0,Math.min(3,WZ.step+d));wizRender()}
+function wizRender(){$("wizSteps").innerHTML=WZSTEPS.map((n,i)=>`<span class="${i<=WZ.step?"on":""}" title="${n}"></span>`).join("");
+  $("wizBack").style.visibility=WZ.step?"visible":"hidden";$("wizNext").textContent=WZ.step===3?"Make everything":"Next";const b=$("wizBody");
+  if(WZ.step===0)b.innerHTML=`<h3>1. Your music</h3><p class="muted">Drag audio files or a folder onto this window, or:</p>
+    <div class="row"><button class="b" onclick="pick({kind:'audio',multi:true},p=>addTracks(p).then(wizRender))">Choose audio files…</button>${SL2.length||$("sl2Home").value?`<button class="b" onclick="wizClose();show('sl2')">Pick from SL2…</button>`:""}</div>
+    <div style="margin:14px 0">${R.tracks.map((t,i)=>`<div class="muted">${i+1}. ${esc(t.title)}</div>`).join("")||'<span class="muted">No tracks yet.</span>'}</div>
+    <div class="grid g2"><div><label>Release title</label><input value="${esc(R.title)}" oninput="R.title=this.value;save()"></div><div><label>Artist</label><input value="${esc(R.artist)}" oninput="R.artist=this.value;save()"></div>
+    <div><label>Genre</label><input list="genres" value="${esc(R.genre)}" oninput="R.genre=this.value;save()"></div><div><label>Release date (optional)</label><input type="date" value="${esc(R.release_date)}" oninput="R.release_date=this.value;save()"></div></div>`;
+  if(WZ.step===1)b.innerHTML=`<h3>2. Cover art</h3><div class="grid" style="grid-template-columns:200px 1fr">
+    <div class="cover" style="background-image:${R.art_path?`url('${thumb(R.art_path,400)}&t=${Date.now()}')`:"none"}">${R.art_path?"":WZ.wantCover?"Making…":"No cover yet"}</div>
+    <div class="grid" style="gap:10px">
+      <div class="choice" onclick="pick({kind:'image'},p=>{job('cover',{source:p,mode:'smart'});WZ.wantCover=true;wizRender()})"><b>Use a photo</b><div class="muted" style="font-size:12px">Crops it to a 3000×3000 square around the most detailed area. Or drop an image here.</div></div>
+      <div class="choice" onclick="pick({kind:'dir'},p=>{$('photoFolder').value=p;R.photo_folder=p;save();wizClose();show('art');scanPhotos()})"><b>Browse a photo folder</b><div class="muted" style="font-size:12px">See your photos ranked and pick one (opens the Artwork tab).</div></div>
+      <div class="choice" onclick="WZ.wantCover=true;genArt(1);wizRender()"><b>Generate one for me</b><div class="muted" style="font-size:12px">Original abstract art. Press again for another.</div></div>
+      <label class="chk"><input type="checkbox" id="wzTitle" ${$("addTitle").value?"checked":""} onchange="$('addTitle').value=this.checked?'bottom':''">Put the title and artist on the cover</label>
+      <a href="#" onclick="WZ.skip=true;wizGo(1);return false" class="muted" style="font-size:12px">Skip for now</a></div></div>`;
+  if(WZ.step===2){const D=[["yt","YouTube video for each track"],["loop","10-hour loop video (track 1)"],["shorts","Shorts / Reels / TikTok clips"],["canvas","Spotify Canvas"],["distro","Distributor package (Spotify, Apple, Amazon…)"],["direct","Bandcamp + SoundCloud package"],["stock","Stock music package"]];
+    b.innerHTML=`<h3>3. Where is it going?</h3><div class="grid g2">${D.map(([k,l])=>`<label class="choice chk ${WZ.dest[k]?"on":""}"><input type="checkbox" ${WZ.dest[k]?"checked":""} onchange="WZ.dest['${k}']=this.checked;this.parentNode.classList.toggle('on',this.checked)">${l}</label>`).join("")}</div>`}
+  if(WZ.step===3){const n=Object.values(WZ.dest).filter(Boolean).length;b.innerHTML=`<h3>4. Ready</h3><p><b>${esc(R.artist)} – ${esc(R.title)}</b>, ${R.tracks.length} track(s), ${n} output(s).</p>
+    <p class="muted">Everything runs in the Jobs panel on the right; you can close this and keep working. Loudness gets checked first.</p>`}}
+function wizLaunch(){const d=WZ.dest;job("analyze");
+  if(d.yt)R.tracks.forEach((t,i)=>job("release_video",{track_index:i}));if(d.loop)job("long_video",{tracks:[0],hours:10});
+  if(d.shorts)job("short",{track_index:0,seconds:30});if(d.canvas)job("canvas",{});
+  const k=[];if(d.distro)k.push("pkg_distro");if(d.direct)k.push("pkg_direct");if(d.stock)k.push("pkg_stock");if(R.art_path)k.unshift("variants");if(k.length)job(k);
+  wizClose();show("release");toast("All queued. Watch the Jobs panel.",4000)}
 init();
 </script>
 </body>
