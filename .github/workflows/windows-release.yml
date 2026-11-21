@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: windows-release   # one build at a time, so two pushes can't race to publish the same version
+  cancel-in-progress: false
+
 jobs:
   windows:
     runs-on: windows-latest
