@@ -210,25 +210,42 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
   <h2>YouTube &amp; video</h2>
   <p class="sub">Every video renders on your computer with ffmpeg. Long loop videos render one short clip and repeat it without re-encoding, so they take minutes, not hours.</p>
   <div class="card">
-    <h3>Release video / visualizer</h3>
+    <h3>Video style <span class="muted" style="font-weight:400;font-size:12px">applies to every video below, including 10-hour loops and Shorts</span></h3>
     <div class="grid g4">
+      <div><label>Visualizer</label><select id="stVis"><option value="none">None</option><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></select></div>
+      <div><label>Bumping to the beat</label><select id="stBump" onchange="stLogoRow.style.display=this.value==='logo'?'':'none'"><option value="none">Nothing</option><option value="cover">Cover art</option><option value="disc">Spinning disc (cover)</option><option value="logo">My logo (PNG)</option><option value="text">Artist &amp; title text</option></select></div>
+      <div><label>Color</label><select id="stColor"><option value="white">White</option><option value="green">Green</option><option value="cyan">Cyan</option><option value="pink">Pink</option><option value="gold">Gold</option><option value="red">Red</option><option value="cover">Match the cover</option></select></div>
+      <div><label>Bump strength</label><select id="stAmt"><option value="0.06">Subtle</option><option value="0.12" selected>Medium</option><option value="0.2">Strong</option><option value="0.3">Huge</option></select></div>
+    </div>
+    <div class="row" id="stLogoRow" style="margin-top:10px;display:none"><input class="grow" id="stLogo" placeholder="Logo image (PNG with transparent background)"><button class="b s" onclick="pick({kind:'image'},p=>stLogo.value=p)">…</button></div>
+    <div class="row" style="margin-top:10px"><button class="b" onclick="preview('stPrev',{})">Preview</button><span class="muted" style="font-size:12px">Bars, scope and bumps react to the music: the logo/cover pulses on the kick.</span></div>
+    <img class="prev" id="stPrev">
+  </div>
+  <div class="card">
+    <h3>Release video</h3>
+    <div class="grid g3">
       <div><label>Track</label><select class="trackSel" id="rvTrack"></select></div>
-      <div><label>Visualizer</label><select id="rvVis"><option value="none">None (static, fastest)</option><option value="waves">Waveform</option><option value="bars">Frequency bars</option><option value="line">Line</option><option value="spectrum">Scrolling spectrum</option></select></div>
       <div><label>Resolution</label><select class="resSel" id="rvRes"></select></div>
       <div><label>Layout</label><select id="rvLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills frame</option></select></div>
     </div>
     <label class="chk"><input type="checkbox" id="rvText" checked>Show title &amp; artist</label>
-    <div class="row"><button class="b" onclick="preview('rvPrev',{layout:rvLayout.value,text:rvText.checked})">Preview frame</button><button class="b p" onclick="job('release_video',{track_index:rvTrack.value,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()})">Render</button>
-      <button class="b" onclick="R.tracks.forEach((t,i)=>job('release_video',{track_index:i,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()}))">Render one for every track</button></div>
+    <div class="row"><button class="b" onclick="preview('rvPrev',{layout:rvLayout.value,text:rvText.checked})">Preview frame</button><button class="b p" onclick="job('release_video',{track_index:rvTrack.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()})">Render</button>
+      <button class="b" onclick="R.tracks.forEach((t,i)=>job('release_video',{track_index:i,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()}))">Render one for every track</button></div>
     <img class="prev" id="rvPrev">
   </div>
   <div class="card">
     <h3>10-hour / extended loop</h3>
     <div class="grid g4">
       <div><label>Length (hours)</label><select id="lvHours"><option>1</option><option>2</option><option>3</option><option>8</option><option selected>10</option><option>12</option></select></div>
-      <div><label>Visual</label><select id="lvVisual"><option value="static">Static cover</option><option value="zoom">Slow zoom (breathing)</option><option value="slideshow">Slideshow from photo folder</option></select></div>
+      <div><label>Visual</label><select id="lvVisual" onchange="clipRows()"><option value="static">Still cover</option><option value="zoom">Slow zoom</option><option value="pan">Slow pan</option><option value="grain">Film grain / VHS</option><option value="pulse">Breathing glow</option><option value="slideshow">Photo slideshow</option><option value="clip">My video clip</option><option value="clips">Folder of video clips</option></select></div>
       <div><label>Loop crossfade (s)</label><input id="lvXf" type="number" value="4" min="0" max="20"></div>
       <div><label>Resolution</label><select class="resSel" id="lvRes"></select></div>
+    </div>
+    <div class="grid g4" id="clipRow" style="margin-top:10px;display:none">
+      <div style="grid-column:span 2" id="clipFileBox"><label>Video clip (MP4, MOV, GIF…)</label><div class="row"><input class="grow" id="lvClip"><button class="b s" onclick="pick({kind:'video'},p=>lvClip.value=p)">…</button></div></div>
+      <div style="grid-column:span 2;display:none" id="clipDirBox"><label>Folder of clips (played in order, dissolving into each other)</label><div class="row"><input class="grow" id="lvClipDir"><button class="b s" onclick="pick({kind:'dir'},p=>lvClipDir.value=p)">…</button></div></div>
+      <div><label>Make it loop smoothly by</label><select id="lvClipMode"><option value="crossfade">Dissolving the end into the start</option><option value="pingpong">Playing forward then backward</option><option value="loop">Just repeating it</option></select></div>
+      <div><label>Fit</label><select id="lvClipFit"><option value="fill">Fill the frame (crop)</option><option value="fit">Whole clip + blurred sides</option></select></div>
     </div>
     <label style="margin-top:10px">Tracks to loop (one track, or several in order as a playlist)</label>
     <div id="lvTracks" class="row"></div>
@@ -238,7 +255,7 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
       <div><label>Ambient level (dB)</label><input id="lvAmbDb" type="number" value="-18"></div>
     </div>
     <label class="chk"><input type="checkbox" id="lvText" checked>Show title &amp; artist</label>
-    <div class="row"><button class="b" onclick="preview('lvPrev',{text:lvText.checked})">Preview frame</button><button class="b p" onclick="renderLong()">Render loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
+    <div class="row"><button class="b" onclick="preview('lvPrev',{text:lvText.checked,visual:lvVisual.value,video_clip:lvClip.value})">Preview frame</button><button class="b p" onclick="renderLong()">Render loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
     <img class="prev" id="lvPrev">
     <p class="muted" style="font-size:12px">The loop point is crossfaded into itself so there's no click or gap at each repeat. A 10-hour 1080p static video is roughly 1–2 GB.</p>
   </div>
@@ -248,7 +265,7 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
     <div class="grid g4">
       <div style="grid-column:span 2"><label>Folder of tracks</label><div class="row"><input class="grow" id="btFolder"><button class="b s" onclick="pick({kind:'dir'},p=>btFolder.value=p)">…</button></div></div>
       <div><label>Hours each</label><select id="btHours"><option>1</option><option>3</option><option>8</option><option selected>10</option></select></div>
-      <div><label>Visual</label><select id="btVisual"><option value="static">Static</option><option value="zoom">Slow zoom</option></select></div>
+      <div><label>Visual</label><select id="btVisual"><option value="static">Still</option><option value="zoom">Slow zoom</option><option value="pan">Slow pan</option><option value="grain">Film grain / VHS</option><option value="pulse">Breathing glow</option><option value="clip">Video clip (from the loop card)</option><option value="clips">Clip folder (from the loop card)</option></select></div>
       <div><label>Picture</label><select id="btCover"><option value="generate">Generate unique art per track</option><option value="cover">Use this release's cover</option><option value="image">Use the "image for videos" below</option></select></div>
       <div><label>Art style</label><select id="btStyle"><option>aurora</option><option>gradient</option><option>grain</option><option>geometric</option><option>sunset</option><option>mono</option></select></div>
       <div><label>Title style</label><select id="btKind"><option value="ten_hours">Title - 10 Hours | Mood Genre Loop</option><option value="study">10 Hours of Mood Genre for Study, Sleep…</option><option value="ten_hours_plain">Artist - Title [10 Hour Version]</option></select></div>
@@ -260,11 +277,10 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
     <div class="card">
       <h3>Full album video with chapters</h3>
       <div class="grid g2">
-        <div><label>Visualizer</label><select id="avVis"><option value="none">None</option><option value="waves">Waveform</option><option value="bars">Bars</option></select></div>
         <div><label>Gap between tracks (s)</label><input id="avGap" type="number" value="1" step="0.5"></div>
       </div>
       <p class="muted" style="font-size:12px">Timestamps go into the description automatically so YouTube shows chapters.</p>
-      <button class="b p" onclick="job('album_video',{visualizer:avVis.value,gap:avGap.value,image:vidImage()})">Render album video</button>
+      <button class="b p" onclick="job('album_video',{gap:avGap.value,image:vidImage()})">Render album video</button>
     </div>
     <div class="card">
       <h3>Shorts / Reels / TikTok (9:16)</h3>
@@ -435,7 +451,7 @@ async function init(){
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
   document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
   $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
-  rememberInputs();setupDrop();sl2Init();
+  rememberInputs();setupDrop();sl2Init();clipRows();$("stLogoRow").style.display=$("stBump").value==="logo"?"":"none";
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -513,13 +529,15 @@ function useCover(p){R.art_path=p;save();renderCover();toast("Cover set")}
 const vidImage=()=>$("vidImg").value||undefined;
 function renderLvTracks(){$("lvTracks").innerHTML=R.tracks.map((t,i)=>`<label class="chk" style="margin-right:12px"><input type="checkbox" class="lvT" value="${i}" ${i===0?"checked":""}>${esc(t.title)}</label>`).join("")||'<span class="muted">Add tracks first.</span>'}
 function renderLong(){const idx=[...document.querySelectorAll(".lvT:checked")].map(x=>+x.value);
-  job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,text:$("lvText").checked,image:vidImage()})}
+  job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,text:$("lvText").checked,image:vidImage(),video_clip:$("lvClip").value,clip_folder:$("lvClipDir").value,clip_mode:$("lvClipMode").value,clip_fit:$("lvClipFit").value})}
 function doEverything(){const kinds=["analyze","variants","album_video","pkg_distro","pkg_direct","pkg_stock"];
   job(kinds);R.tracks.forEach((t,i)=>job("release_video",{track_index:i}));
   job("long_video",{tracks:[0],hours:10});job("short",{track_index:0,seconds:30});job("canvas",{});}
 
 // ---------- jobs
-async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];
+function getStyle(){return {visualizer:$("stVis").value,bump:$("stBump").value,vis_color:$("stColor").value,bump_amount:$("stAmt").value,logo:$("stLogo").value}}
+function clipRows(){const v=$("lvVisual").value;$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
+async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];params=Object.assign({vstyle:getStyle()},params);
   try{const r=await api("/api/jobs",{kinds,release:R,params});if(r.errors.length)toast(r.errors.join(" · "),5000);else toast("Queued: "+kinds.join(", "));pollJobs()}
   catch(e){toast(e.message,5000)}}
 let seen={};
@@ -666,7 +684,7 @@ async function coverHist(){if(!R.title&&!R.artist)return;let r;try{r=await api("
 
 // ---------- instant preview
 async function preview(id,o){const img=vidImage()||R.art_path;if(!img)return toast("Set a cover first");
-  const r=await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({image:img,title:(R.tracks[$("rvTrack").value]||{}).title||R.title,artist:R.artist},o))});
+  const r=await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({image:img,title:(R.tracks[$("rvTrack").value]||{}).title||R.title,artist:R.artist,vstyle:getStyle()},o))});
   if(!r.ok)return toast((await r.json()).error);const el=$(id);el.src=URL.createObjectURL(await r.blob());el.style.display="block"}
 
 // ---------- size estimate
@@ -684,7 +702,7 @@ async function batch(){const folder=$("btFolder").value.trim();if(!folder)return
     tracks:r.files.map(f=>({path:f.path,title:(f.tags||{}).title||f.path.split(/[\\/]/).pop().replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,"")}))};
   const mode=$("btCover").value,img=mode==="cover"?R.art_path:mode==="image"?vidImage():null;
   if(mode!=="generate"&&!img)return toast("No image set for that picture option");
-  for(let i=0;i<rel.tracks.length;i++){await api("/api/jobs",{kinds:["batch_item"],release:rel,params:{track_index:i,hours:$("btHours").value,visual:$("btVisual").value,image:img,style:$("btStyle").value,title_kind:$("btKind").value,resolution:$("btRes").value}}).catch(e=>toast(e.message,6000))}
+  for(let i=0;i<rel.tracks.length;i++){await api("/api/jobs",{kinds:["batch_item"],release:rel,params:{track_index:i,hours:$("btHours").value,visual:$("btVisual").value,image:img,art_style:$("btStyle").value,video_clip:$("lvClip").value,clip_folder:$("lvClipDir").value,clip_mode:$("lvClipMode").value,title_kind:$("btKind").value,resolution:$("btRes").value}}).catch(e=>toast(e.message,6000))}
   toast(`Queued ${rel.tracks.length} loop videos`);pollJobs()}
 
 // ---------- notifications

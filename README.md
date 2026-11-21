@@ -26,8 +26,8 @@ Mac and Linux: see [Run from source](#run-from-source).
 |---|---|
 | ![New release wizard](docs/screenshots/wizard.png) | ![Choosing outputs in the wizard](docs/screenshots/wizard-destinations.png) |
 | **New release wizard:** music, cover, where it's going, one button. | Tick the outputs you want; it queues everything. |
-| ![Artwork](docs/screenshots/artwork.png) | ![Video](docs/screenshots/video.png) |
-| **Artwork:** photos ranked from a folder, smart crops, generated art, cover history. | **Video:** instant preview frames before you render. |
+| ![Artwork](docs/screenshots/artwork.png) | ![Video style](docs/screenshots/video.png) |
+| **Artwork:** photos ranked from a folder, smart crops, generated art, cover history. | **Video style:** visualizers and a cover/disc/logo/text that bumps to the beat, with instant previews. |
 | ![SL2 songs](docs/screenshots/sl2.png) | ![Upload](docs/screenshots/upload.png) |
 | **SL2 songs:** import songs from SL2, or auto-import the ones you star. | **Upload:** title, description and tags written for you. |
 | ![Sign-ups](docs/screenshots/signups.png) | |
@@ -39,7 +39,7 @@ Mac and Linux: see [Run from source](#run-from-source).
 |---|---|
 | **Release** | One form for title, artist, genre, mood, dates, (P)/(C) lines and UPC, plus per-track ISRC, credits, BPM, key and lyrics. A **Ready to release?** checklist flags what's missing. **Analyze** checks loudness (LUFS), true peak, sample rate and lossy sources, and estimates BPM. |
 | **Artwork** | Pick a photo folder; photos are ranked by resolution, sharpness and contrast. Make a 3000×3000 cover (smart crop, center crop, or fit + blurred fill) with optional title text and explicit label, or **generate** art in 6 styles. Export every platform size. All your covers stay in a gallery. |
-| **YouTube & video** | Release videos (static, waveform, frequency bars, line, spectrum). Full-album videos with chapters. **10-hour (1–12 h) loop videos** with a seamless crossfaded loop point, static/slow-zoom/slideshow visuals and an optional ambient layer. **Overnight batch**: a loop video and paste-ready YouTube text for every track in a folder. Shorts/Reels/TikTok clips. Spotify Canvas. |
+| **YouTube & video** | One **video style** for everything: visualizers (frequency bars, mirrored bars, waveform, line, circle scope, scrolling spectrum) in the colour of your choice, and a **cover, spinning disc, logo or title text that bumps to the kick**. Release videos, full-album videos with chapters, Shorts/Reels/TikTok, Spotify Canvas. **10-hour (1–12 h) loop videos** with a seamless loop point and backgrounds: still cover, slow zoom, slow pan, film grain/VHS, breathing glow, photo slideshow, **your own video clip** (looped by dissolving the end into the start, ping-pong, or straight repeat; crop or fit) or **a folder of clips**. **Overnight batch**: a loop video and paste-ready YouTube text for every track in a folder. |
 | **Packages** | **Distributor** (WAV, cover, metadata.csv/json, lyrics, checklist), **Bandcamp + SoundCloud**, **Stock music** (WAVs, 60/30/15 s cut-downs, MP3s, keyword CSV), **Stock photo pack**. |
 | **Upload** | YouTube title, description (with your links, credits, chapters, hashtags) and tags; uploads through the YouTube API with scheduling, thumbnail and playlist (optional setup). |
 | **Plan** | A timeline worked back from your release date, downloadable as a calendar (.ics). |
@@ -78,6 +78,8 @@ Uploads from API projects Google hasn't audited are **Private only** (make them 
 ## How 10-hour videos stay fast
 
 The audio loop is built once, with its tail crossfaded into its own start so there's no click at each repeat, then looped and encoded to AAC in one pass. The picture is a short clip rendered once and stream-copied. Most of the time is the audio encode: roughly 5–20 minutes for 10 hours, and about 2.5 GB at 1080p.
+
+With a visualizer or a bumping element, one full loop of picture is rendered against the music and repeated. That loop is trimmed to a whole number of video frames, so picture and beat stay locked together for the full 10 hours, and the spinning disc makes whole turns per loop so it never jumps. This adds roughly the length of one loop to the render time.
 
 ## Building the Windows release
 

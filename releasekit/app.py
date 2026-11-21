@@ -164,6 +164,11 @@ def build_job(kind, r, p):
     track = tracks[int(sel)] if sel not in (None, "") and tracks else (tracks[0] if tracks else None)
     t_title = (track or {}).get("title") or title
     text = p.get("text", True)
+    style = p.get("vstyle") if isinstance(p.get("vstyle"), dict) else {}
+    vopts = {k: style.get(k) for k in ("bump", "logo", "vis_color", "bump_amount") if style.get(k) not in (None, "")}
+    vis_global = style.get("visualizer") or "none"
+    if vopts.get("bump") == "logo" and not (vopts.get("logo") and os.path.isfile(vopts["logo"])):
+        raise ValueError("Choose a logo image (PNG with transparency works best) for the bumping logo.")
 
     if kind == "analyze":
         def fn(prog, cancel):
@@ -205,11 +210,11 @@ def build_job(kind, r, p):
         _require(track, "Add a track first.")
         img = _first_image(r, p)
         _require(img, "Set a cover or choose an image.")
-        vis = p.get("visualizer", "none")
+        vis = p.get("visualizer") or vis_global
         name = packages.safe(f"{artist} - {t_title}{' (Visualizer)' if vis != 'none' else ''}") + ".mp4"
         return f"YouTube video: {t_title}", lambda prog, cancel: video.release_video(
             track["path"], img, os.path.join(out, "youtube", name), t_title, artist, p.get("resolution", "1080p"),
-            vis, p.get("layout", "cover"), text, progress=prog, cancel=cancel)
+            vis, p.get("layout", "cover"), text, progress=prog, cancel=cancel, opts=vopts)
 
     if kind == "album_video":
         _require(len(tracks) > 0, "Add tracks first.")
@@ -218,7 +223,8 @@ def build_job(kind, r, p):
         return f"Full album video: {title}", lambda prog, cancel: video.album_video(
             [t["path"] for t in tracks], img, os.path.join(out, "youtube", packages.safe(f"{artist} - {title} (Full Album)") + ".mp4"),
             [t.get("title") or os.path.basename(t["path"]) for t in tracks], title, artist,
-            p.get("resolution", "1080p"), p.get("visualizer", "none"), float(p.get("gap", 1.0)), prog, cancel)
+            p.get("resolution", "1080p"), p.get("visualizer") or vis_global, float(p.get("gap", 1.0)), prog, cancel,
+            opts=vopts)
 
     if kind == "long_video":
         idx = p.get("tracks")  # list of indexes, or None for selected track
@@ -230,7 +236,11 @@ def build_job(kind, r, p):
         if visual == "slideshow":
             _require(images, "Slideshow needs a photo folder with images.")
         img = _first_image(r, p)
-        if visual != "slideshow":
+        if visual == "clip":
+            _require(p.get("video_clip") and os.path.isfile(p["video_clip"]), "Choose a video clip for the loop.")
+        if visual == "clips":
+            _require(p.get("clip_folder") and os.path.isdir(p["clip_folder"]), "Choose a folder of video clips.")
+        if visual not in ("slideshow", "clip", "clips") or vopts.get("bump") in ("cover", "disc"):
             _require(img, "Set a cover or choose an image.")
         check_space(out, estimate_long_bytes(hours, p.get("resolution", "1080p"), visual))
         name_title = chosen[0].get("title") if len(chosen) == 1 else title
@@ -240,7 +250,9 @@ def build_job(kind, r, p):
             [t["path"] for t in chosen], os.path.join(out, "youtube", name), hours, visual, img, images,
             name_title, artist, text, p.get("resolution", "1080p"), float(p.get("crossfade", 4)),
             p.get("ambient") or None, float(p.get("ambient_db", -18)), slide_seconds=float(p.get("slide_seconds", 8)),
-            progress=prog, cancel=cancel)
+            visualizer=p.get("visualizer") or vis_global, video_clip=p.get("video_clip"),
+            clip_folder=p.get("clip_folder"), clip_mode=p.get("clip_mode", "crossfade"),
+            clip_fit=p.get("clip_fit", "fill"), progress=prog, cancel=cancel, opts=vopts)
 
     if kind == "batch_item":
         # one track of an overnight batch: (cover) + loop video + paste-ready text file
@@ -254,7 +266,7 @@ def build_job(kind, r, p):
             if not img:
                 cov = os.path.join(out, "artwork", "cover_batch.jpg")
                 os.makedirs(os.path.dirname(cov), exist_ok=True)
-                art.make_cover(None, "generate", cov, generate_style=p.get("style", "aurora"),
+                art.make_cover(None, "generate", cov, generate_style=p.get("art_style", "aurora"),
                                seed=zlib.crc32(t["path"].encode()))
                 img = cov
             name = packages.safe(f"{artist} - {t['title']} ({hours:g} Hours)")
@@ -262,7 +274,9 @@ def build_job(kind, r, p):
             res_v = video.long_video([t["path"]], vid, hours, p.get("visual", "static"), img, None, t["title"],
                                      artist, p.get("text", True), res, float(p.get("crossfade", 4)),
                                      p.get("ambient") or None, float(p.get("ambient_db", -18)),
-                                     progress=prog, cancel=cancel)
+                                     visualizer=vis_global, video_clip=p.get("video_clip"),
+                                     clip_folder=p.get("clip_folder"), clip_mode=p.get("clip_mode", "crossfade"),
+                                     progress=prog, cancel=cancel, opts=vopts)
             rr = dict(r, title=t["title"])
             kind_t = p.get("title_kind", "ten_hours")
             txt = os.path.join(out, "youtube", name + " - YouTube text.txt")
@@ -283,7 +297,8 @@ def build_job(kind, r, p):
         start = float(start) if start not in (None, "") else None
         return f"Short/Reel/TikTok: {t_title}", lambda prog, cancel: video.short_clip(
             track["path"], img, os.path.join(out, "social", packages.safe(f"{t_title} short {int(time.time())}") + ".mp4"),
-            t_title, artist, secs, start, p.get("visualizer", "waves"), prog, cancel)
+            t_title, artist, secs, start, p.get("visualizer") or (vis_global if vis_global != "none" else "waves"),
+            prog, cancel, opts=vopts)
 
     if kind == "canvas":
         img = _first_image(r, p)
@@ -581,8 +596,29 @@ def api_preview():
     vertical = bool(b.get("vertical"))
     w, h = (540, 960) if vertical else (960, 540)
     tmp = os.path.join(DATA_DIR, "preview.png")
-    video.make_frame(img, tmp, w, h, b.get("title", ""), b.get("artist", ""), b.get("layout", "cover"),
-                     b.get("text", True))
+    style = b.get("vstyle") if isinstance(b.get("vstyle"), dict) else {}
+    bump = style.get("bump") or "none"
+    clip = b.get("video_clip") if b.get("visual") == "clip" else None
+    from PIL import Image
+    if clip and os.path.isfile(clip):
+        ff.run(["-ss", "1", "-i", clip, "-frames:v", "1", "-vf",
+                f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}", tmp])
+    else:
+        layout = "blur" if bump != "none" else b.get("layout", "cover")
+        video.make_frame(img, tmp, w, h, b.get("title", ""), b.get("artist", ""), layout,
+                         b.get("text", True) and bump != "text")
+    if bump != "none":
+        from . import reactive
+        canvas = int(min(w, h) * (0.56 if not vertical else 0.8)) // 2 * 2
+        rgb = reactive.pick_color(style.get("vis_color", "white"), img)
+        tile = reactive.bump_frames(bump, canvas, float(style.get("bump_amount") or 0.12), levels=2, image=img,
+                                    logo=style.get("logo"), title=b.get("title", ""), artist=b.get("artist", ""),
+                                    rgb=rgb)[1]
+        fr = Image.open(tmp).convert("RGBA")
+        t_im = Image.frombytes("RGBA", (canvas, canvas), tile)
+        lift = 0.07 if (style.get("visualizer") or "none") in ("bars", "mirror", "waves", "line", "spectrum") else 0
+        fr.alpha_composite(t_im, ((w - canvas) // 2, (h - canvas) // 2 - int(h * (lift + (0.06 if vertical else 0)))))
+        fr.convert("RGB").save(tmp)
     return send_file(tmp, mimetype="image/png", max_age=0)
 
 

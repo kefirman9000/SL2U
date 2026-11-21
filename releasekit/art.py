@@ -273,20 +273,19 @@ def add_text(im, title="", artist="", position="bottom", style="sans", color=Non
     col = tuple(color) if color else _contrast_color(im, (0, max(0, y - 10), W, min(H, y + block + 10)))
     shadow_col = (0, 0, 0, 150) if sum(col) > 380 else (255, 255, 255, 110)
     overlay = Image.new("RGBA", im.size, (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
+    shadow_l = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    od, sd = ImageDraw.Draw(overlay), ImageDraw.Draw(shadow_l)
     for (text, font), hgt in zip(lines, heights):
         tw = d.textlength(text, font=font)
         x = pad if left else (W - tw) / 2
         if shadow:
-            od.text((x + W * 0.003, y + W * 0.003), text, font=font, fill=shadow_col)
+            sd.text((x + W * 0.003, y + W * 0.003), text, font=font, fill=shadow_col)
         od.text((x, y), text, font=font, fill=col + (255,))
         y += hgt + gap
-    if shadow:
-        sh = overlay.filter(ImageFilter.GaussianBlur(W * 0.002))
-        im = Image.alpha_composite(im.convert("RGBA"), sh)
-    else:
-        im = Image.alpha_composite(im.convert("RGBA"), overlay)
-    return im.convert("RGB")
+    im = im.convert("RGBA")
+    if shadow:  # blur only the shadow; keep the letters crisp
+        im = Image.alpha_composite(im, shadow_l.filter(ImageFilter.GaussianBlur(max(1, W * 0.003))))
+    return Image.alpha_composite(im, overlay).convert("RGB")
 
 
 def parental_advisory(im):

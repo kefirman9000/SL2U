@@ -124,7 +124,7 @@ def audio_info(path):
 _time_re = re.compile(r"out_time_ms=(\d+)")
 
 
-def run(args, total_seconds=None, progress=None, cancel=None):
+def run(args, total_seconds=None, progress=None, cancel=None, feed=None):
     """Run ffmpeg with machine-readable progress.
 
     progress(fraction) is called with 0..1 when total_seconds is known.
@@ -134,10 +134,27 @@ def run(args, total_seconds=None, progress=None, cancel=None):
     if out_dir and not str(args[-1]).startswith("-"):
         os.makedirs(out_dir, exist_ok=True)
     cmd = [FFMPEG, "-hide_banner", "-y", "-nostdin", "-progress", "pipe:1", "-loglevel", "error"] + list(args)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+    if feed:
+        cmd.remove("-nostdin")
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1,
+                            stdin=subprocess.PIPE if feed else None)
     err_lines = []
 
     import threading
+
+    if feed:
+        def _feed():
+            raw = proc.stdin.buffer if hasattr(proc.stdin, "buffer") else proc.stdin
+            try:
+                feed(raw.write)
+            except (BrokenPipeError, OSError, ValueError):
+                pass
+            finally:
+                try:
+                    raw.close()
+                except OSError:
+                    pass
+        threading.Thread(target=_feed, daemon=True).start()
 
     def _drain():
         for line in proc.stderr:
