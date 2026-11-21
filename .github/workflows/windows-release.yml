@@ -97,6 +97,11 @@ jobs:
           $vid = Run-Job @{ kinds = @("release_video"); release = $rel; params = @{ visualizer = "waves" } }
           if (-not (Test-Path $vid.result.path)) { throw "Video file missing" }
           Write-Host "Rendered $($vid.result.path)"
+          $bump = Run-Job @{ kinds = @("release_video"); release = $rel; params = @{ vstyle = @{ visualizer = "mirror"; bump = "disc"; vis_color = "green" } } }
+          if (-not (Test-Path $bump.result.path)) { throw "Bump video file missing" }
+          Write-Host "Rendered beat-bump video $($bump.result.path)"
+          $loop = Run-Job @{ kinds = @("long_video"); release = $rel; params = @{ hours = 0.01; visual = "pan"; vstyle = @{ visualizer = "bars"; bump = "cover" } } }
+          Write-Host "Rendered loop video $($loop.result.path)"
           Stop-Process $p.Id -Force
           Get-Content $err -Tail 20 -ErrorAction SilentlyContinue
 
