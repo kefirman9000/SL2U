@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release Kit</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#0f1013; --panel:#17181d; --panel2:#1e2027; --line:#2a2c35; --text:#e9e9ee; --muted:#9a9cab;
+  --accent:#ff6a3d; --accent2:#ffb347; --ok:#3ecf8e; --warn:#ffc857; --err:#ff5d73; --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);background:#121318;position:sticky;top:0;z-index:5}
+.logo{font-weight:800;letter-spacing:.5px;font-size:17px}
+.logo span{color:var(--accent)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit}
+nav button.on{background:var(--panel2);color:var(--text)}
+nav button:hover{color:var(--text)}
+.proj{margin-left:auto;display:flex;gap:8px;align-items:center}
+main{display:grid;grid-template-columns:1fr 360px;gap:0;min-height:calc(100vh - 57px)}
+section.tab{display:none;padding:22px 26px 60px;max-width:1150px}
+section.tab.on{display:block}
+aside{border-left:1px solid var(--line);background:#121318;padding:16px;position:sticky;top:57px;height:calc(100vh - 57px);overflow:auto}
+h2{margin:0 0 4px;font-size:21px}
+h3{margin:0 0 10px;font-size:15px}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:1100px){main{grid-template-columns:1fr}aside{position:static;height:auto;border-left:0;border-top:1px solid var(--line)}.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+textarea{min-height:70px;resize:vertical}
+input[type=checkbox]{width:auto;margin-right:6px;accent-color:var(--accent)}
+.chk{display:flex;align-items:center;color:var(--text);font-size:13px;margin:6px 0}
+button.b{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit;white-space:nowrap}
+button.b:hover{border-color:#444757}
+button.p{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.p:hover{filter:brightness(1.08)}
+button.s{padding:4px 9px;font-size:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>.grow{flex:1}
+.muted{color:var(--muted)} .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+.track{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--panel2)}
+.track .n{font-weight:700;color:var(--muted);padding-top:6px}
+.track details summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.ph{position:relative;border-radius:10px;overflow:hidden;border:2px solid transparent;cursor:pointer;background:#000;aspect-ratio:1}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph.sel{border-color:var(--accent)}
+.ph .tag{position:absolute;left:6px;bottom:6px;font-size:10px;background:rgba(0,0,0,.7);padding:2px 6px;border-radius:6px}
+.cover{width:100%;aspect-ratio:1;background:var(--panel2) center/cover;border-radius:10px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.job{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--panel)}
+.bar{height:6px;background:var(--panel2);border-radius:9px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0}
+.job .t{font-weight:600;font-size:13px}
+.job pre{white-space:pre-wrap;font-size:11px;color:var(--err);max-height:120px;overflow:auto;margin:6px 0 0}
+.job img,.job video{width:100%;border-radius:8px;margin-top:8px;background:#000}
+.links .it{display:grid;grid-template-columns:24px 1fr 220px;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+.links .it:first-child{border-top:0}
+.links a{color:var(--accent2);font-weight:600;text-decoration:none}
+.links a:hover{text-decoration:underline}
+.note{background:#211d14;border:1px solid #4a3d1d;color:#f3dfb0;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:20}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(760px,94vw);max-height:84vh;display:flex;flex-direction:column}
+.fb-list{overflow:auto;padding:8px 14px;flex:1;min-height:300px}
+.fb-item{padding:6px 8px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.fb-item:hover{background:var(--panel2)}
+.fb-item.sel{background:#3a2218}
+.fb-item.dim{opacity:.4;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.kv{font-size:12px;color:var(--muted)} .kv b{color:var(--text);font-weight:600}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222530;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:30}
+.counter{font-size:11px;color:var(--muted);text-align:right}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Release<span>Kit</span></div>
+  <nav id="nav"></nav>
+  <div class="proj">
+    <select id="projSel" style="width:180px" title="Saved releases"></select>
+    <button class="b s" onclick="newProject()">New</button>
+  </div>
+</header>
+<main>
+<div>
+
+<!-- RELEASE -->
+<section class="tab" id="t-release">
+  <h2>Release</h2>
+  <p class="sub">Everything else (videos, packages, descriptions) is built from this. Saved automatically.</p>
+  <div id="toolWarn"></div>
+  <div class="card grid g3">
+    <div><label>Release title</label><input data-k="title" placeholder="Night Drive"></div>
+    <div><label>Primary artist</label><input data-k="artist"></div>
+    <div><label>Featuring (optional)</label><input data-k="featuring"></div>
+    <div><label>Genre</label><input data-k="genre" list="genres" placeholder="Lofi Hip Hop"></div>
+    <div><label>Subgenre</label><input data-k="subgenre"></div>
+    <div><label>Mood</label><input data-k="mood" placeholder="Chill, dreamy"></div>
+    <div><label>Release date</label><input type="date" data-k="release_date"></div>
+    <div><label>Label / imprint</label><input data-k="label" placeholder="Self-released"></div>
+    <div><label>Language</label><input data-k="language" placeholder="English / Instrumental"></div>
+    <div><label>(P) line — sound recording owner</label><input data-k="copyright_p" placeholder="2026 Your Name"></div>
+    <div><label>(C) line — artwork/release owner</label><input data-k="copyright_c" placeholder="2026 Your Name"></div>
+    <div><label>UPC / EAN (from distributor)</label><input data-k="upc"></div>
+    <div><label>Instruments (stock keywords)</label><input data-k="instruments" placeholder="piano, drums, synth"></div>
+    <div><label>Extra tags (comma separated)</label><input data-k="tags"></div>
+    <div><label class="chk" style="margin-top:22px"><input type="checkbox" data-k="explicit">Explicit</label>
+         <label class="chk"><input type="checkbox" data-k="vocals">Has vocals</label></div>
+    <div style="grid-column:1/-1"><label>Description / story (used in YouTube, Bandcamp, SoundCloud)</label><textarea data-k="description"></textarea></div>
+  </div>
+  <datalist id="genres"><option>Lofi Hip Hop<option>Ambient<option>Electronic<option>Hip Hop<option>Pop<option>Rock<option>Acoustic<option>Piano<option>Cinematic<option>Corporate<option>Jazz<option>R&B<option>Country<option>Classical<option>Metal<option>House<option>Techno<option>Synthwave</datalist>
+  <div class="card">
+    <div class="row" style="margin-bottom:12px"><h3 class="grow" style="margin:0">Tracks</h3>
+      <button class="b" onclick="pick({kind:'audio',multi:true},addTracks)">+ Add audio files</button>
+      <button class="b" onclick="job('analyze')">Analyze loudness &amp; quality</button></div>
+    <div id="tracks"></div>
+    <div id="analysis"></div>
+  </div>
+</section>
+
+<!-- ARTWORK -->
+<section class="tab" id="t-art">
+  <h2>Artwork</h2>
+  <p class="sub">Use a photo from a folder, or generate art. Covers are exported at 3000×3000 RGB JPG, the size distributors ask for.</p>
+  <div class="grid" style="grid-template-columns:280px 1fr">
+    <div>
+      <div class="card"><div id="coverPrev" class="cover">No cover yet</div>
+        <div id="coverVal" style="margin-top:10px;font-size:12px"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="b s" onclick="pick({kind:'image'},p=>{R.art_path=p;save();renderCover()})">Use existing file…</button>
+          <button class="b s" onclick="job('variants')">Export platform sizes</button></div>
+        <p class="muted" style="font-size:12px;margin:10px 0 0">Platform sizes: 3000 cover, Bandcamp 1400, square 1080, story 1080×1920, YouTube thumbnail 1280×720 (under 2 MB), channel banner.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>From a photo folder</h3>
+        <div class="row"><input class="grow" id="photoFolder" placeholder="Folder with photos"><button class="b" onclick="pick({kind:'dir'},p=>{photoFolder.value=p;R.photo_folder=p;save();scanPhotos()})">Browse…</button><button class="b" onclick="scanPhotos()">Scan</button>
+          <button class="b" onclick="job('contact_sheet',{folder:photoFolder.value})">Contact sheet</button></div>
+        <p class="muted" style="font-size:12px">Photos are ranked by resolution, sharpness and contrast. Click one to select it.</p>
+        <div id="photos" class="photos"></div>
+        <div class="grid g4" style="margin-top:14px">
+          <div><label>Crop</label><select id="cropMode"><option value="smart">Smart crop (finds detail)</option><option value="center">Center crop</option><option value="blurfill">Fit + blurred fill (no crop)</option></select></div>
+          <div><label>Title text on cover</label><select id="addTitle"><option value="">No text</option><option value="bottom">Bottom</option><option value="top">Top</option><option value="center">Center</option><option value="bottom-left">Bottom left</option></select></div>
+          <div><label>Font</label><select id="fontSel"><option>sans</option><option>serif</option><option>mono</option></select></div>
+          <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="pa">Explicit label</label></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="b p" onclick="coverFromPhoto()">Make cover from selected photo</button>
+          <button class="b" onclick="selPhotos.forEach(p=>coverFromPhoto(p))">Make covers from all selected</button></div>
+      </div>
+      <div class="card">
+        <h3>Generate art</h3>
+        <div class="grid g4">
+          <div><label>Style</label><select id="genStyle"><option>aurora</option><option>gradient</option><option>grain</option><option>geometric</option><option>sunset</option><option>mono</option></select></div>
+          <div><label>Seed (blank = random)</label><input id="genSeed" type="number"></div>
+          <div><label>Colors from selected photo</label><select id="genPal"><option value="">No – random palette</option><option value="1">Yes</option></select></div>
+          <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="genArt(1)">Generate</button></div>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="b" onclick="genArt(6)">Generate 6 options</button>
+          <span class="muted" style="font-size:12px">Results appear in the jobs panel; click "Use as cover" on the one you like.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO -->
+<section class="tab" id="t-video">
+  <h2>YouTube &amp; video</h2>
+  <p class="sub">Every video renders on your computer with ffmpeg. Long loop videos render one short clip and repeat it without re-encoding, so they take minutes, not hours.</p>
+  <div class="card">
+    <h3>Release video / visualizer</h3>
+    <div class="grid g4">
+      <div><label>Track</label><select class="trackSel" id="rvTrack"></select></div>
+      <div><label>Visualizer</label><select id="rvVis"><option value="none">None (static, fastest)</option><option value="waves">Waveform</option><option value="bars">Frequency bars</option><option value="line">Line</option><option value="spectrum">Scrolling spectrum</option></select></div>
+      <div><label>Resolution</label><select class="resSel" id="rvRes"></select></div>
+      <div><label>Layout</label><select id="rvLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills frame</option></select></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="rvText" checked>Show title &amp; artist</label>
+    <div class="row"><button class="b p" onclick="job('release_video',{track_index:rvTrack.value,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()})">Render</button>
+      <button class="b" onclick="R.tracks.forEach((t,i)=>job('release_video',{track_index:i,visualizer:rvVis.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()}))">Render one for every track</button></div>
+  </div>
+  <div class="card">
+    <h3>10-hour / extended loop</h3>
+    <div class="grid g4">
+      <div><label>Length (hours)</label><select id="lvHours"><option>1</option><option>2</option><option>3</option><option>8</option><option selected>10</option><option>12</option></select></div>
+      <div><label>Visual</label><select id="lvVisual"><option value="static">Static cover</option><option value="zoom">Slow zoom (breathing)</option><option value="slideshow">Slideshow from photo folder</option></select></div>
+      <div><label>Loop crossfade (s)</label><input id="lvXf" type="number" value="4" min="0" max="20"></div>
+      <div><label>Resolution</label><select class="resSel" id="lvRes"></select></div>
+    </div>
+    <label style="margin-top:10px">Tracks to loop (one track, or several in order as a playlist)</label>
+    <div id="lvTracks" class="row"></div>
+    <div class="grid g3" style="margin-top:10px">
+      <div><label>Slideshow photo folder</label><div class="row"><input class="grow" id="lvFolder"><button class="b s" onclick="pick({kind:'dir'},p=>lvFolder.value=p)">…</button></div></div>
+      <div><label>Ambient layer (rain, vinyl crackle…) optional</label><div class="row"><input class="grow" id="lvAmb"><button class="b s" onclick="pick({kind:'audio'},p=>lvAmb.value=p)">…</button></div></div>
+      <div><label>Ambient level (dB)</label><input id="lvAmbDb" type="number" value="-18"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="lvText" checked>Show title &amp; artist</label>
+    <button class="b p" onclick="renderLong()">Render loop video</button>
+    <p class="muted" style="font-size:12px">The loop point is crossfaded into itself so there's no click or gap at each repeat. A 10-hour 1080p static video is roughly 1–2 GB.</p>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Full album video with chapters</h3>
+      <div class="grid g2">
+        <div><label>Visualizer</label><select id="avVis"><option value="none">None</option><option value="waves">Waveform</option><option value="bars">Bars</option></select></div>
+        <div><label>Gap between tracks (s)</label><input id="avGap" type="number" value="1" step="0.5"></div>
+      </div>
+      <p class="muted" style="font-size:12px">Timestamps go into the description automatically so YouTube shows chapters.</p>
+      <button class="b p" onclick="job('album_video',{visualizer:avVis.value,gap:avGap.value,image:vidImage()})">Render album video</button>
+    </div>
+    <div class="card">
+      <h3>Shorts / Reels / TikTok (9:16)</h3>
+      <div class="grid g3">
+        <div><label>Track</label><select class="trackSel" id="shTrack"></select></div>
+        <div><label>Length (s)</label><input id="shSec" type="number" value="30" min="5" max="180"></div>
+        <div><label>Start (s, blank = auto)</label><input id="shStart" type="number" placeholder="auto"></div>
+      </div>
+      <p class="muted" style="font-size:12px">Auto picks the most energetic section.</p>
+      <div class="row"><button class="b p" onclick="job('short',{track_index:shTrack.value,seconds:shSec.value,start:shStart.value,image:vidImage()})">Render clip</button>
+      <button class="b" onclick="[15,30,60].forEach(s=>job('short',{track_index:shTrack.value,seconds:s,image:vidImage()}))">15 + 30 + 60 s set</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Spotify Canvas</h3>
+    <p class="muted" style="font-size:12px;margin-top:0">7.5-second vertical 1080×1920 loop with a slow zoom, no audio. Upload it in Spotify for Artists.</p>
+    <div class="row"><input class="grow" id="cvImg" placeholder="Image (blank = cover)"><button class="b" onclick="pick({kind:'image'},p=>cvImg.value=p)">…</button>
+      <button class="b p" onclick="job('canvas',{image:cvImg.value||undefined,track_index:rvTrack.value})">Render Canvas</button></div>
+  </div>
+  <div class="card"><label>Image for videos (blank = the cover)</label><div class="row"><input class="grow" id="vidImg"><button class="b" onclick="pick({kind:'image'},p=>vidImg.value=p)">…</button></div></div>
+</section>
+
+<!-- PACKAGES -->
+<section class="tab" id="t-pkg">
+  <h2>Platform packages</h2>
+  <p class="sub">Folders with converted files, cover and pre-filled metadata for each kind of site. You still sign in and upload on each site; this does the prep.</p>
+  <div class="note">Spotify, Apple Music, Amazon Music, YouTube Music, TikTok, Deezer and Tidal only accept music through a distributor. Pick one distributor in the Sign-ups tab and upload the Distributor package there.</div>
+  <div class="grid g2">
+    <div class="card"><h3>Distributor (Spotify, Apple, Amazon…)</h3>
+      <p class="muted" style="font-size:13px">WAV masters, 3000px cover, metadata.csv/json, lyrics, and a pre-submit checklist with loudness warnings.</p>
+      <div class="grid g2"><div><label>Bit depth</label><select id="dBits"><option>16</option><option>24</option></select></div>
+      <div><label>Sample rate</label><select id="dSr"><option>44100</option><option>48000</option><option>96000</option></select></div></div><br>
+      <button class="b p" onclick="job('pkg_distro',{bits:dBits.value,sample_rate:dSr.value})">Build</button></div>
+    <div class="card"><h3>Bandcamp + SoundCloud</h3>
+      <p class="muted" style="font-size:13px">FLAC files, 3000 and 1400 covers, and a PASTE_THIS.txt with description, credits, tags and your links.</p>
+      <button class="b p" onclick="job('pkg_direct')">Build</button></div>
+    <div class="card"><h3>Stock music libraries</h3>
+      <p class="muted" style="font-size:13px">Full WAVs, 60/30/15 s cut-downs with clean fade endings, MP3s under 15 MB for Shutterstock, and a keyword/description CSV.</p>
+      <label class="chk"><input type="checkbox" id="sCut" checked>Make cut-downs</label>
+      <button class="b p" onclick="job('pkg_stock',{cutdowns:sCut.checked})">Build</button></div>
+    <div class="card"><h3>Stock photo pack</h3>
+      <p class="muted" style="font-size:13px">Re-saved JPGs (location data stripped), small images skipped, and a CSV in Shutterstock's bulk-upload columns.</p>
+      <div class="row"><input class="grow" id="psFolder" placeholder="Photo folder"><button class="b s" onclick="pick({kind:'dir'},p=>psFolder.value=p)">…</button></div>
+      <div class="grid g2" style="margin-top:8px"><div><label>Keywords for all</label><input id="psKw" placeholder="landscape, sunset"></div><div><label>Min megapixels</label><input id="psMp" type="number" value="4"></div></div><br>
+      <button class="b p" onclick="job('pkg_photos',{folder:psFolder.value,keywords:psKw.value,min_mp:psMp.value})">Build</button></div>
+  </div>
+  <div class="card row"><div class="grow"><b>Do everything</b><div class="muted" style="font-size:12px">Analyze, export art sizes, release video for each track, full album video, a 10-hour loop of track 1, Shorts, Canvas, and all music packages.</div></div>
+    <button class="b p" onclick="doEverything()">Queue it all</button></div>
+</section>
+
+<!-- UPLOAD -->
+<section class="tab" id="t-up">
+  <h2>Upload to YouTube</h2>
+  <p class="sub">Writes the title, description and tags for you, then uploads with the official YouTube API (optional setup).</p>
+  <div id="ytStatus"></div>
+  <div class="card">
+    <div class="grid g3">
+      <div><label>Video kind</label><select id="ytKind"></select></div>
+      <div><label>Track (for single-track videos)</label><select class="trackSel" id="ytTrack"></select></div>
+      <div><label>Hours (for loop videos)</label><input id="ytHours" type="number" value="10"></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="b" onclick="genMeta()">Write title, description &amp; tags</button></div>
+    <div style="margin-top:12px"><label>Title</label><input id="ytTitle" oninput="cnt()"><div class="counter" id="cT"></div></div>
+    <div><label>Description</label><textarea id="ytDesc" style="min-height:220px" oninput="cnt()"></textarea><div class="counter" id="cD"></div></div>
+    <div><label>Tags (comma separated)</label><input id="ytTags" oninput="cnt()"><div class="counter" id="cG"></div></div>
+    <div class="grid g3" style="margin-top:8px">
+      <div><label>Video file</label><div class="row"><input class="grow" id="ytVideo"><button class="b s" onclick="pick({kind:'video',start:outDir()},p=>ytVideo.value=p)">…</button></div></div>
+      <div><label>Thumbnail (optional)</label><div class="row"><input class="grow" id="ytThumb"><button class="b s" onclick="pick({kind:'image',start:outDir()},p=>ytThumb.value=p)">…</button></div></div>
+      <div><label>Playlist ID (optional)</label><input id="ytPl" placeholder="PL..."></div>
+      <div><label>Privacy</label><select id="ytPriv"><option>private</option><option>unlisted</option><option>public</option></select></div>
+      <div><label>Schedule publish (optional, your local time)</label><input id="ytWhen" type="datetime-local"></div>
+      <div><label>&nbsp;</label><div class="row"><button class="b" onclick="copyMeta()">Copy text</button><button class="b p" onclick="ytUpload()">Upload</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PLAN -->
+<section class="tab" id="t-plan">
+  <h2>Release plan</h2>
+  <p class="sub">A timeline worked back from your release date. Download it into Google Calendar, Apple Calendar or Outlook.</p>
+  <div class="card"><div class="row"><button class="b p" onclick="plan()">Build timeline</button><button class="b" id="icsBtn" onclick="dlIcs()" disabled>Download calendar (.ics)</button></div>
+    <div id="planOut" style="margin-top:12px"></div></div>
+</section>
+
+<!-- SIGNUPS -->
+<section class="tab" id="t-links">
+  <h2>Sign-ups &amp; registrations</h2>
+  <p class="sub">Where to create accounts, in roughly the order you need them. Tick them off and note the login email or account ID; it's saved on this computer only.</p>
+  <div id="linksOut"></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="tab" id="t-set">
+  <h2>Settings</h2>
+  <div class="card grid g2">
+    <div><label>Output folder</label><div class="row"><input class="grow" id="sOut"><button class="b s" onclick="pick({kind:'dir'},p=>sOut.value=p)">…</button></div></div>
+    <div><label>Stock author name (used in stock file names)</label><input id="sAuthor"></div>
+  </div>
+  <div class="card"><h3>Your links (added to every description)</h3><div class="grid g3" id="profileFields"></div></div>
+  <button class="b p" onclick="saveSettings()">Save settings</button>
+  <p class="muted" id="dataDir" style="font-size:12px"></p>
+</section>
+</div>
+
+<aside>
+  <div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0">Jobs</h3><button class="b s" onclick="openPath(outDir())">Open output folder</button></div>
+  <div id="jobs"><p class="muted">Nothing running. Renders and packages show up here.</p></div>
+</aside>
+</main>
+
+<div class="modal" id="fb"><div class="box">
+  <div style="padding:14px;border-bottom:1px solid var(--line)" class="row"><b class="grow" id="fbTitle">Choose</b><button class="b s" onclick="fbClose()">✕</button></div>
+  <div style="padding:10px 14px" class="row"><button class="b s" onclick="fbGo(FB.parent)">↑ Up</button><input class="grow" id="fbPath" onkeydown="if(event.key==='Enter')fbGo(this.value)"></div>
+  <div class="fb-list" id="fbList"></div>
+  <div style="padding:12px 14px;border-top:1px solid var(--line)" class="row"><span class="muted grow" id="fbHint"></span><button class="b" onclick="fbClose()">Cancel</button><button class="b p" onclick="fbOk()">Select</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TABS=[["release","Release"],["art","Artwork"],["video","YouTube & video"],["pkg","Packages"],["up","Upload"],["plan","Plan"],["links","Sign-ups"],["set","Settings"]];
+const PROFILE=[["smart_link","Smart link / pre-save"],["spotify","Spotify"],["apple","Apple Music"],["bandcamp","Bandcamp"],["soundcloud","SoundCloud"],["instagram","Instagram"],["tiktok","TikTok"],["website","Website"]];
+let INIT={},S={},R=blank(),PROJ="",selPhotos=[],PLAN=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function blank(){return {title:"",artist:"",tracks:[]}}
+async function api(url,body){const o=body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)};
+  const r=await fetch(url,o);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||(j.errors||[]).join("\n")||r.statusText);return j}
+function toast(m,ms=2600){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",ms)}
+
+// ---------- tabs
+$("nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join("");
+$("nav").onclick=e=>{const k=e.target.dataset.t;if(k)show(k)};
+function show(k){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===k));
+  document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;
+  if(k==="art")renderCover();if(k==="video")renderLvTracks();}
+
+// ---------- init / projects
+async function init(){
+  INIT=await api("/api/init");S=INIT.settings;
+  if(INIT.missing_tools.length)$("toolWarn").innerHTML=`<div class="note">Missing: <b>${INIT.missing_tools.join(", ")}</b>. Install ffmpeg (see README) and restart, or rendering won't work.</div>`;
+  $("dataDir").textContent="Data folder: "+INIT.data_dir;
+  ["rvRes","lvRes"].forEach(id=>$(id).innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
+  const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
+  $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
+  $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
+  fillSettings();renderLinks();renderYt();
+  const projs=INIT.projects;const last=localStorage.getItem("rk_proj");
+  refreshProjList(projs);
+  if(last&&projs.includes(last))await loadProject(last);else if(projs.length)await loadProject(projs[0]);else{PROJ="";bind();}
+  show(location.hash.slice(1)||"release");pollJobs();
+}
+function refreshProjList(list){$("projSel").innerHTML=(list.length?"":"<option value=''>(unsaved)</option>")+list.map(p=>`<option ${p===PROJ?"selected":""}>${esc(p)}</option>`).join("")}
+$("projSel").onchange=e=>e.target.value&&loadProject(e.target.value);
+async function loadProject(n){R=await api("/api/project/"+encodeURIComponent(n));R.tracks=R.tracks||[];PROJ=n;localStorage.setItem("rk_proj",n);bind();refreshProjList(INIT.projects)}
+function newProject(){R=blank();PROJ="";bind();refreshProjList(INIT.projects);toast("New release – type a title and artist to save it")}
+let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
+  const name=(R.artist||"Artist")+" - "+(R.title||"Untitled");
+  if(!R.title&&!R.artist)return;
+  if(PROJ&&PROJ!==name){/* renamed: keep old file, save new name */}
+  PROJ=name;localStorage.setItem("rk_proj",name);await api("/api/project/"+encodeURIComponent(name),R);
+  if(!INIT.projects.includes(name)){INIT.projects.push(name);INIT.projects.sort()}refreshProjList(INIT.projects)},500)}
+
+// ---------- release form
+function bind(){
+  document.querySelectorAll("[data-k]").forEach(el=>{const k=el.dataset.k;
+    if(el.type==="checkbox")el.checked=!!R[k];else el.value=R[k]||"";
+    el.oninput=el.onchange=()=>{R[k]=el.type==="checkbox"?el.checked:el.value;save()}});
+  $("photoFolder").value=R.photo_folder||"";$("lvFolder").value=R.photo_folder||"";$("psFolder").value=R.photo_folder||"";
+  renderTracks();renderCover();$("analysis").innerHTML="";$("photos").innerHTML="";if(R.photo_folder)scanPhotos(true);
+}
+function addTracks(paths){paths=[].concat(paths);paths.forEach(p=>R.tracks.push({path:p,title:p.split(/[\\/]/).pop().replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,"")}));renderTracks();save()}
+const TF=[["title","Title"],["version","Version (Remix, Live…)"],["featuring","Featuring"],["isrc","ISRC"],["composer","Composer(s) legal names"],["lyricist","Lyricist(s)"],["producer","Producer(s)"],["bpm","BPM"],["key","Key"],["preview_start","Preview start (s)"]];
+function renderTracks(){
+  $("tracks").innerHTML=R.tracks.length?R.tracks.map((t,i)=>`<div class="track"><div class="n">${i+1}</div><div>
+    <div class="grid g3">${TF.slice(0,3).map(([k,l])=>`<div><label>${l}</label><input value="${esc(t[k])}" oninput="R.tracks[${i}]['${k}']=this.value;save()"></div>`).join("")}</div>
+    <div class="muted" style="font-size:11px;margin-top:6px">${esc(t.path)}</div>
+    <details><summary>Credits, codes, lyrics</summary><div class="grid g4" style="margin-top:8px">${TF.slice(3).map(([k,l])=>`<div><label>${l}</label><input value="${esc(t[k])}" oninput="R.tracks[${i}]['${k}']=this.value;save()"></div>`).join("")}
+      <div><label>&nbsp;</label><label class="chk"><input type="checkbox" ${t.explicit?"checked":""} onchange="R.tracks[${i}].explicit=this.checked;save()">Explicit</label></div></div>
+      <label style="margin-top:8px">Lyrics</label><textarea oninput="R.tracks[${i}].lyrics=this.value;save()">${esc(t.lyrics)}</textarea></details>
+  </div><div class="row" style="flex-direction:column"><button class="b s" onclick="mv(${i},-1)">↑</button><button class="b s" onclick="mv(${i},1)">↓</button><button class="b s" onclick="R.tracks.splice(${i},1);renderTracks();save()">✕</button></div></div>`).join("")
+  :`<p class="muted">No tracks yet. Add WAV/FLAC masters (MP3 works too, but distributors prefer lossless).</p>`;
+  document.querySelectorAll(".trackSel").forEach(s=>{const v=s.value;s.innerHTML=R.tracks.map((t,i)=>`<option value="${i}">${i+1}. ${esc(t.title)}</option>`).join("");if(v)s.value=v});
+  renderLvTracks();
+}
+function mv(i,d){const j=i+d;if(j<0||j>=R.tracks.length)return;[R.tracks[i],R.tracks[j]]=[R.tracks[j],R.tracks[i]];renderTracks();save()}
+function renderAnalysis(res){$("analysis").innerHTML=`<table><tr><th>Track</th><th>Format</th><th>Loudness</th><th>True peak</th><th>BPM est.</th><th>Notes</th></tr>`+
+  res.tracks.map(a=>`<tr><td>${esc(a.title)}</td><td>${a.codec} ${a.sample_rate/1000}kHz ${a.bits?a.bits+"-bit":""}</td><td>${a.lufs?.toFixed(1)} LUFS</td><td>${a.true_peak?.toFixed(1)} dBTP</td><td>${a.bpm_estimate??""}</td>
+  <td>${a.warnings.length?a.warnings.map(w=>`<div class="warn">• ${esc(w)}</div>`).join(""):'<span class="ok">Looks good</span>'}</td></tr>`).join("")+`</table>
+  <p class="muted" style="font-size:12px">Spotify and YouTube play everything back at about -14 LUFS, so louder masters just get turned down.</p>`;
+  res.tracks.forEach((a,i)=>{if(R.tracks[i]&&!R.tracks[i].bpm&&a.bpm_estimate)R.tracks[i].bpm=a.bpm_estimate});save()}
+
+// ---------- artwork
+const thumb=(p,s=360)=>"/api/thumb?size="+s+"&path="+encodeURIComponent(p);
+async function renderCover(){const c=$("coverPrev");if(!R.art_path){c.style.backgroundImage="";c.textContent="No cover yet";$("coverVal").innerHTML="";return}
+  c.textContent="";c.style.backgroundImage=`url("${thumb(R.art_path,600)}&t=${Date.now()}")`;
+  try{const v=await api("/api/validate_cover",{path:R.art_path});$("coverVal").innerHTML=v.ok.map(x=>`<span class="pill ok">${x}</span> `).join("")+v.issues.map(x=>`<div class="err">• ${esc(x)}</div>`).join("")}catch(e){}}
+async function scanPhotos(quiet){const f=$("photoFolder").value.trim();if(!f)return;R.photo_folder=f;save();
+  $("photos").innerHTML='<p class="muted">Scanning…</p>';
+  try{const r=await api("/api/scan_photos",{folder:f});selPhotos=[];
+    $("photos").innerHTML=r.photos.filter(p=>!p.error).map(p=>`<div class="ph" data-p="${esc(p.path)}" onclick="togglePh(this,event)" title="${esc(p.path)}"><img loading="lazy" src="${thumb(p.path,260)}"><span class="tag">${p.width}×${p.height}${p.upscale_needed?' <span class="warn">small</span>':''}</span></div>`).join("")||'<p class="muted">No images found.</p>'}
+  catch(e){if(!quiet)toast(e.message);$("photos").innerHTML=""}}
+function togglePh(el,e){const p=el.dataset.p;if(!(e.shiftKey||e.metaKey||e.ctrlKey)){selPhotos=[];document.querySelectorAll(".ph.sel").forEach(x=>x.classList.remove("sel"))}
+  const i=selPhotos.indexOf(p);if(i>=0){selPhotos.splice(i,1);el.classList.remove("sel")}else{selPhotos.push(p);el.classList.add("sel")}}
+function coverFromPhoto(src){src=src||selPhotos[0];if(!src)return toast("Select a photo first (shift/ctrl-click for several)");
+  job("cover",{source:src,mode:$("cropMode").value,add_title:!!$("addTitle").value,text_position:$("addTitle").value||"bottom",font:$("fontSel").value,explicit_label:$("pa").checked})}
+function genArt(n){for(let i=0;i<n;i++){const seed=$("genSeed").value&&n===1?+$("genSeed").value:Math.floor(Math.random()*1e9);
+  job("cover",{mode:"generate",style:n>1?["aurora","gradient","grain","geometric","sunset","mono"][i%6]:$("genStyle").value,seed,palette_from:$("genPal").value?selPhotos[0]:null,add_title:!!$("addTitle").value,text_position:$("addTitle").value||"bottom",font:$("fontSel").value,explicit_label:$("pa").checked})}}
+function useCover(p){R.art_path=p;save();renderCover();toast("Cover set")}
+
+// ---------- video
+const vidImage=()=>$("vidImg").value||undefined;
+function renderLvTracks(){$("lvTracks").innerHTML=R.tracks.map((t,i)=>`<label class="chk" style="margin-right:12px"><input type="checkbox" class="lvT" value="${i}" ${i===0?"checked":""}>${esc(t.title)}</label>`).join("")||'<span class="muted">Add tracks first.</span>'}
+function renderLong(){const idx=[...document.querySelectorAll(".lvT:checked")].map(x=>+x.value);
+  job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,text:$("lvText").checked,image:vidImage()})}
+function doEverything(){const kinds=["analyze","variants","album_video","pkg_distro","pkg_direct","pkg_stock"];
+  job(kinds);R.tracks.forEach((t,i)=>job("release_video",{track_index:i}));
+  job("long_video",{tracks:[0],hours:10});job("short",{track_index:0,seconds:30});job("canvas",{});}
+
+// ---------- jobs
+async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];
+  try{const r=await api("/api/jobs",{kinds,release:R,params});if(r.errors.length)toast(r.errors.join(" · "),5000);else toast("Queued: "+kinds.join(", "));pollJobs()}
+  catch(e){toast(e.message,5000)}}
+let seen={};
+async function pollJobs(){clearTimeout(pollJobs.t);let jobs=[];try{jobs=await api("/api/jobs")}catch(e){}
+  renderJobs(jobs);
+  jobs.forEach(j=>{if(j.status==="done"&&!seen[j.id]){seen[j.id]=1;onDone(j)}});
+  pollJobs.t=setTimeout(pollJobs,jobs.some(j=>j.status==="running"||j.status==="queued")?1000:4000)}
+const JOBHTML={};
+function renderJobs(jobs){const box=$("jobs");
+  if(!jobs.length){box.innerHTML='<p class="muted">Nothing running. Renders and packages show up here.</p>';return}
+  if(box.querySelector("p.muted"))box.innerHTML="";
+  // only touch jobs whose content changed, so playing videos and buttons aren't replaced every poll
+  let prev=null;
+  jobs.forEach(j=>{const h=jobHtml(j);let el=box.querySelector(`[data-job="${j.id}"]`);
+    if(!el){el=document.createElement("div");el.dataset.job=j.id;el.innerHTML=h;JOBHTML[j.id]=h;
+      prev?prev.after(el):box.prepend(el)}
+    else if(JOBHTML[j.id]!==h){el.innerHTML=h;JOBHTML[j.id]=h}
+    prev=el})}
+function fmtDur(s){s=Math.round(s);return s>=60?Math.floor(s/60)+"m "+(s%60)+"s":s+"s"}
+function jobHtml(j){const r=j.result||{},pct=Math.round(j.progress*100);let body="";
+  const eta=j.status==="running"&&j.progress>0.03?" · ~"+fmtDur((Date.now()/1000-j.started)*(1-j.progress)/j.progress)+" left":"";
+  if(j.status==="done"){const p=r.path||"";
+    if(/\.(jpe?g|png)$/i.test(p))body+=`<img src="${thumb(p,500)}">${j.kind==="cover"?`<div class="row" style="margin-top:6px"><button class="b s p" onclick="useCover('${jsq(p)}')">Use as cover</button></div>`:""}`;
+    if(/\.mp4$/i.test(p))body+=`<video src="/api/file?path=${encodeURIComponent(p)}" controls preload="metadata"></video>`;
+    if(r.warnings&&r.warnings.length)body+=r.warnings.map(w=>`<div class="warn" style="font-size:12px">• ${esc(w)}</div>`).join("");
+    if(r.cover_issues&&r.cover_issues.length)body+=r.cover_issues.map(w=>`<div class="warn" style="font-size:12px">• ${esc(w)}</div>`).join("");
+    if(r.chapters)body+=`<div class="muted" style="font-size:12px;margin-top:6px">Chapters copied to Upload tab.</div>`;
+    if(r.url)body+=`<div><a href="${r.url}" target="_blank" style="color:var(--accent2)">${r.url}</a></div>`+(r.notes||[]).map(n=>`<div class="warn" style="font-size:12px">${esc(n)}</div>`).join("");
+    if(r.tracks)body+=`<div class="muted" style="font-size:12px">See results under Tracks.</div>`;
+    const open=p||(r.files&&r.files[0]);if(open)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(open)}')">Show in folder</button>${/\.mp4$/i.test(p)?`<button class="b s" onclick="toUpload('${jsq(p)}','${j.kind}')">Upload this…</button>`:""}</div>`;}
+  if(j.status==="error")body=`<pre>${esc(j.error)}</pre>`;
+  return `<div class="job"><div class="row"><span class="t grow">${esc(j.label)}</span><span class="pill ${j.status==="done"?"ok":j.status==="error"?"err":""}">${j.status}</span>
+    ${j.status==="running"||j.status==="queued"?`<button class="b s" onclick="api('/api/jobs/${j.id}/cancel',{}).then(pollJobs)">Stop</button>`:""}</div>
+    ${j.status==="running"||j.status==="queued"?`<div class="bar"><i style="width:${pct}%"></i></div><div class="muted" style="font-size:11px">${pct}%${eta}</div>`:""}${body}</div>`}
+const jsq=s=>String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+function onDone(j){if(j.kind==="analyze")renderAnalysis(j.result);if(j.kind==="album_video"&&j.result.chapters)CHAPTERS=j.result.chapters}
+let CHAPTERS="";
+async function openPath(p){try{await api("/api/open",{path:p})}catch(e){toast("Folder: "+p,5000)}}
+function outDir(){return (S.output_dir||"")+(R.artist||R.title?"/"+(R.artist||"Artist")+" - "+(R.title||"Release"):"")}
+
+// ---------- upload
+function renderYt(){$("ytStatus").innerHTML=INIT.youtube_available&&INIT.has_client_secret?`<div class="card ok">YouTube upload is set up. The first upload opens a Google sign-in window.</div>`:
+  `<div class="note"><b>Optional setup for one-click uploads:</b> ${INIT.youtube_available?"":"run <code>pip install -r requirements-youtube.txt</code>, "}create an OAuth "Desktop app" client in Google Cloud (links in Sign-ups → section 7) and save it as <code>${esc(INIT.data_dir)}/client_secret.json</code>. Until then, use "Copy text" and upload in YouTube Studio. New API projects upload as Private until Google audits them.</div>`}
+function toUpload(p,kind){show("up");$("ytVideo").value=p;$("ytKind").value={long_video:"ten_hours",album_video:"full_album",short:"short",release_video:"official_audio"}[kind]||"official_audio";genMeta()}
+async function genMeta(){const ti=$("ytTrack").value;const r=await api("/api/meta",{release:R,kind:$("ytKind").value,hours:$("ytHours").value,chapters:$("ytKind").value==="full_album"?CHAPTERS:null,track_title:$("ytKind").value==="full_album"?null:(R.tracks[ti]||{}).title});
+  $("ytTitle").value=r.title;$("ytDesc").value=r.description;$("ytTags").value=r.tags.join(", ");cnt()}
+function cnt(){$("cT").textContent=$("ytTitle").value.length+"/100";$("cD").textContent=$("ytDesc").value.length+"/5000";$("cG").textContent=$("ytTags").value.length+"/500"}
+function copyMeta(){navigator.clipboard.writeText($("ytTitle").value+"\n\n"+$("ytDesc").value+"\n\nTags: "+$("ytTags").value);toast("Copied")}
+function ytUpload(){const w=$("ytWhen").value;job("yt_upload",{video:$("ytVideo").value,title:$("ytTitle").value,description:$("ytDesc").value,tags:$("ytTags").value,privacy:$("ytPriv").value,publish_at:w?new Date(w).toISOString():"",thumbnail:$("ytThumb").value,playlist_id:$("ytPl").value})}
+
+// ---------- plan
+async function plan(){try{PLAN=await api("/api/timeline",R)}catch(e){return toast(e.message)}
+  $("icsBtn").disabled=false;const today=new Date().toISOString().slice(0,10);
+  $("planOut").innerHTML="<table>"+PLAN.items.map(i=>`<tr class="${i.date<today?"muted":""}"><td style="width:110px"><b>${i.date}</b></td><td style="width:70px" class="muted">${i.offset<0?i.offset+" d":i.offset===0?"Release":"+"+i.offset+" d"}</td><td>${esc(i.task)}</td></tr>`).join("")+"</table>"+
+  (PLAN.items[2].date<today?`<p class="warn">Your release date is close: aim to give your distributor at least 2–4 weeks, or move the date.</p>`:"")}
+function dlIcs(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([PLAN.ics],{type:"text/calendar"}));a.download=(R.title||"release")+" plan.ics";a.click()}
+
+// ---------- sign-ups
+function renderLinks(){const st=S.signups||{};
+  $("linksOut").innerHTML=INIT.directory.map((g,gi)=>`<div class="card links"><h3>${esc(g.group)}</h3>${g.note?`<p class="muted" style="font-size:13px;margin-top:0">${esc(g.note)}</p>`:""}
+   ${g.items.map(it=>{const k=it.name,s=st[k]||{};return `<div class="it"><input type="checkbox" ${s.done?"checked":""} onchange="sig('${jsq(k)}','done',this.checked)">
+    <div><a href="${it.url}" target="_blank" rel="noopener">${esc(it.name)} ↗</a><div style="font-size:13px">${esc(it.what)}</div>${it.ready?`<div class="muted" style="font-size:12px">Have ready: ${esc(it.ready)}</div>`:""}</div>
+    <input placeholder="login email / account ID" value="${esc(s.note)}" onchange="sig('${jsq(k)}','note',this.value)"></div>`}).join("")}</div>`).join("")}
+async function sig(k,f,v){S.signups=S.signups||{};S.signups[k]=S.signups[k]||{};S.signups[k][f]=v;await api("/api/settings",{signups:S.signups})}
+
+// ---------- settings
+function fillSettings(){$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
+async function saveSettings(){const profile={};document.querySelectorAll("[data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
+  S=await api("/api/settings",{output_dir:$("sOut").value.trim(),stock_author:$("sAuthor").value.trim(),profile});toast("Saved")}
+
+// ---------- file browser
+let FB={};
+function pick(opts,cb){FB={opts,cb,sel:[]};$("fbTitle").textContent=opts.kind==="dir"?"Choose a folder":"Choose "+(opts.multi?"files":"a file");
+  $("fbHint").textContent=opts.kind==="dir"?"Open the folder, then press Select":opts.multi?"Click to select several":"";$("fb").classList.add("on");
+  fbGo(opts.start||localStorage.getItem("rk_dir_"+opts.kind)||localStorage.getItem("rk_dir")||INIT.home)}
+async function fbGo(p){let r;try{r=await api("/api/browse?path="+encodeURIComponent(p||""))}catch(e){return toast(e.message)}
+  FB.path=r.path;FB.parent=r.parent;FB.sel=[];$("fbPath").value=r.path;localStorage.setItem("rk_dir",r.path);const k=FB.opts.kind;
+  $("fbList").innerHTML=r.dirs.map(d=>`<div class="fb-item" ondblclick="fbGo(FB.path+'/'+'${jsq(d)}')" onclick="fbGo(FB.path+'/'+'${jsq(d)}')">📁 ${esc(d)}</div>`).join("")+
+    r.files.map(f=>{const ok=k!=="dir"&&(f.kind===k);return `<div class="fb-item ${ok?"":"dim"}" ${ok?`onclick="fbSel(this,'${jsq(f.name)}')" ondblclick="fbSel(this,'${jsq(f.name)}');fbOk()"`:""}>${{audio:"🎵",image:"🖼️",video:"🎬"}[f.kind]||"📄"} ${esc(f.name)}</div>`}).join("")||'<p class="muted">Empty folder</p>'}
+function fbSel(el,n){const p=FB.path+"/"+n;if(!FB.opts.multi){FB.sel=[];document.querySelectorAll(".fb-item.sel").forEach(x=>x.classList.remove("sel"))}
+  const i=FB.sel.indexOf(p);if(i>=0){FB.sel.splice(i,1);el.classList.remove("sel")}else{FB.sel.push(p);el.classList.add("sel")}}
+function fbOk(){let v;if(FB.opts.kind==="dir")v=FB.path;else{if(!FB.sel.length)return toast("Pick a file");v=FB.opts.multi?FB.sel:FB.sel[0]}
+  localStorage.setItem("rk_dir_"+FB.opts.kind,FB.path);fbClose();FB.cb(v)}
+function fbClose(){$("fb").classList.remove("on")}
+init();
+</script>
+</body>
+</html>
