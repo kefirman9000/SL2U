@@ -45,6 +45,7 @@ jobs:
       - name: Build ReleaseKit.exe
         run: >
           pyinstaller packaging/launcher.py --name ReleaseKit --onedir --console --noconfirm
+          --paths . --collect-submodules releasekit
           --icon assets/icon.ico
           --add-data "releasekit/templates;releasekit/templates"
           --add-data "releasekit/static;releasekit/static"
