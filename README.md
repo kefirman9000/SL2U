@@ -81,7 +81,7 @@ The audio loop is built once, with its tail crossfaded into its own start so the
 
 ## Building the Windows release
 
-Pushing a tag like `v1.1.0` runs [.github/workflows/windows-release.yml](.github/workflows/windows-release.yml): it builds `ReleaseKit.exe` with PyInstaller on Windows, bundles ffmpeg, starts the app and renders a test video, then publishes the zip as a GitHub Release.
+Every push to `main` runs [.github/workflows/windows-release.yml](.github/workflows/windows-release.yml): it builds `ReleaseKit.exe` with PyInstaller on Windows, bundles ffmpeg, starts the app and renders a test video, then publishes the zip as a GitHub Release when the version in `releasekit/__init__.py` is new. To ship an update, bump that number and push.
 
 ## Layout
 
