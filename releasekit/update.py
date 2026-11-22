@@ -92,25 +92,31 @@ def _download(url, dst):
                 STATE["progress"] = 0.6 * got / total
 
 
-BAT = r"""@echo off
-setlocal
-rem Release Kit updater: wait for the app to close, copy the new version in, start it again.
-:wait
-tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL
-if not errorlevel 1 (
-  ping -n 2 127.0.0.1 >NUL
-  goto wait
-)
-ping -n 2 127.0.0.1 >NUL
-robocopy "{new}" "{app}" /E /R:10 /W:1 /NFL /NDL /NJH /NJS /NP > "{log}"
-if %ERRORLEVEL% GEQ 8 (
-  echo Update could not copy all files. See {log} > "{app}\UPDATE-FAILED.txt"
-) else (
-  if exist "{app}\UPDATE-FAILED.txt" del "{app}\UPDATE-FAILED.txt"
-)
-set RELEASEKIT_NO_BROWSER=1
-start "" "{app}\ReleaseKit.exe"
-endlocal
+PS1 = r"""
+$ErrorActionPreference = "Continue"
+$log = "__LOG__"
+function L($m) { Add-Content -Path $log -Value ("{0:HH:mm:ss} {1}" -f (Get-Date), $m) }
+L "Release Kit update to __VERSION__: waiting for the app (pid __PID__) to close"
+try { Wait-Process -Id __PID__ -Timeout 120 -ErrorAction SilentlyContinue } catch { }
+Start-Sleep -Seconds 1
+L "copying new files"
+$code = 99
+for ($i = 1; $i -le 5; $i++) {
+  & robocopy "__NEW__" "__APP__" /E /R:5 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+  $code = $LASTEXITCODE
+  L "robocopy attempt $i exit code $code"
+  if ($code -lt 8) { break }
+  Start-Sleep -Seconds 2
+}
+if ($code -ge 8) {
+  Set-Content -Path "__APP__\UPDATE-FAILED.txt" -Value "Release Kit could not copy all update files. Details: $log"
+  L "FAILED"
+} else {
+  Remove-Item "__APP__\UPDATE-FAILED.txt" -ErrorAction SilentlyContinue
+}
+$env:RELEASEKIT_NO_BROWSER = "1"
+Start-Process -FilePath "__APP__\ReleaseKit.exe" -WorkingDirectory "__APP__"
+L "restarted Release Kit"
 """
 
 
@@ -134,11 +140,18 @@ def apply(shutdown):
         raise RuntimeError("The download doesn't contain ReleaseKit.exe; update cancelled.")
     new_dir = os.path.dirname(exe)
     app_dir = os.path.dirname(sys.executable)
-    bat = os.path.join(tmp, "update.bat")
-    with open(bat, "w", encoding="ascii", errors="replace") as f:
-        f.write(BAT.format(pid=os.getpid(), new=new_dir, app=app_dir, log=os.path.join(tmp, "update.log")))
-    flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
-    subprocess.Popen(["cmd", "/c", bat], creationflags=flags, close_fds=True, cwd=tmp)
+    log = os.path.join(app_dir, "update-log.txt")
+    script = (PS1.replace("__LOG__", log).replace("__PID__", str(os.getpid())).replace("__NEW__", new_dir)
+              .replace("__APP__", app_dir).replace("__VERSION__", res["latest"]))
+    ps1 = os.path.join(tmp, "update.ps1")
+    with open(ps1, "w", encoding="utf-8-sig") as f:  # BOM so Windows PowerShell reads it as UTF-8
+        f.write(script)
+    cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", ps1]
+    base = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+    try:  # also leave any job object, so closing Release Kit can't take the helper down with it
+        subprocess.Popen(cmd, creationflags=base | 0x01000000, close_fds=True, cwd=tmp)
+    except OSError:
+        subprocess.Popen(cmd, creationflags=base, close_fds=True, cwd=tmp)
     STATE.update(progress=0.9, message="Restarting…")
     threading.Timer(1.5, shutdown).start()
     return {"restarting": True, "version": res["latest"]}
