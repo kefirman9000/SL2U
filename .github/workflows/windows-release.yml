@@ -82,6 +82,7 @@ jobs:
             throw "App did not start (exited: $($p.HasExited))"
           }
           if ($init.missing_tools.Count -gt 0) { throw "ffmpeg not found inside the build: $($init.missing_tools)" }
+          if (-not $init.youtube_available) { throw "YouTube upload libraries missing from the build" }
           $wav = "$env:RUNNER_TEMP\tone.wav"
           & dist\ReleaseKit\bin\ffmpeg.exe -v error -y -f lavfi -i "sine=f=330:d=8" $wav
           function Run-Job($body) {
@@ -108,6 +109,37 @@ jobs:
           Write-Host "Rendered loop video $($loop.result.path)"
           Stop-Process $p.Id -Force
           Get-Content $err -Tail 20 -ErrorAction SilentlyContinue
+
+      - name: Self-update test (update an installed copy to a fake newer version)
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP\updtest"
+          New-Item -ItemType Directory -Force "$root\installed", "$root\stage" | Out-Null
+          Copy-Item dist\ReleaseKit "$root\installed\ReleaseKit" -Recurse
+          Copy-Item dist\ReleaseKit "$root\stage\ReleaseKit" -Recurse
+          "new version" | Out-File "$root\stage\ReleaseKit\UPDATED-MARKER.txt"
+          Compress-Archive -Path "$root\stage\ReleaseKit" -DestinationPath "$root\fake-update.zip"
+          $env:RELEASEKIT_NO_BROWSER = "1"
+          $env:RELEASEKIT_HOME = "$root\home"
+          $env:RELEASEKIT_UPDATE_TEST_ZIP = "$root\fake-update.zip"
+          $env:RELEASEKIT_UPDATE_TEST_VERSION = "99.0.0"
+          $inst = "$root\installed\ReleaseKit"
+          $p = Start-Process "$inst\ReleaseKit.exe" -PassThru
+          $up = $false
+          for ($i = 0; $i -lt 45; $i++) { Start-Sleep 2; try { Invoke-RestMethod http://127.0.0.1:5577/api/version | Out-Null; $up = $true; break } catch {} }
+          if (-not $up) { throw "Installed copy did not start" }
+          $c = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5577/api/update/check -ContentType "application/json" -Body "{}"
+          if (-not $c.newer -or -not $c.can_self_update) { throw "Update check wrong: $($c | ConvertTo-Json)" }
+          Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5577/api/update/apply -ContentType "application/json" -Body "{}" | Out-Null
+          if (-not $p.WaitForExit(30000)) { throw "Old version did not close" }
+          Write-Host "Old version closed; waiting for the updated one"
+          $back = $false
+          for ($i = 0; $i -lt 60; $i++) { Start-Sleep 2; try { Invoke-RestMethod http://127.0.0.1:5577/api/version | Out-Null; $back = $true; break } catch {} }
+          if (Test-Path "$inst\UPDATE-FAILED.txt") { Get-Content "$inst\UPDATE-FAILED.txt"; throw "Updater reported a copy failure" }
+          if (-not (Test-Path "$inst\UPDATED-MARKER.txt")) { throw "New files were not copied in" }
+          if (-not $back) { throw "Updated app did not restart" }
+          Write-Host "Self-update OK: files replaced and app restarted"
+          Get-Process ReleaseKit -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Zip
         shell: pwsh

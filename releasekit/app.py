@@ -14,7 +14,7 @@ import zlib
 
 from flask import Flask, abort, jsonify, request, send_file
 
-from . import art, audio, ff, links, meta, packages, sl2link, video, youtube
+from . import __version__, art, audio, ff, links, meta, packages, schedule, sl2link, update, video, youtube
 
 DATA_DIR = os.environ.get("RELEASEKIT_HOME", os.path.join(os.path.expanduser("~"), "ReleaseKit"))
 PROJECTS = os.path.join(DATA_DIR, "projects")
@@ -37,9 +37,21 @@ def load_settings():
     return {"output_dir": os.path.join(DATA_DIR, "output"), "profile": {}, "signups": {}, "stock_author": ""}
 
 
+_settings_lock = threading.Lock()
+
+
 def save_settings(s):
-    with open(SETTINGS, "w", encoding="utf-8") as f:
-        json.dump(s, f, indent=2)
+    with _settings_lock:
+        with open(SETTINGS + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(s, f, indent=2)
+        os.replace(SETTINGS + ".tmp", SETTINGS)
+
+
+def update_settings(**kw):
+    s = load_settings()
+    s.update(kw)
+    save_settings(s)
+    return s
 
 
 def out_dir_for(r):
@@ -263,8 +275,9 @@ def build_job(kind, r, p):
 
         def fn(prog, cancel):
             img = p.get("image")
+            slug = packages.safe(t["title"])
             if not img:
-                cov = os.path.join(out, "artwork", "cover_batch.jpg")
+                cov = os.path.join(out, "artwork", f"cover_{slug}.jpg")
                 os.makedirs(os.path.dirname(cov), exist_ok=True)
                 art.make_cover(None, "generate", cov, generate_style=p.get("art_style", "aurora"),
                                seed=zlib.crc32(t["path"].encode()))
@@ -285,6 +298,12 @@ def build_job(kind, r, p):
                         meta.youtube_description(rr, load_settings().get("profile"), kind_t, None, f"{hours:g}") +
                         "\n\nTAGS: " + ", ".join(meta.tags(rr)))
             res_v["text_file"] = txt
+            # thumbnail next to the video, picked up automatically by the upload schedule
+            thumb = os.path.join(out, "youtube", name + " - thumbnail.jpg")
+            th = art.blur_fill(art.open_rgb(img), 1280, 720)
+            th = art.add_text(th, f"{t['title']}", f"{hours:g} HOURS", position="bottom-left", scale=1.0)
+            th.save(thumb, "JPEG", quality=88)
+            res_v["thumbnail"] = thumb
             return res_v
         return f"Batch {hours:g}h: {t['title']}", fn
 
@@ -361,6 +380,7 @@ def static_file(name):
 def api_init():
     return jsonify({
         "settings": load_settings(), "directory": links.DIRECTORY, "missing_tools": ff.check_tools(),
+        "version": __version__,
         "youtube_available": youtube.available(), "data_dir": DATA_DIR,
         "has_client_secret": os.path.exists(os.path.join(DATA_DIR, "client_secret.json")),
         "projects": sorted(f[:-5] for f in os.listdir(PROJECTS) if f.endswith(".json")),
@@ -768,6 +788,197 @@ def api_sl2_import():
     return jsonify({"projects": names})
 
 
+# ---------------------------------------------------------------- YouTube schedule
+
+SCHED = schedule.Schedule(DATA_DIR, load_settings, update_settings)
+SCHED.run_forever()
+_channel_cache = {"t": 0, "v": None}
+
+
+def _yt_status():
+    st = {"available": youtube.available(), "has_client_secret": os.path.exists(os.path.join(DATA_DIR, "client_secret.json")),
+          "signed_in": youtube.signed_in(DATA_DIR), "channel": None}
+    if st["available"] and st["signed_in"]:
+        if time.time() - _channel_cache["t"] > 600:
+            try:
+                _channel_cache["v"] = youtube.channel(DATA_DIR, interactive=False)
+            except Exception as e:
+                _channel_cache["v"] = {"title": None, "error": str(e)[:200]}
+            _channel_cache["t"] = time.time()
+        st["channel"] = _channel_cache["v"]
+    return st
+
+
+@app.get("/api/schedule")
+def api_schedule():
+    s = load_settings()
+    return jsonify({"items": SCHED.items, "state": SCHED.state, "running": bool(s.get("schedule_running")),
+                    "cap": int(s.get("schedule_daily_cap") or 6), "last24": SCHED.uploads_last_24h(),
+                    "yt": _yt_status()})
+
+
+def _sched_call(fn):
+    try:
+        res = fn(request.json or {})
+        return jsonify(res if res is not None else {"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.post("/api/schedule/add")
+def api_schedule_add():
+    def fn(b):
+        tags = b.get("tags") or []
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+        title, desc, thumb = b.get("title"), b.get("description", ""), b.get("thumbnail")
+        base = os.path.splitext(b["video"])[0]
+        if not title and os.path.exists(base + " - YouTube text.txt"):  # files made by the overnight batch
+            title, desc, tags = schedule.parse_text_file(base + " - YouTube text.txt")
+        if not thumb and os.path.exists(base + " - thumbnail.jpg"):
+            thumb = base + " - thumbnail.jpg"
+        return SCHED.add(b["video"], title, desc, tags, thumb,
+                         b.get("playlist_id"), b.get("publish_at"), b.get("privacy", "public"))
+    return _sched_call(fn)
+
+
+@app.post("/api/schedule/import_folder")
+def api_schedule_import():
+    return _sched_call(lambda b: {"added": SCHED.import_folder(b["folder"], b.get("privacy", "public"))})
+
+
+@app.post("/api/schedule/update")
+def api_schedule_update():
+    def fn(b):
+        f = dict(b.get("fields") or {})
+        if isinstance(f.get("tags"), str):
+            f["tags"] = [t.strip() for t in f["tags"].split(",") if t.strip()]
+        SCHED.update(b["id"], **f)
+    return _sched_call(fn)
+
+
+@app.post("/api/schedule/remove")
+def api_schedule_remove():
+    return _sched_call(lambda b: SCHED.remove(b["id"]))
+
+
+@app.post("/api/schedule/move")
+def api_schedule_move():
+    return _sched_call(lambda b: SCHED.move(b["id"], int(b.get("delta", 0))))
+
+
+@app.post("/api/schedule/retry")
+def api_schedule_retry():
+    return _sched_call(lambda b: SCHED.retry(b.get("id")))
+
+
+@app.post("/api/schedule/times")
+def api_schedule_times():
+    return _sched_call(lambda b: SCHED.apply_times(b.get("times") or {}))
+
+
+@app.post("/api/schedule/run")
+def api_schedule_run():
+    def fn(b):
+        kw = {}
+        if "running" in b:
+            kw["schedule_running"] = bool(b["running"])
+        if b.get("cap"):
+            kw["schedule_daily_cap"] = max(1, min(100, int(b["cap"])))
+        update_settings(**kw)
+        if kw.get("schedule_running"):
+            SCHED.retry()  # give paused/errored items another go
+    return _sched_call(fn)
+
+
+@app.post("/api/yt/connect")
+def api_yt_connect():
+    if not youtube.available():
+        return jsonify({"error": "YouTube extras aren't installed (pip install -r requirements-youtube.txt)."}), 400
+    if not os.path.exists(os.path.join(DATA_DIR, "client_secret.json")):
+        return jsonify({"error": f"Put client_secret.json in {DATA_DIR} first (Sign-ups, section 7)."}), 400
+
+    def fn(prog, cancel):
+        ch = youtube.connect(DATA_DIR)
+        _channel_cache.update(t=time.time(), v=ch)
+        return {"channel": ch}
+    j = new_job("yt_connect", "Connect YouTube (sign in in your browser)", fn)
+    return jsonify({"job": j["id"]})
+
+
+@app.post("/api/yt/signout")
+def api_yt_signout():
+    youtube.sign_out(DATA_DIR)
+    _channel_cache.update(t=0, v=None)
+    return jsonify({"ok": True})
+
+
+@app.get("/api/yt/playlists")
+def api_yt_playlists():
+    try:
+        return jsonify({"playlists": youtube.playlists(DATA_DIR)})
+    except Exception as e:
+        return jsonify({"error": str(e)[:300], "playlists": []}), 400
+
+
+@app.post("/api/yt/playlist_create")
+def api_yt_playlist_create():
+    try:
+        b = request.json or {}
+        return jsonify(youtube.create_playlist(DATA_DIR, b["title"], b.get("privacy", "public")))
+    except Exception as e:
+        return jsonify({"error": str(e)[:300]}), 400
+
+
+@app.post("/api/yt/audit_text")
+def api_yt_audit_text():
+    b = request.json or {}
+    ch = (_yt_status().get("channel") or {})
+    channel = b.get("channel") or (f"{ch.get('title')} - https://www.youtube.com/channel/{ch['id']}" if ch.get("id") else "my channel")
+    return jsonify({"text": schedule.AUDIT_TEMPLATE.format(channel=channel, per_day=load_settings().get("schedule_daily_cap") or 6,
+                                                           project=b.get("project") or "(from the Google Cloud console dashboard)")})
+
+
+# ---------------------------------------------------------------- updates
+
+@app.get("/api/update/status")
+def api_update_status():
+    s = load_settings()
+    return jsonify(dict(update.STATE, current=__version__, skip=s.get("skip_version"),
+                        enabled=s.get("check_updates", True), can_self_update=update.can_self_update()))
+
+
+@app.post("/api/update/check")
+def api_update_check():
+    try:
+        return jsonify(update.check())
+    except Exception as e:
+        return jsonify({"error": f"Couldn't reach GitHub: {e}"}), 400
+
+
+@app.post("/api/update/apply")
+def api_update_apply():
+    busy = [j for j in JOBS.values() if j["status"] in ("running", "queued")]
+    if busy and not (request.json or {}).get("force"):
+        return jsonify({"error": f"{len(busy)} job(s) still running. Wait for them to finish (or stop them) first."}), 400
+    try:
+        return jsonify(update.apply(lambda: os._exit(0)))
+    except Exception as e:
+        update.STATE.update(applying=False, message="")
+        return jsonify({"error": str(e)}), 400
+
+
+@app.post("/api/update/skip")
+def api_update_skip():
+    update_settings(skip_version=(request.json or {}).get("version"))
+    return jsonify({"ok": True})
+
+
+@app.get("/api/version")
+def api_version():
+    return jsonify({"version": __version__})
+
+
 def main():
     import webbrowser
     port = int(os.environ.get("RELEASEKIT_PORT", 5577))
@@ -775,6 +986,7 @@ def main():
     if missing:
         print("WARNING: missing", ", ".join(missing), "- install ffmpeg (see README).")
     url = f"http://127.0.0.1:{port}"
+    update.check_in_background(load_settings().get("check_updates", True))
     print(f"Release Kit running at {url}  (data folder: {DATA_DIR})")
     if not os.environ.get("RELEASEKIT_NO_BROWSER"):
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()

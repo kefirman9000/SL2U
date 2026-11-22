@@ -28,8 +28,8 @@ Mac and Linux: see [Run from source](#run-from-source).
 | **New release wizard:** music, cover, where it's going, one button. | Tick the outputs you want; it queues everything. |
 | ![Artwork](docs/screenshots/artwork.png) | ![Video style](docs/screenshots/video.png) |
 | **Artwork:** photos ranked from a folder, smart crops, generated art, cover history. | **Video style:** visualizers and a cover/disc/logo/text that bumps to the beat, with instant previews. |
-| ![SL2 songs](docs/screenshots/sl2.png) | ![Upload](docs/screenshots/upload.png) |
-| **SL2 songs:** import songs from SL2, or auto-import the ones you star. | **Upload:** title, description and tags written for you. |
+| ![SL2 songs](docs/screenshots/sl2.png) | ![Upload schedule](docs/screenshots/schedule.png) |
+| **SL2 songs:** import songs from SL2, or auto-import the ones you star. | **Schedule:** a publishing rhythm for your uploads, done ahead of time. |
 | ![Sign-ups](docs/screenshots/signups.png) | |
 | **Sign-ups:** every distributor, store, stock library and royalty organization, with checkboxes. | |
 
@@ -41,7 +41,8 @@ Mac and Linux: see [Run from source](#run-from-source).
 | **Artwork** | Pick a photo folder; photos are ranked by resolution, sharpness and contrast. Make a 3000×3000 cover (smart crop, center crop, or fit + blurred fill) with optional title text and explicit label, or **generate** art in 6 styles. Export every platform size. All your covers stay in a gallery. |
 | **YouTube & video** | One **video style** for everything: visualizers (frequency bars, mirrored bars, waveform, line, circle scope, scrolling spectrum) in the colour of your choice, and a **cover, spinning disc, logo or title text that bumps to the kick**. Release videos, full-album videos with chapters, Shorts/Reels/TikTok, Spotify Canvas. **10-hour (1–12 h) loop videos** with a seamless loop point and backgrounds: still cover, slow zoom, slow pan, film grain/VHS, breathing glow, photo slideshow, **your own video clip** (looped by dissolving the end into the start, ping-pong, or straight repeat; crop or fit) or **a folder of clips**. **Overnight batch**: a loop video and paste-ready YouTube text for every track in a folder. |
 | **Packages** | **Distributor** (WAV, cover, metadata.csv/json, lyrics, checklist), **Bandcamp + SoundCloud**, **Stock music** (WAVs, 60/30/15 s cut-downs, MP3s, keyword CSV), **Stock photo pack**. |
-| **Upload** | YouTube title, description (with your links, credits, chapters, hashtags) and tags; uploads through the YouTube API with scheduling, thumbnail and playlist (optional setup). |
+| **Upload** | YouTube title, description (with your links, credits, chapters, hashtags) and tags; upload now or add to the schedule. |
+| **Schedule** | An upload queue with publish times: set a rhythm (one a day at 3 pm, every 12 hours…), pick or create a playlist, and import a whole overnight-batch folder with its titles, descriptions, tags and thumbnails. Videos upload ahead of time as Private with a publish date, so YouTube publishes them on time even if your computer is off. Stays under a daily upload cap and waits when YouTube's daily limit is hit. Includes help writing the YouTube API audit request. |
 | **Plan** | A timeline worked back from your release date, downloadable as a calendar (.ics). |
 | **SL2 songs** | Lists your SL2 songs (newest version of each) with genre, BPM and key. Import as singles, as one album, or into the current release. Turn on auto-import to make a release for every song you star. |
 | **Sign-ups** | Links to distributors, artist-profile claims, stores, stock libraries, royalty organizations (ASCAP/BMI, The MLC, SoundExchange) and the YouTube API setup, with checkboxes and notes. |
@@ -60,13 +61,17 @@ Your projects, settings and renders live in `~/ReleaseKit` (change the output fo
 
 Open the **SL2 songs** tab and point it at SL2's `songs` folder (next to `sl2.py`, or wherever `SL2_HOME` points). Tick **Watch the folder** to auto-import. By default only songs you ★ in SL2 are imported, because SL2 saves every edit as a new version.
 
-## Optional: one-click YouTube uploads
+## Optional: YouTube uploads and the schedule
 
 1. From source: `.venv/bin/pip install -r requirements-youtube.txt` (the Windows build already includes it).
 2. Follow **Sign-ups → section 7**: enable YouTube Data API v3, create an OAuth client of type **Desktop app**, add yourself as a test user, and save the JSON as `~/ReleaseKit/client_secret.json`.
-3. The first upload opens a Google sign-in window.
+3. In the **Schedule** tab press **Connect YouTube** and sign in once.
 
-Uploads from API projects Google hasn't audited are **Private only** (make them Public in YouTube Studio, or apply for an audit with the form linked in the app). Daily upload limits apply. Custom thumbnails need a verified channel.
+Uploads from API projects Google hasn't audited are **Private only**, scheduled ones included: make them Public in YouTube Studio, or apply for an audit (the Schedule tab drafts the answers for you). Daily upload limits apply. Custom thumbnails need a verified channel.
+
+## Updates
+
+The Windows app checks GitHub for a new version when it starts and shows a banner. **Update now** downloads it, closes Release Kit, swaps in the new files and reopens it; your releases, settings and renders aren't touched. Turn the check off in Settings. Running from source, the banner links to the release instead.
 
 ## Good to know
 
@@ -98,6 +103,8 @@ releasekit/
   sl2link.py    reads SL2's songs folder
   links.py      sign-up directory (plain data: edit it freely)
   youtube.py    YouTube API uploader
+  schedule.py   upload queue and background uploader
+  update.py     update check and self-update
   ff.py         ffmpeg helpers (finds a bundled copy first)
   templates/index.html   the interface
   static/fonts/ Space Grotesk + VT323 (SIL Open Font License)

@@ -23,15 +23,16 @@ header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:
 .logo{font-family:var(--pix);font-size:28px;letter-spacing:1px;color:var(--accent);text-shadow:0 0 8px rgba(57,255,20,.45);line-height:1}
 .logo span{color:var(--text)!important}
 .logo span{color:var(--accent)}
-nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:none;border:0;color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit}
+nav{display:flex;gap:2px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-width:0}
+nav button{background:none;border:0;color:var(--muted);padding:8px 9px;border-radius:8px;cursor:pointer;font:inherit;font-size:13.5px;white-space:nowrap;flex:none}
 nav button.on{background:var(--panel2);color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
 nav button:hover{color:var(--text)}
-.proj{margin-left:auto;display:flex;gap:8px;align-items:center}
-main{display:grid;grid-template-columns:1fr 360px;gap:0;min-height:calc(100vh - 57px)}
+.proj{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
+.proj select{width:150px!important}
+main{display:grid;grid-template-columns:1fr 360px;gap:0;min-height:calc(100vh - 63px)}
 section.tab{display:none;padding:22px 26px 60px;max-width:1150px}
 section.tab.on{display:block}
-aside{border-left:1px solid var(--line);background:#000;padding:16px;position:sticky;top:57px;height:calc(100vh - 57px);overflow:auto}
+aside{border-left:1px solid var(--line);background:#000;padding:16px;position:sticky;top:63px;height:calc(100vh - 63px);overflow:auto}
 h2{margin:0 0 4px;font-family:var(--pix);font-weight:400;font-size:32px;letter-spacing:1px;color:var(--accent);text-shadow:0 0 6px rgba(57,255,20,.35)}
 body.ember h2{font-size:21px;font-weight:700;color:var(--text);text-shadow:none}
 h3{margin:0 0 10px;font-size:15px}
@@ -109,6 +110,15 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
 .prev{margin-top:10px;max-width:100%;border-radius:8px;border:1px solid var(--line);display:none}
 details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
 .big{font-size:15px;padding:11px 18px}
+.upd{display:none;align-items:center;gap:12px;padding:10px 20px;background:#071a07;border-bottom:1px solid #1d5c14;font-size:14px}
+.upd.on{display:flex}
+body.ember .upd{background:#211d14;border-color:#4a3d1d}
+.qt td{vertical-align:middle}
+.qt img{width:96px;height:54px;object-fit:cover;border-radius:4px;background:#111}
+.qt input{padding:5px 7px;font-size:13px}
+.st-done{color:var(--ok)} .st-error,.st-needs_signin{color:var(--err)} .st-paused_quota{color:var(--warn)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;flex-direction:column;gap:14px;font-size:18px}
+.overlay.on{display:flex}
 </style>
 </head>
 <body>
@@ -120,6 +130,12 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
     <button class="b s" onclick="newProject()">New</button><button class="b s p" onclick="wizOpen()">＋ New release wizard</button>
   </div>
 </header>
+<div class="upd" id="updBar"><b id="updText"></b><span class="grow"></span>
+  <a href="#" id="updNotes" style="color:var(--accent2)" target="_blank" rel="noopener">What's new</a>
+  <button class="b s p" id="updGo" onclick="doUpdate()">Update now</button>
+  <button class="b s" onclick="updBar.classList.remove('on')">Later</button>
+  <button class="b s" onclick="skipUpdate()">Skip this version</button></div>
+<div class="overlay" id="updOverlay"><div id="updMsg">Updating…</div><div class="bar" style="width:300px"><i id="updProg"></i></div><div class="muted" style="font-size:13px">Release Kit will close and reopen by itself. This page reloads when it's back.</div></div>
 <main>
 <div>
 
@@ -353,9 +369,51 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
       <div><label>Playlist ID (optional)</label><input id="ytPl" placeholder="PL..."></div>
       <div><label>Privacy</label><select id="ytPriv"><option>private</option><option>unlisted</option><option>public</option></select></div>
       <div><label>Schedule publish (optional, your local time)</label><input id="ytWhen" type="datetime-local"></div>
-      <div><label>&nbsp;</label><div class="row"><button class="b" onclick="copyMeta()">Copy text</button><button class="b p" onclick="ytUpload()">Upload</button></div></div>
+      <div><label>&nbsp;</label><div class="row"><button class="b" onclick="copyMeta()">Copy text</button><button class="b" onclick="toSchedule()">Add to schedule</button><button class="b p" onclick="ytUpload()">Upload now</button></div></div>
     </div>
   </div>
+</section>
+
+<!-- SCHEDULE -->
+<section class="tab" id="t-sched">
+  <h2>Upload schedule</h2>
+  <p class="sub">Queue videos and give them publish times. Each one is uploaded ahead of time as Private with a publish date, so YouTube makes it public on schedule, even if your computer is off by then. Uploading happens while Release Kit is open.</p>
+  <div class="card" id="ytConn"></div>
+  <div class="card">
+    <div class="row"><h3 class="grow" style="margin:0">Queue <span class="muted" id="qSummary" style="font-weight:400;font-size:13px"></span></h3>
+      <label class="muted" style="margin:0">Max uploads / 24 h</label><input id="qCap" type="number" min="1" max="100" style="width:70px" onchange="api('/api/schedule/run',{cap:+this.value})">
+      <button class="b p" id="qRun" onclick="toggleRun()">Start uploading</button></div>
+    <div id="qErr" class="warn" style="font-size:13px;margin-top:6px"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="b" onclick="pick({kind:'video',start:outDir()},addVideoToQueue)">+ Add a video…</button>
+      <button class="b" onclick="pick({kind:'dir',start:outDir()},p=>api('/api/schedule/import_folder',{folder:p}).then(r=>{toast(r.added.length+' video(s) added');loadSched()}).catch(e=>toast(e.message)))">+ Add a folder (e.g. an overnight batch)…</button>
+      <span class="muted" style="font-size:12px">Batch folders bring their titles, descriptions, tags and thumbnails along.</span>
+    </div>
+    <div style="overflow:auto;margin-top:12px"><table class="qt" id="qTable"></table></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3>Publishing rhythm</h3>
+      <p class="muted" style="font-size:12px;margin-top:0">Gives every video that hasn't been uploaded yet a publish time, in queue order.</p>
+      <div class="grid g2">
+        <div><label>First publish date</label><input type="date" id="rStart"></div>
+        <div><label>Time of day (your time)</label><input type="time" id="rTime" value="15:00"></div>
+        <div><label>One video every</label><select id="rEvery"><option value="1">day</option><option value="2">2 days</option><option value="3">3 days</option><option value="7">week</option><option value="0.5">12 hours</option><option value="0.25">6 hours</option></select></div>
+        <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="applyRhythm()">Apply to queue</button></div>
+      </div>
+      <button class="b s" style="margin-top:10px" onclick="clearTimes()">Clear times (publish as soon as uploaded)</button>
+    </div>
+    <div class="card"><h3>Playlist</h3>
+      <p class="muted" style="font-size:12px;margin-top:0">Add every waiting video to one of your playlists.</p>
+      <div class="row"><select id="plSel" class="grow"><option value="">(no playlist)</option></select><button class="b s" onclick="loadPlaylists()">Load my playlists</button></div>
+      <div class="row" style="margin-top:8px"><input id="plNew" class="grow" placeholder="…or name a new playlist"><button class="b s" onclick="newPlaylist()">Create</button></div>
+      <button class="b" style="margin-top:10px" onclick="applyPlaylist()">Apply to waiting videos</button>
+    </div>
+  </div>
+  <div class="card"><details><summary style="cursor:pointer"><b>Getting your uploads to go public (YouTube API audit)</b></summary>
+    <p class="muted" style="font-size:13px">Google only lets audited API projects publish videos. Until your project is audited, everything this app uploads stays Private, including scheduled videos. You can still schedule here and switch each video to Public in YouTube Studio, but the audit removes that step. Apply with Google's form (Sign-ups → section 7). Below is a starting point for your answers; check it matches what you actually do.</p>
+    <div class="row"><input id="auditProject" placeholder="Google Cloud project number (optional)" style="max-width:320px"><button class="b s" onclick="auditText()">Write it</button><button class="b s" onclick="navigator.clipboard.writeText(auditOut.value);toast('Copied')">Copy</button>
+      <a class="b s" style="text-decoration:none" href="https://support.google.com/youtube/contact/yt_api_form" target="_blank" rel="noopener">Open the form ↗</a></div>
+    <textarea id="auditOut" style="min-height:260px;margin-top:8px;font-family:ui-monospace,monospace;font-size:12px"></textarea></details></div>
 </section>
 
 <!-- PLAN -->
@@ -397,6 +455,8 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
     <div><label>Stock author name (used in stock file names)</label><input id="sAuthor"></div>
   </div>
   <div class="card"><h3>Defaults for new releases</h3><div class="grid g3" id="defFields"></div></div>
+  <div class="card"><h3>Updates</h3><label class="chk"><input type="checkbox" id="sUpd">Check for a new version when Release Kit starts</label>
+    <div class="row"><button class="b s" onclick="checkUpdate(true)">Check now</button><span class="muted" id="verText" style="font-size:13px"></span></div></div>
   <div class="card"><h3>Look</h3><select id="sTheme" style="max-width:260px" onchange="applyTheme(this.value)"><option value="studio">Studio (black &amp; green, like SL2)</option><option value="ember">Ember (dark &amp; orange)</option></select></div>
   <div class="card"><h3>Notifications</h3><label class="chk"><input type="checkbox" id="sNotify">Pop-up and sound when a job finishes</label></div>
   <div class="card"><h3>Your links (added to every description)</h3><div class="grid g3" id="profileFields"></div></div>
@@ -427,7 +487,7 @@ details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
 </div></div>
 
 <script>
-const TABS=[["release","Release"],["art","Artwork"],["video","YouTube & video"],["pkg","Packages"],["up","Upload"],["plan","Plan"],["sl2","SL2 songs"],["links","Sign-ups"],["set","Settings"]];
+const TABS=[["release","Release"],["art","Artwork"],["video","YouTube & video"],["pkg","Packages"],["up","Upload"],["sched","Schedule"],["plan","Plan"],["sl2","SL2 songs"],["links","Sign-ups"],["set","Settings"]];
 const PROFILE=[["smart_link","Smart link / pre-save"],["spotify","Spotify"],["apple","Apple Music"],["bandcamp","Bandcamp"],["soundcloud","SoundCloud"],["instagram","Instagram"],["tiktok","TikTok"],["website","Website"]];
 let INIT={},S={},R=blank(),PROJ="",selPhotos=[],PLAN=null;
 const $=id=>document.getElementById(id);
@@ -442,7 +502,7 @@ $("nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join
 $("nav").onclick=e=>{const k=e.target.dataset.t;if(k)show(k)};
 function show(k){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===k));
   document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;scrollTo(0,0);syncForm();
-  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate()}if(k==="release")readiness();if(k==="sl2")sl2List();}
+  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
 
 // ---------- init / projects
 async function init(){
@@ -451,7 +511,7 @@ async function init(){
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
   document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
   $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
-  rememberInputs();setupDrop();sl2Init();clipRows();$("stLogoRow").style.display=$("stBump").value==="logo"?"":"none";
+  rememberInputs();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();$("stLogoRow").style.display=$("stBump").value==="logo"?"":"none";
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -612,11 +672,11 @@ async function sig(k,f,v){S.signups=S.signups||{};S.signups[k]=S.signups[k]||{};
 // ---------- settings
 function applyTheme(t){document.body.classList.toggle('ember',t==='ember');localStorage.setItem('rk_theme',t)}
 applyTheme(localStorage.getItem('rk_theme')||'studio');
-function fillSettings(){$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
+function fillSettings(){$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
 async function saveSettings(){const profile={};document.querySelectorAll("[data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
   const defaults={};document.querySelectorAll("[data-d]").forEach(el=>defaults[el.dataset.d]=el.value.trim());
   if($("sNotify").checked&&window.Notification&&Notification.permission==="default")Notification.requestPermission();
-  S=await api("/api/settings",{output_dir:$("sOut").value.trim(),stock_author:$("sAuthor").value.trim(),profile,defaults,notify:$("sNotify").checked});toast("Saved")}
+  S=await api("/api/settings",{check_updates:$("sUpd").checked,output_dir:$("sOut").value.trim(),stock_author:$("sAuthor").value.trim(),profile,defaults,notify:$("sNotify").checked});toast("Saved")}
 
 // ---------- file browser
 let FB={};
@@ -763,6 +823,70 @@ function wizLaunch(){const d=WZ.dest;job("analyze");
   if(d.shorts)job("short",{track_index:0,seconds:30});if(d.canvas)job("canvas",{});
   const k=[];if(d.distro)k.push("pkg_distro");if(d.direct)k.push("pkg_direct");if(d.stock)k.push("pkg_stock");if(R.art_path)k.unshift("variants");if(k.length)job(k);
   wizClose();show("release");toast("All queued. Watch the Jobs panel.",4000)}
+
+// ================= schedule =================
+let SQ={items:[]};const fmtLocal=iso=>{if(!iso)return "";const d=new Date(iso);const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`};
+const STL={waiting:"waiting",uploading:"uploading",done:"uploaded",error:"failed",needs_signin:"needs sign-in",paused_quota:"daily limit, retrying"};
+async function loadSched(){try{SQ=await api("/api/schedule")}catch(e){return}renderSched();clearTimeout(loadSched.t);if($("t-sched").classList.contains("on"))loadSched.t=setTimeout(loadSched,SQ.state.current?2000:6000)}
+function renderSched(){const y=SQ.yt;let c;
+  if(!y.available)c=`<b>Step 1:</b> the YouTube add-on isn't installed. Windows app: it's included, so update Release Kit. From source: <code>pip install -r requirements-youtube.txt</code>.`;
+  else if(!y.has_client_secret)c=`<b>Step 1:</b> create your free Google API key file and save it as <code>${esc(INIT.data_dir)}/client_secret.json</code>. Steps and links are in <a href="#" onclick="show('links');return false" style="color:var(--accent2)">Sign-ups → section 7</a>.`;
+  else if(!y.signed_in)c=`<div class="row"><span class="grow"><b>Step 2:</b> connect your channel. A Google sign-in opens in your browser.</span><button class="b p" onclick="ytConnect()">Connect YouTube</button></div>`;
+  else c=`<div class="row"><span class="grow">Connected to <b class="ok">${esc((y.channel||{}).title||"YouTube")}</b>${(y.channel||{}).error?` <span class="warn">(${esc(y.channel.error)})</span>`:""}</span><button class="b s" onclick="ytConnect()">Reconnect</button><button class="b s" onclick="api('/api/yt/signout',{}).then(loadSched)">Sign out</button></div>`;
+  $("ytConn").innerHTML=c;
+  $("qRun").textContent=SQ.running?"Pause uploading":"Start uploading";$("qRun").classList.toggle("p",!SQ.running);
+  if(document.activeElement!==$("qCap"))$("qCap").value=SQ.cap;
+  const n=st=>SQ.items.filter(i=>i.status===st).length;
+  $("qSummary").textContent=`${SQ.items.length} video(s) · ${n("done")} uploaded · ${n("waiting")+n("paused_quota")} waiting · ${SQ.last24}/${SQ.cap} uploads in the last 24 h${SQ.running?" · running":" · paused"}`;
+  $("qErr").textContent=SQ.state.last_error||"";
+  const rows=SQ.items.map((it,i)=>{const locked=it.status==="done"||it.status==="uploading";
+    return `<tr><td class="muted">${i+1}</td><td>${it.thumbnail?`<img src="${thumb(it.thumbnail,200)}">`:`<span class="muted" title="No thumbnail: YouTube picks a frame">—</span>`}</td>
+    <td style="min-width:260px"><input value="${esc(it.title)}" ${locked?"disabled":""} onchange="qUpd('${it.id}',{title:this.value})"><div class="muted" style="font-size:11px;margin-top:3px">${esc(it.video.split(/[\\/]/).pop())}</div></td>
+    <td><input type="datetime-local" value="${fmtLocal(it.publish_at)}" ${locked?"disabled":""} onchange="qUpd('${it.id}',{publish_at:this.value?new Date(this.value).toISOString():null})"><div class="muted" style="font-size:11px">${it.publish_at?"publishes then":"public right after upload"}</div></td>
+    <td class="st-${it.status}" style="min-width:130px">${STL[it.status]||it.status}${it.status==="uploading"?` ${Math.round(it.progress*100)}%<div class="bar"><i style="width:${it.progress*100}%"></i></div>`:""}${it.url?`<div><a href="${it.url}" target="_blank" style="color:var(--accent2)">${it.url.replace("https://","")}</a></div>`:""}${it.message?`<div style="font-size:11px" class="muted">${esc(it.message)}</div>`:""}</td>
+    <td><div class="row" style="flex-wrap:nowrap">${locked?"":`<button class="b s" onclick="qMove('${it.id}',-1)">↑</button><button class="b s" onclick="qMove('${it.id}',1)">↓</button><button class="b s" onclick="qEdit('${it.id}')">Edit</button>`}${["error","needs_signin","paused_quota"].includes(it.status)?`<button class="b s" onclick="api('/api/schedule/retry',{id:'${it.id}'}).then(loadSched)">Retry</button>`:""}${it.status!=="uploading"?`<button class="b s" onclick="qRemove('${it.id}')">✕</button>`:""}</div></td></tr>`}).join("");
+  $("qTable").innerHTML=SQ.items.length?`<tr><th>#</th><th></th><th>Title</th><th>Publish (your time)</th><th>Status</th><th></th></tr>`+rows:'<tr><td class="muted">Nothing queued. Add videos above, or use "Add to schedule" on the Upload tab.</td></tr>'}
+async function qUpd(id,fields){try{await api("/api/schedule/update",{id,fields})}catch(e){toast(e.message)}loadSched()}
+async function qMove(id,delta){await api("/api/schedule/move",{id,delta});loadSched()}
+async function qRemove(id){if(confirm("Remove from the queue? (The video file stays.)")){await api("/api/schedule/remove",{id});loadSched()}}
+function qEdit(id){const it=SQ.items.find(i=>i.id===id);show("up");$("ytVideo").value=it.video;$("ytTitle").value=it.title;$("ytDesc").value=it.description;$("ytTags").value=(it.tags||[]).join(", ");$("ytThumb").value=it.thumbnail||"";$("ytPl").value=it.playlist_id||"";$("ytWhen").value=fmtLocal(it.publish_at);cnt();EDITING=id;$("t-up").querySelector("button[onclick='toSchedule()']").textContent="Save changes to queued video"}
+let EDITING=null;
+async function toSchedule(){const w=$("ytWhen").value;const body={video:$("ytVideo").value,title:$("ytTitle").value,description:$("ytDesc").value,tags:$("ytTags").value,thumbnail:$("ytThumb").value,playlist_id:$("ytPl").value,publish_at:w?new Date(w).toISOString():null,privacy:$("ytPriv").value==="private"?"public":$("ytPriv").value};
+  if(!body.video)return toast("Choose a video file first");
+  try{if(EDITING){await api("/api/schedule/update",{id:EDITING,fields:body});EDITING=null;$("t-up").querySelector("button[onclick='toSchedule()']").textContent="Add to schedule";toast("Saved")}
+    else{await api("/api/schedule/add",body);toast("Added to the schedule")}show("sched")}catch(e){toast(e.message,5000)}}
+async function addVideoToQueue(p){try{await api("/api/schedule/add",{video:p})}catch(e){return toast(e.message)}
+  toast("Added. Use Edit to change its title, description or tags.");loadSched()}
+async function toggleRun(){if(!SQ.running&&!(SQ.yt.signed_in))return toast("Connect YouTube first");await api("/api/schedule/run",{running:!SQ.running});loadSched()}
+async function ytConnect(){try{await api("/api/yt/connect",{});toast("Sign in with Google in the browser window that opens",6000);pollJobs();setTimeout(loadSched,8000)}catch(e){toast(e.message,6000)}}
+async function applyRhythm(){const st=$("rStart").value;if(!st)return toast("Pick the first publish date");
+  const [hh,mm]=$("rTime").value.split(":").map(Number),every=parseFloat($("rEvery").value);const times={};let k=0;
+  for(const it of SQ.items){if(it.status==="done"||it.status==="uploading")continue;
+    const d=new Date(st+"T00:00");d.setHours(hh,mm,0,0);
+    if(every>=1)d.setDate(d.getDate()+k*every);else d.setTime(d.getTime()+k*every*86400000);  // whole days keep the clock time across DST
+    times[it.id]=d.toISOString();k++}
+  if(!k)return toast("Nothing waiting to schedule");await api("/api/schedule/times",{times});toast(`Scheduled ${k} video(s)`);loadSched()}
+async function clearTimes(){const times={};SQ.items.forEach(it=>{if(it.status!=="done")times[it.id]=null});await api("/api/schedule/times",{times});loadSched()}
+async function loadPlaylists(){try{const r=await api("/api/yt/playlists");$("plSel").innerHTML='<option value="">(no playlist)</option>'+r.playlists.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join("");toast(r.playlists.length+" playlist(s)")}catch(e){toast(e.message,6000)}}
+async function newPlaylist(){const t=$("plNew").value.trim();if(!t)return;try{const r=await api("/api/yt/playlist_create",{title:t});$("plSel").innerHTML+=`<option value="${r.id}" selected>${esc(r.title)}</option>`;$("plSel").value=r.id;$("plNew").value="";toast("Playlist created")}catch(e){toast(e.message,6000)}}
+async function applyPlaylist(){const id=$("plSel").value;let n=0;for(const it of SQ.items){if(it.status!=="done"&&it.status!=="uploading"){await api("/api/schedule/update",{id:it.id,fields:{playlist_id:id}});n++}}toast(`Playlist set on ${n} video(s)`);loadSched()}
+async function auditText(){const r=await api("/api/yt/audit_text",{project:$("auditProject").value});$("auditOut").value=r.text}
+
+// ================= updates =================
+let UPD=null;
+async function checkUpdate(manual){let r;try{r=manual?await api("/api/update/check",{}):(await api("/api/update/status")).result}catch(e){if(manual)toast(e.message,5000);return}
+  if(!r){if(manual)toast("Couldn't check right now");return}UPD=r;
+  if(!r.newer){if(manual)toast("You have the latest version ("+r.current+")");return}
+  if(!manual&&S.skip_version===r.latest)return;
+  $("updText").textContent=`Release Kit ${r.latest} is available (you have ${r.current}).`;$("updNotes").href=r.page||"https://github.com/kefirman9000/SL2U/releases/latest";
+  $("updGo").textContent=r.can_self_update?"Update now":"Download";$("updBar").classList.add("on")}
+async function skipUpdate(){await api("/api/update/skip",{version:UPD.latest});S.skip_version=UPD.latest;$("updBar").classList.remove("on")}
+async function doUpdate(){if(!UPD.can_self_update){open(UPD.page||"https://github.com/kefirman9000/SL2U/releases/latest","_blank");return}
+  if(!confirm(`Update to ${UPD.latest} now? Release Kit will close and reopen by itself.`))return;
+  $("updOverlay").classList.add("on");const poll=setInterval(async()=>{try{const s=await api("/api/update/status");$("updMsg").textContent=s.message||"Updating…";$("updProg").style.width=(s.progress*100)+"%"}catch(e){}},700);
+  try{await api("/api/update/apply",{})}catch(e){clearInterval(poll);$("updOverlay").classList.remove("on");return toast(e.message,6000)}
+  const old=INIT.version;let down=false;
+  const wait=setInterval(async()=>{try{const v=(await api("/api/version")).version;if(v!==old||down){clearInterval(wait);clearInterval(poll);location.reload()}}catch(e){down=true;$("updMsg").textContent="Installing… "}},1500)}
 init();
 </script>
 </body>

@@ -19,7 +19,21 @@ def available():
         return False
 
 
-def _service(data_dir):
+class NeedsSignIn(RuntimeError):
+    pass
+
+
+def signed_in(data_dir):
+    return os.path.exists(os.path.join(data_dir, "youtube_token.json"))
+
+
+def sign_out(data_dir):
+    p = os.path.join(data_dir, "youtube_token.json")
+    if os.path.exists(p):
+        os.remove(p)
+
+
+def _service(data_dir, interactive=True):
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
@@ -32,7 +46,15 @@ def _service(data_dir):
     creds = Credentials.from_authorized_user_file(token, SCOPES) if os.path.exists(token) else None
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception:
+                if not interactive:
+                    raise NeedsSignIn("YouTube sign-in expired. Press 'Connect YouTube' in the Upload tab.")
+                creds = InstalledAppFlow.from_client_secrets_file(secret, SCOPES).run_local_server(port=0)
+        elif not interactive:
+            # never pop a browser window from the background scheduler
+            raise NeedsSignIn("Not signed in to YouTube. Press 'Connect YouTube' in the Upload tab.")
         else:
             creds = InstalledAppFlow.from_client_secrets_file(secret, SCOPES).run_local_server(port=0)
         with open(token, "w") as f:
@@ -40,11 +62,55 @@ def _service(data_dir):
     return build("youtube", "v3", credentials=creds)
 
 
+def connect(data_dir):
+    """Interactive sign-in; returns the channel name."""
+    return channel(data_dir, interactive=True)
+
+
+def channel(data_dir, interactive=False):
+    yt = _service(data_dir, interactive)
+    items = yt.channels().list(part="snippet", mine=True).execute().get("items", [])
+    if not items:
+        return {"title": "(no channel on this Google account)", "id": None}
+    return {"title": items[0]["snippet"]["title"], "id": items[0]["id"]}
+
+
+def playlists(data_dir):
+    yt = _service(data_dir, interactive=False)
+    out, token = [], None
+    while True:
+        r = yt.playlists().list(part="snippet", mine=True, maxResults=50, pageToken=token).execute()
+        out += [{"id": i["id"], "title": i["snippet"]["title"]} for i in r.get("items", [])]
+        token = r.get("nextPageToken")
+        if not token:
+            return out
+
+
+def create_playlist(data_dir, title, privacy="public"):
+    yt = _service(data_dir, interactive=False)
+    r = yt.playlists().insert(part="snippet,status", body={"snippet": {"title": title[:150]},
+                                                           "status": {"privacyStatus": privacy}}).execute()
+    return {"id": r["id"], "title": title}
+
+
+def error_kind(e):
+    """'quota' (daily limit hit, try tomorrow), 'auth' (needs sign-in) or 'other'."""
+    if isinstance(e, NeedsSignIn):
+        return "auth"
+    text = str(e)
+    for reason in ("quotaExceeded", "uploadLimitExceeded", "rateLimitExceeded", "dailyLimitExceeded"):
+        if reason in text:
+            return "quota"
+    if "invalid_grant" in text or "401" in text:
+        return "auth"
+    return "other"
+
+
 def upload(data_dir, video_path, title, description, tags=None, privacy="private", publish_at=None,
-           thumbnail=None, playlist_id=None, made_for_kids=False, progress=None, cancel=None):
+           thumbnail=None, playlist_id=None, made_for_kids=False, progress=None, cancel=None, interactive=True):
     from googleapiclient.http import MediaFileUpload
 
-    yt = _service(data_dir)
+    yt = _service(data_dir, interactive)
     status = {"privacyStatus": privacy, "selfDeclaredMadeForKids": bool(made_for_kids)}
     if publish_at:  # scheduled publish requires private status, ISO 8601 UTC
         status["privacyStatus"] = "private"
