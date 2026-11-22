@@ -136,6 +136,7 @@ jobs:
           $back = $false
           for ($i = 0; $i -lt 60; $i++) { Start-Sleep 2; try { Invoke-RestMethod http://127.0.0.1:5577/api/version | Out-Null; $back = $true; break } catch {} }
           Write-Host "---- update-log.txt ----"; Get-Content "$inst\update-log.txt" -ErrorAction SilentlyContinue
+          Write-Host "---- helper output ----"; Get-Content "$inst\update-helper-output.txt" -ErrorAction SilentlyContinue
           if (Test-Path "$inst\UPDATE-FAILED.txt") { Get-Content "$inst\UPDATE-FAILED.txt"; throw "Updater reported a copy failure" }
           if (-not (Test-Path "$inst\UPDATED-MARKER.txt")) { throw "New files were not copied in" }
           if (-not $back) { throw "Updated app did not restart" }

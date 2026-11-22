@@ -146,12 +146,16 @@ def apply(shutdown):
     ps1 = os.path.join(tmp, "update.ps1")
     with open(ps1, "w", encoding="utf-8-sig") as f:  # BOM so Windows PowerShell reads it as UTF-8
         f.write(script)
-    cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", ps1]
-    base = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+    cmd = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1]
+    out = open(os.path.join(app_dir, "update-helper-output.txt"), "w")
+    base = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW (hidden console) | CREATE_NEW_PROCESS_GROUP
     try:  # also leave any job object, so closing Release Kit can't take the helper down with it
-        subprocess.Popen(cmd, creationflags=base | 0x01000000, close_fds=True, cwd=tmp)
+        subprocess.Popen(cmd, creationflags=base | 0x01000000, stdin=subprocess.DEVNULL, stdout=out,
+                         stderr=subprocess.STDOUT, cwd=tmp)
     except OSError:
-        subprocess.Popen(cmd, creationflags=base, close_fds=True, cwd=tmp)
+        subprocess.Popen(cmd, creationflags=base, stdin=subprocess.DEVNULL, stdout=out,
+                         stderr=subprocess.STDOUT, cwd=tmp)
+    out.close()
     STATE.update(progress=0.9, message="Restarting…")
     threading.Timer(1.5, shutdown).start()
     return {"restarting": True, "version": res["latest"]}
