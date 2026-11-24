@@ -411,9 +411,11 @@ class Pipes(Style):
         self.palette = hues
         self.reset()
         self.acc = 0.0
+        self.rate = 4.0
 
     def reset(self):
         self.used = set()
+        self.growing = set()  # segments still being drawn out (smooth growth instead of jumps)
         self.segs = []  # (p0, p1, colour)
         self.joints = []  # (p, colour)
         self.heads = []
@@ -426,23 +428,26 @@ class Pipes(Style):
             if p not in self.used:
                 self.used.add(p)
                 col = self.palette[(len(self.heads) + len(self.segs)) % len(self.palette)]
-                self.heads.append([p, self.DIRS[r.integers(0, 6)], col])
+                self.hid = getattr(self, "hid", 0) + 1
+                self.heads.append([p, self.DIRS[r.integers(0, 6)], col, self.hid])
                 self.joints.append((p, col))
                 return
         self.fade = 1
 
     def _step(self):
+        self.growing = set()
         if len(self.heads) < 2:
             self._new_head()
         for hd in list(self.heads):
-            p, d, col = hd
+            p, d, col, hid = hd
             opts = [d] * 6 + [x for x in self.DIRS if x != d and x != tuple(-v for v in d)]
             self.rng.shuffle(opts)
             for nd in opts:
                 q = (p[0] + nd[0], p[1] + nd[1], p[2] + nd[2])
                 if all(0 <= v < self.G for v in q) and q not in self.used:
                     self.used.add(q)
-                    self.segs.append((p, q, col))
+                    self.growing.add(len(self.segs))
+                    self.segs.append((p, q, col, hid, nd))
                     if nd != d:
                         self.joints.append((p, col))
                     hd[0], hd[1] = q, nd
@@ -469,13 +474,32 @@ class Pipes(Style):
             if self.fade > self.fps * 0.8:
                 self.reset()
         else:
-            self.acc += (3 + 10 * energy + 12 * bass) / self.fps
+            # speed follows the music, but eases into changes instead of jerking
+            self.rate += ((2.5 + 7 * energy + 8 * bass) - self.rate) * min(1.0, 3.0 / self.fps)
+            self.acc += self.rate / self.fps
+            if not self.segs:
+                self._step()
             while self.acc >= 1:
                 self.acc -= 1
                 self._step()
+        grow = 1.0 if self.fade else min(1.0, self.acc)
+        ease = grow * grow * (3 - 2 * grow)  # smoothstep: no sudden starts or stops
         alpha = 1.0 if not self.fade else max(0.0, 1 - self.fade / (self.fps * 0.8))
         items = []
-        for p0, p1, col in self.segs:
+        # one piece per straight stretch of a pipe: no seams, the shine runs the whole length
+        runs, last = [], {}
+        for idx, (p0, p1, col, hid, d) in enumerate(self.segs):
+            if idx in self.growing:  # the newest piece slides out of the joint
+                p1 = tuple(a0 + (b0 - a0) * ease for a0, b0 in zip(p0, p1))
+            r = last.get(hid)
+            if r is not None and r[3] == d and r[1] == p0 and not r[4]:
+                r[1] = p1
+                r[4] = idx in self.growing
+            else:
+                r = [p0, p1, col, d, idx in self.growing]
+                runs.append(r)
+                last[hid] = r
+        for p0, p1, col, d, _ in runs:
             a, b = self._proj(p0, t), self._proj(p1, t)
             items.append(((a[2] + b[2]) / 2, "s", a, b, col))
         for p, col in self.joints:

@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.5.2
+- **Smoother 3D Pipes:** pipes now grow continuously out of each joint instead of jumping a section at a time, speed changes ease in with the music, and each straight stretch is one seamless pipe (no more dashed look).
+
 ### New in 1.5.1
 - **Videos are made on your graphics card** (NVIDIA, AMD or Intel) when your computer has one: much faster, especially 4K and long videos. Release Kit tests the card when it starts; if it ever fails, that video is redone on the processor automatically. See **Settings → Graphics card**.
 - **Much bigger logos:** the size goes up to 300%, small logo files are enlarged to the size you choose, empty see-through margins around a logo are ignored, and wide logos can fill the width of the video.

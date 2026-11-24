@@ -7,7 +7,7 @@ size from the bass level of that frame.
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
-from . import art, audio
+from . import art, audio, ff
 
 COLORS = {"white": (255, 255, 255), "green": (57, 255, 20), "cyan": (40, 220, 255), "pink": (255, 70, 170),
           "gold": (255, 200, 60), "red": (255, 60, 60)}
@@ -221,3 +221,43 @@ def frame_feeder(env, tiles):
         for i in idx:
             write(tiles[i])
     return feed
+
+
+def beat_grid(audio_path, start=0.0, dur=None):
+    """(beats per minute, time of the first beat) from the low end, for cutting clips on the beat."""
+    fps = 100
+    try:
+        total = dur or (ff.duration(audio_path) - start)
+        n = int(min(total, 90) * fps)  # 90 s is plenty to find the tempo
+        env = bass_envelope(audio_path, fps, start, min(total, 90), n)
+    except Exception:
+        return 120.0, 0.0
+    if len(env) < fps * 4:
+        return 120.0, 0.0
+    onset = np.maximum(0, np.diff(env, prepend=env[0]))
+    onset = onset - onset.mean()
+    best, best_lag = -1e9, 50
+    for bpm in np.arange(70, 181, 0.5):
+        lag = 60 * fps / bpm
+        m = len(onset) - int(np.ceil(lag * 4)) - 1
+        a = onset[:m]
+        score = sum(float(np.dot(a, onset[int(round(lag * k)): int(round(lag * k)) + m])) for k in (1, 2, 4))
+        if score > best:
+            best, best_lag = score, lag
+    bpm = 60 * fps / best_lag
+    if bpm < 90:
+        bpm *= 2
+    # fine-tune: line up a comb of beats over the whole stretch (a small error adds up over a song)
+    t = np.arange(len(onset)) / fps
+    weight = np.maximum(0, onset)
+    best_r = -1.0
+    for cand in np.arange(bpm - 2, bpm + 2.001, 0.02):
+        ph = 2 * np.pi * t * cand / 60
+        r = float(np.abs(np.sum(weight * np.exp(1j * ph))))
+        if r > best_r:
+            best_r, fine = r, cand
+    bpm = fine
+    lag = 60 * fps / bpm
+    raw = np.maximum(0, np.diff(env, prepend=env[0]))
+    phases = [raw[int(p)::max(1, int(round(lag)))].sum() for p in range(int(lag))]
+    return float(bpm), float(int(np.argmax(phases)) / fps)
