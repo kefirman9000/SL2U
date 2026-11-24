@@ -625,13 +625,23 @@ def _element(opts, lw, lh, vertical):
     bump = opts.get("bump", "none")
     if bump == "none":
         return None
-    k = max(0.5, min(1.8, float(opts.get("center_size") or 1)))
-    canvas = int(min(min(lw, lh) * 0.56 * k, min(lw, lh))) // 2 * 2  # same proportion in vertical videos
+    amount = float(opts.get("bump_amount") or 0.12)
+    # same proportion in vertical videos, so rings clear it
+    cw, ch = reactive.element_canvas(bump, lw, lh, False, opts.get("center_size"), opts.get("logo"), amount)
     rgb = reactive.pick_color(opts.get("vis_color", "white"), opts.get("image"))
-    tiles = reactive.bump_frames(bump, canvas, float(opts.get("bump_amount") or 0.12), image=opts.get("image"),
+    tiles = reactive.bump_frames(bump, (cw, ch), amount, image=opts.get("image"),
                                  logo=opts.get("logo"), title=opts.get("title", ""), artist=opts.get("artist", ""),
                                  rgb=rgb)
-    return bump, canvas, [Image.frombytes("RGBA", (canvas, canvas), t) for t in tiles]
+    return bump, (cw, ch), [Image.frombytes("RGBA", (cw, ch), t) for t in tiles]
+
+
+def paste(fr, tile, x, y):
+    """alpha_composite that also works when the tile is bigger than the frame or hangs off its edges."""
+    x, y = int(x), int(y)
+    sx, sy = max(0, -x), max(0, -y)
+    w, h = min(tile.width - sx, fr.width - max(0, x)), min(tile.height - sy, fr.height - max(0, y))
+    if w > 0 and h > 0:
+        fr.alpha_composite(tile.crop((sx, sy, sx + w, sy + h)), (max(0, x), max(0, y)))
 
 
 def make_style(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, vertical, size=1.0):
@@ -645,7 +655,7 @@ def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertica
     style = make_style(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, vertical, opts.get("vis_size") or 1.0)
     el = _element(opts, style.w, style.h, vertical)
     if el:
-        style.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))
+        style.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))  # rings stop growing past 180%
 
     def feed(write):
         for i in range(n_frames):
@@ -655,7 +665,7 @@ def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertica
                 tile = tiles[int(round(float(style.data["bass"][i]) * (len(tiles) - 1)))]
                 if bump == "disc":
                     tile = tile.rotate(-360.0 * (i / fps) / spin_period, resample=Image.BILINEAR)
-                fr.alpha_composite(tile, (int(style.cx - canvas / 2), int(style.cy - canvas / 2)))
+                paste(fr, tile, style.cx - canvas[0] / 2, style.cy - canvas[1] / 2)
             write(fr.tobytes())
     return style.w, style.h, feed
 
@@ -675,12 +685,12 @@ def still(kind, w, h, rgb, opts, vertical, seconds=1.2, fps=30):
     style = STYLES[kind](lw, lh, fps, rgb, vertical, data, opts.get("vis_size") or 1.0)
     el = _element(opts, lw, lh, vertical)
     if el:
-        style.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))
+        style.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))  # rings stop growing past 180%
     for i in range(n - 1):  # let particles and tunnels fill in
         if kind in ("particles", "tunnel", "synthwave", "starfield", "mystify", "pipes"):
             style.frame(i)
     fr = style.frame(n - 1)
     if el:
         bump, canvas, tiles = el
-        fr.alpha_composite(tiles[len(tiles) // 2], (int(style.cx - canvas / 2), int(style.cy - canvas / 2)))
+        paste(fr, tiles[len(tiles) // 2], style.cx - canvas[0] / 2, style.cy - canvas[1] / 2)
     return fr.resize((w, h), Image.BILINEAR) if (lw, lh) != (w, h) else fr

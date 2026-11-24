@@ -20,11 +20,9 @@ def _stage(progress, a, b):
 
 
 def _x264(fps, still=False, crf=20):
-    args = ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf), "-pix_fmt", "yuv420p",
-            "-r", str(fps), "-g", str(int(fps * 2))]
-    if still:
-        args += ["-tune", "stillimage"]
-    return args
+    """H.264 settings for the YouTube videos: graphics card if available (see ff.h264), else libx264."""
+    q = 2 if crf <= 17 else 1 if crf <= 23 else 0
+    return ff.h264(fps, q, still=still, cpu_preset="veryfast", crf=crf)
 
 
 AAC = ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
@@ -148,16 +146,17 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     else:
         fc.append("[av]anullsink")
     if bump != "none":
-        canvas = centre_canvas(w, h, vertical, opts.get("center_size"))
-        tiles = reactive.bump_frames(bump, canvas, float(opts.get("bump_amount", 0.12)), image=opts.get("image"),
+        amount = float(opts.get("bump_amount", 0.12))
+        cw, ch = reactive.element_canvas(bump, w, h, vertical, opts.get("center_size"), opts.get("logo"), amount)
+        tiles = reactive.bump_frames(bump, (cw, ch), amount, image=opts.get("image"),
                                      logo=opts.get("logo"), title=opts.get("title", ""),
                                      artist=opts.get("artist", ""), rgb=rgb)
         env = reactive.bass_envelope(audio_path, fps, start, dur, n_frames)
         feed = reactive.frame_feeder(env, tiles)
-        args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{canvas}x{canvas}", "-framerate", str(fps), "-i", "pipe:0"]
+        args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{cw}x{ch}", "-framerate", str(fps), "-i", "pipe:0"]
         b = "[2:v]"
         if bump == "disc":
-            fc.append(f"{b}rotate=a='2*PI*t/{spin_period:.4f}':c=none:ow={canvas}:oh={canvas}[bp]")
+            fc.append(f"{b}rotate=a='2*PI*t/{spin_period:.4f}':c=none:ow={cw}:oh={ch}[bp]")
             b = "[bp]"
         lift = 0.07 if vis in reactive.BOTTOM and (opts.get("vis_pos") or "bottom") == "bottom" else 0.0
         y = f"(H-h)/2-H*{lift + (0.06 if vertical else 0):.2f}"
@@ -176,9 +175,8 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
 
 
 def centre_canvas(w, h, vertical=False, scale=None):
-    """Size of the square tile the bumping cover/logo/text is drawn in. scale: 0.5-1.8 from the size slider."""
-    k = max(0.5, min(1.8, float(scale or 1)))
-    return max(16, int(min(min(w, h) * (0.56 if not vertical else 0.8) * k, min(w, h))) // 2 * 2)
+    """Square tile size for the cover/disc in the middle (kept for older callers)."""
+    return reactive.element_canvas("cover", w, h, vertical, scale)[0]
 
 
 def style_defaults(opts):
@@ -611,8 +609,7 @@ def encoder(fmt="mp4", quality="standard", fps=30):
                   "-deadline", ("realtime", "good", "good")[q], "-cpu-used", ("8", "4", "2")[q]] + gop)
         return {"video": video, "audio": ["-c:a", "libopus", "-b:a", "256k", "-ar", "48000"],
                 "pix_fmt": "yuv420p", "ext": ".webm", "faststart": False, "format": fmt}
-    video = (["-c:v", "libx264", "-preset", ("ultrafast", "veryfast", "slow")[q], "-crf", ("28", "20", "16")[q],
-              "-profile:v", "high"] + gop)
+    video = ff.h264(fps, q)  # graphics card when available
     return {"video": video, "audio": AAC, "pix_fmt": "yuv420p", "ext": ".mp4", "faststart": True, "format": fmt}
 
 

@@ -124,12 +124,124 @@ def audio_info(path):
 _time_re = re.compile(r"out_time_ms=(\d+)")
 
 
+# ---------------------------------------------------------------- graphics-card (GPU) encoding
+# Most PCs can encode H.264 on the graphics chip, several times faster than on the processor.
+# We find out once which one works here (by actually encoding a tiny clip), use it for every
+# MP4, and if it ever fails mid-job, that video is redone on the processor automatically.
+GPU_CANDIDATES = [("h264_nvenc", "NVIDIA"), ("h264_qsv", "Intel Quick Sync"), ("h264_amf", "AMD"),
+                  ("h264_videotoolbox", "Apple")]
+GPU = {"mode": "auto", "encoder": None, "name": None, "checked": False, "broken": False, "note": ""}
+_FALLBACK = {}  # tuple(gpu args) -> cpu args
+_gpu_lock = __import__("threading").Lock()
+
+
+def _gpu_args(enc, q):
+    if enc == "h264_nvenc":
+        return ["-c:v", enc, "-preset", ("p2", "p4", "p6")[q], "-tune", "hq", "-rc", "vbr",
+                "-cq", ("28", "21", "17")[q], "-b:v", "0", "-profile:v", "high", "-pix_fmt", "yuv420p"]
+    if enc == "h264_qsv":
+        return ["-c:v", enc, "-preset", ("veryfast", "medium", "slower")[q],
+                "-global_quality", ("28", "22", "18")[q], "-profile:v", "high", "-pix_fmt", "nv12"]
+    if enc == "h264_amf":
+        qp = ("28", "22", "18")[q]
+        return ["-c:v", enc, "-quality", ("speed", "balanced", "quality")[q], "-rc", "cqp",
+                "-qp_i", qp, "-qp_p", qp, "-qp_b", qp, "-profile:v", "high", "-pix_fmt", "yuv420p"]
+    if enc == "h264_videotoolbox":
+        return ["-c:v", enc, "-q:v", ("45", "60", "72")[q], "-profile:v", "high", "-pix_fmt", "yuv420p"]
+    return []
+
+
+def detect_gpu(force=False):
+    """Which graphics-card H.264 encoder works on this computer (None if none, or switched off)."""
+    with _gpu_lock:
+        if GPU["checked"] and not force:
+            return GPU["encoder"]
+        GPU.update(checked=True, encoder=None, name=None, note="")
+        fake = os.environ.get("RELEASEKIT_FAKE_GPU")  # tests: pretend this encoder exists
+        try:
+            listed = subprocess.run([FFMPEG, "-hide_banner", "-encoders"], capture_output=True, text=True,
+                                    timeout=20).stdout
+        except Exception:
+            listed = ""
+        for enc, name in GPU_CANDIDATES:
+            if fake:
+                if enc == fake:
+                    GPU.update(encoder=enc, name=name, note="test mode")
+                    break
+                continue
+            if f" {enc} " not in listed:
+                continue
+            try:  # listed isn't enough: the card and its driver must actually work
+                test = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-f", "lavfi", "-i",
+                                       "testsrc2=s=640x360:d=1:r=30"] + _gpu_args(enc, 1) + ["-f", "null", "-"],
+                                      capture_output=True, text=True, timeout=30)
+                if test.returncode == 0:
+                    GPU.update(encoder=enc, name=name)
+                    break
+            except Exception:
+                pass
+        if not GPU["encoder"]:
+            GPU["note"] = "No graphics-card encoder found; videos are made on the processor."
+        return GPU["encoder"]
+
+
+def gpu_status():
+    return {"mode": GPU["mode"], "available": GPU["encoder"], "name": GPU["name"], "checked": GPU["checked"],
+            "active": bool(GPU["encoder"]) and GPU["mode"] != "off" and not GPU["broken"], "note": GPU["note"],
+            "broken": GPU["broken"]}
+
+
+def h264(fps, quality=1, still=False, cpu_preset=None, crf=None):
+    """Encoder settings for an H.264 MP4: graphics card when available and switched on, else libx264.
+    quality: 0 draft, 1 standard, 2 high."""
+    q = max(0, min(2, int(quality)))
+    cpu = ["-c:v", "libx264", "-preset", cpu_preset or ("ultrafast", "veryfast", "slow")[q],
+           "-crf", str(crf if crf is not None else ("28", "20", "16")[q]), "-profile:v", "high", "-pix_fmt", "yuv420p"]
+    if still:
+        cpu += ["-tune", "stillimage"]
+    tail = ["-r", str(fps), "-g", str(int(fps) * 2)]
+    enc = None if GPU["mode"] == "off" or GPU["broken"] else detect_gpu()
+    if not enc:
+        return cpu + tail
+    gpu = _gpu_args(enc, q) + tail
+    _FALLBACK[tuple(gpu)] = cpu + tail
+    return gpu
+
+
+def _swap_gpu(args):
+    """args with any graphics-card encoder settings replaced by the processor ones (or None if there were none)."""
+    args = list(args)
+    for g, c in _FALLBACK.items():
+        n = len(g)
+        for i in range(len(args) - n + 1):
+            if tuple(args[i:i + n]) == g:
+                return args[:i] + list(c) + args[i + n:]
+    return None
+
+
 def run(args, total_seconds=None, progress=None, cancel=None, feed=None):
     """Run ffmpeg with machine-readable progress.
 
     progress(fraction) is called with 0..1 when total_seconds is known.
     cancel() -> bool lets a job stop the process.
+    If a graphics-card encode fails, it's redone on the processor (and the card isn't used again this session).
     """
+    try:
+        return _run(args, total_seconds, progress, cancel, feed)
+    except FFError as e:
+        if str(e) == "Cancelled" or (cancel and cancel()):
+            raise
+        cpu_args = _swap_gpu(args)
+        if cpu_args is None:
+            raise
+        GPU["broken"] = True
+        GPU["note"] = "The graphics card failed to encode a video, so the processor is used until Release Kit restarts. " \
+                      "Updating the graphics driver usually fixes this. Details: " + str(e).splitlines()[1][:200] \
+            if len(str(e).splitlines()) > 1 else "The graphics card failed to encode a video; using the processor."
+        return _run(cpu_args, total_seconds, progress, cancel, feed)
+
+
+def _run(args, total_seconds=None, progress=None, cancel=None, feed=None):
     out_dir = os.path.dirname(str(args[-1])) if args else ""
     if out_dir and not str(args[-1]).startswith("-"):
         os.makedirs(out_dir, exist_ok=True)

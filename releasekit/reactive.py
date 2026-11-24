@@ -112,12 +112,42 @@ def bass_envelope(audio_path, fps, start=0.0, duration=None, n_frames=None):
 
 # ---------------------------------------------------------------- bump layer
 
-def _element(kind, size, image=None, logo=None, title="", artist="", rgb=(255, 255, 255)):
-    """The thing that bumps, as an RGBA image that fits in size x size."""
+def load_logo(path):
+    """The logo as RGBA with its empty see-through margins cut off, so the size slider sizes the logo itself."""
+    im = Image.open(path).convert("RGBA")
+    box = im.getchannel("A").point(lambda a: 255 if a > 8 else 0).getbbox()
+    return im.crop(box) if box else im
+
+
+def element_canvas(kind, w, h, vertical=False, scale=None, logo=None, amount=0.12):
+    """(width, height) of the tile the bumping element is drawn on, for a w x h video.
+    scale: the size slider, 0.5-3.0. Logos get a tile shaped like the logo, so wide logos can be big."""
+    k = max(0.5, min(3.0, float(scale or 1)))
+    room = (1 + float(amount or 0)) * 1.25  # space for the pulse and the glow
+    even = lambda v: max(16, int(v) // 2 * 2)
     if kind == "logo" and logo:
-        im = Image.open(logo).convert("RGBA")
-        im.thumbnail((size, size), Image.LANCZOS)
-        return im
+        try:
+            with Image.open(logo) as im0:
+                lw, lh = load_logo(logo).size if im0.mode in ("RGBA", "LA", "P") else im0.size
+        except Exception:
+            lw, lh = 1, 1
+        ar = lw / max(1, lh)
+        longest = min(w, h) * 0.42 * k
+        ew, eh = (longest, longest / ar) if ar >= 1 else (longest * ar, longest)
+        fit = min(1.0, w * 0.96 / ew, h * 0.96 / eh)  # never bigger than the picture
+        return even(ew * fit * room), even(eh * fit * room)
+    side = min(min(w, h) * (0.56 if not vertical else 0.8) * k, min(w, h) * 1.3)
+    return even(side), even(side)
+
+
+def _element(kind, size, image=None, logo=None, title="", artist="", rgb=(255, 255, 255)):
+    """The thing that bumps, as an RGBA image that fits in size (an int for a square, or (w, h))."""
+    bw, bh = size if isinstance(size, tuple) else (size, size)
+    if kind == "logo" and logo:
+        im = load_logo(logo)
+        f = min(bw / im.width, bh / im.height)  # scale up too: a small PNG still fills the size you chose
+        return im.resize((max(1, int(im.width * f)), max(1, int(im.height * f))), Image.LANCZOS)
+    size = min(bw, bh)
     if kind == "text":
         im = Image.new("RGBA", (size * 2, size), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
@@ -150,27 +180,32 @@ def _element(kind, size, image=None, logo=None, title="", artist="", rgb=(255, 2
 
 def bump_frames(kind, canvas, amount=0.12, levels=24, image=None, logo=None, title="", artist="",
                 rgb=(255, 255, 255)):
-    """Pre-render `levels` sizes of the element (with growing glow) on a canvas x canvas RGBA tile."""
-    base = int(canvas / (1 + amount) / 1.25)
-    el = _element(kind, base, image, logo, title, artist, rgb)
+    """Pre-render `levels` sizes of the element (with growing glow) on a canvas RGBA tile.
+    canvas: an int (square) or (width, height) from element_canvas()."""
+    cw, ch = canvas if isinstance(canvas, tuple) else (canvas, canvas)
+    if cw * ch > 900 * 900:
+        levels = min(levels, 12)  # big tiles: fewer steps keeps memory in check
+    base = (max(1, int(cw / (1 + amount) / 1.25)), max(1, int(ch / (1 + amount) / 1.25)))
+    el = _element(kind, base if kind == "logo" else min(base), image, logo, title, artist, rgb)
     tiles = []
+    m = min(cw, ch)
     for i in range(levels):
-        t = i / (levels - 1)
+        t = i / max(1, levels - 1)
         s = 1 + amount * t
         e = el.resize((max(1, int(el.width * s)), max(1, int(el.height * s))), Image.LANCZOS)
-        tile = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-        glow = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+        tile = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+        glow = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
         alpha = e.split()[-1]
         col = Image.new("RGBA", e.size, rgb + (0,))
         col.putalpha(alpha.point(lambda a: int(a * (0.25 + 0.6 * t))))
-        x, y = (canvas - e.width) // 2, (canvas - e.height) // 2
+        x, y = (cw - e.width) // 2, (ch - e.height) // 2
         glow.paste(col, (x, y), col)
-        glow = glow.filter(ImageFilter.GaussianBlur(canvas * (0.025 + 0.03 * t)))
-        shadow = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+        glow = glow.filter(ImageFilter.GaussianBlur(m * (0.025 + 0.03 * t)))
+        shadow = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
         sh = Image.new("RGBA", e.size, (0, 0, 0, 0))
         sh.putalpha(alpha.point(lambda a: int(a * 0.55)))
-        shadow.paste(sh, (x + canvas // 80, y + canvas // 60), sh)
-        shadow = shadow.filter(ImageFilter.GaussianBlur(canvas // 50))
+        shadow.paste(sh, (x + m // 80, y + m // 60), sh)
+        shadow = shadow.filter(ImageFilter.GaussianBlur(m // 50))
         tile = Image.alpha_composite(Image.alpha_composite(glow, shadow), tile)
         tile.alpha_composite(e, (x, y))
         tiles.append(tile.tobytes())

@@ -133,6 +133,8 @@ jobs:
           $lg = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "ring"; bump = "logo"; logo = $up.path; center_size = 1.4 }; export = @{ size = 720; quality = "draft" } } }
           $nl = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "none"; bump = "logo" }; export = @{ size = 720; quality = "draft" } } }
           Write-Host "Logo videos OK"
+          $g = Invoke-RestMethod http://127.0.0.1:5577/api/gpu
+          Write-Host "Graphics card status: $($g | ConvertTo-Json -Compress)"
           $smp = Run-Job @{ kinds = @("vis_samples"); release = $rel; params = @{ seconds = 3 } }
           if ($smp.result.samples.Count -lt 12) { throw "Expected 12 visualizer samples" }
           Write-Host "Rendered $($smp.result.samples.Count) visualizer samples"

@@ -348,7 +348,7 @@ details.more[open]>summary{margin-bottom:4px}
               <div class="muted" style="font-size:12px;margin-top:6px" id="edLogoNote"></div>
               <div class="row" style="margin-top:6px"><button class="b s" onclick="pick({kind:'image'},p=>addAssetPath('logo',p))">Find it in a folder instead…</button></div>
             </div>
-            <div class="ed-row"><label>Size</label><input type="range" id="edCenter" min="0.5" max="1.8" step="0.1" value="1"><span class="val" id="edCenterV"></span></div>
+            <div class="ed-row"><label>Size</label><input type="range" id="edCenter" min="0.5" max="3" step="0.1" value="1"><span class="val" id="edCenterV"></span></div>
             <div class="ed-row"><label>Pulse to the beat</label><input type="range" id="edPulse" min="0" max="0.3" step="0.02" value="0.12"><span class="val" id="edPulseV"></span></div>
           </div>
           <div class="insp" data-l="vis">
@@ -413,7 +413,7 @@ details.more[open]>summary{margin-bottom:4px}
     <label class="chk"><input type="checkbox" id="exFade" checked>Fade the audio in &amp; out</label>
     </details>
     <div class="row" style="margin-top:12px"><button class="b" onclick="exportPreview()" title="Shows this video's shape in the preview above">Preview this shape</button><button class="b p" onclick="exportVideo()">Make video</button>
-      <button class="b" onclick="exportVideo(true)">Make one for every track</button></div>
+      <button class="b" onclick="exportVideo(true)">Make one for every track</button><span class="muted" id="gpuBadge" style="font-size:12px" title="Videos are encoded on your graphics card (Settings → Graphics card)"></span></div>
     <p class="muted" style="font-size:12px">Saved in the <b>videos</b> folder of this release. MOV (ProRes) files are big, about 1 GB a minute at 1080p, and can't be previewed in the browser.</p>
   </div>
 
@@ -648,6 +648,11 @@ details.more[open]>summary{margin-bottom:4px}
   <div class="card"><h3>Updates</h3><label class="chk"><input type="checkbox" id="sUpd">Check for a new version when Release Kit starts</label>
     <div class="row"><button class="b s" onclick="checkUpdate(true)">Check now</button><span class="muted" id="verText" style="font-size:13px"></span></div></div>
   <div class="card"><h3>Look</h3><select id="sTheme" style="max-width:260px" onchange="applyTheme(this.value)"><option value="studio">Studio (black &amp; green, like SL2)</option><option value="ember">Ember (dark &amp; orange)</option></select></div>
+  <div class="card"><h3>Graphics card</h3>
+    <div class="row"><label for="sGpu" style="margin:0">Make videos on the graphics card (much faster)</label>
+      <select id="sGpu" style="width:auto" onchange="api('/api/settings',{gpu:this.value}).then(x=>{S=x;gpuStatus()})"><option value="auto">On, if this computer has one</option><option value="off">Off (always use the processor)</option></select></div>
+    <div class="row" style="margin-top:8px"><span id="gpuText" class="grow" style="font-size:13px"></span><button class="b s" onclick="gpuStatus(true)">Check again</button></div>
+    <p class="muted" style="font-size:12px">Works with NVIDIA, AMD and Intel graphics on Windows. If the card ever fails, that video is made on the processor instead, so nothing is lost. Used for MP4 videos; MOV (ProRes) and WebM always use the processor.</p></div>
   <div class="card"><h3>Notifications</h3><label class="chk"><input type="checkbox" id="sNotify">Pop-up and sound when a job finishes</label></div>
   <div class="card"><h3>Your links (added to every description)</h3><div class="grid g3" id="profileFields"></div></div>
   <button class="b p" onclick="saveSettings()">Save settings</button>
@@ -707,7 +712,7 @@ async function init(){
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
   document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
   $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
-  showVersion();rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();edInit();
+  showVersion();gpuStatus();rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();edInit();
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -1101,7 +1106,10 @@ async function sig(k,f,v){S.signups=S.signups||{};S.signups[k]=S.signups[k]||{};
 function applyTheme(t){document.body.classList.toggle('ember',t==='ember');localStorage.setItem('rk_theme',t)}
 applyTheme(localStorage.getItem('rk_theme')||'studio');
 function showVersion(){if($("verTag")&&INIT&&INIT.version)$("verTag").textContent="v"+INIT.version}
-function fillSettings(){showVersion();$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("#profileFields [data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
+async function gpuStatus(recheck){let g;try{g=await api("/api/gpu"+(recheck?"?recheck=1":""))}catch(e){return}
+  const t=g.mode==="off"?"Off: videos are made on the processor.":g.broken?"⚠ "+g.note:g.available?`⚡ Using your ${g.name} graphics card for MP4 videos.`:g.checked?"No usable graphics card found, so videos are made on the processor.":"Checking…";
+  if($("gpuText"))$("gpuText").textContent=t;if($("gpuBadge"))$("gpuBadge").textContent=g.active?`⚡ ${g.name} graphics card`:"";if(!g.checked)setTimeout(gpuStatus,2000)}
+function fillSettings(){showVersion();$("sGpu").value=S.gpu||"auto";gpuStatus();$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("#profileFields [data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
 async function saveSettings(){const profile={};document.querySelectorAll("#profileFields [data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
   const defaults={};document.querySelectorAll("[data-d]").forEach(el=>defaults[el.dataset.d]=el.value.trim());
   if($("sNotify").checked&&window.Notification&&Notification.permission==="default")Notification.requestPermission();

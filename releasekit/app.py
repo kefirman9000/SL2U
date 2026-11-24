@@ -566,7 +566,16 @@ def api_settings():
     s = load_settings()
     s.update(request.json or {})
     save_settings(s)
+    ff.GPU["mode"] = s.get("gpu", "auto")
     return jsonify(s)
+
+
+@app.get("/api/gpu")
+def api_gpu():
+    if request.args.get("recheck"):
+        ff.GPU["broken"] = False
+        ff.detect_gpu(force=True)
+    return jsonify(ff.gpu_status())
 
 
 @app.get("/api/project/<name>")
@@ -837,15 +846,16 @@ def api_preview():
         fr.convert("RGB").save(tmp)
         bump = "none"
     if bump != "none":
-        canvas = int(min(w, h) * (0.56 if not vertical else 0.8)) // 2 * 2
+        amount = float(style.get("bump_amount") or 0.12)
+        cw, ch = reactive.element_canvas(bump, w, h, vertical, style.get("center_size"), style.get("logo"), amount)
         rgb = reactive.pick_color(style.get("vis_color", "white"), img)
-        tile = reactive.bump_frames(bump, canvas, float(style.get("bump_amount") or 0.12), levels=2, image=img,
+        tile = reactive.bump_frames(bump, (cw, ch), amount, levels=2, image=img,
                                     logo=style.get("logo"), title=b.get("title", ""), artist=b.get("artist", ""),
                                     rgb=rgb)[1]
         fr = Image.open(tmp).convert("RGBA")
-        t_im = Image.frombytes("RGBA", (canvas, canvas), tile)
+        t_im = Image.frombytes("RGBA", (cw, ch), tile)
         lift = 0.07 if (style.get("visualizer") or "none") in ("bars", "mirror", "waves", "line", "spectrum") else 0
-        fr.alpha_composite(t_im, ((w - canvas) // 2, (h - canvas) // 2 - int(h * (lift + (0.06 if vertical else 0)))))
+        drawn.paste(fr, t_im, (w - cw) // 2, (h - ch) // 2 - int(h * (lift + (0.06 if vertical else 0))))
         fr.convert("RGB").save(tmp)
     return send_file(tmp, mimetype="image/png", max_age=0)
 
@@ -1263,6 +1273,8 @@ def main():
         print("WARNING: missing", ", ".join(missing), "- install ffmpeg (see README).")
     url = GUARD.url(p)
     update.check_in_background(load_settings().get("check_updates", True))
+    ff.GPU["mode"] = load_settings().get("gpu", "auto")
+    threading.Thread(target=ff.detect_gpu, daemon=True).start()  # find the graphics card while you get started
     print(f"Release Kit running. Open it with this private link (don't share it):\n  {url}\n(data folder: {DATA_DIR})")
     # after the update that adds the session key, the old tab can't get in: open the private link once
     if not os.environ.get("RELEASEKIT_NO_BROWSER") or (GUARD.new_key and HAD_SETTINGS):
