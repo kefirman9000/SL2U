@@ -57,8 +57,11 @@ def _service(data_dir, interactive=True):
             raise NeedsSignIn("Not signed in to YouTube. Press 'Connect YouTube' in the Upload tab.")
         else:
             creds = InstalledAppFlow.from_client_secrets_file(secret, SCOPES).run_local_server(port=0)
-        with open(token, "w") as f:
+        # the token is a password for your channel: readable by you only
+        fd = os.open(token + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
             f.write(creds.to_json())
+        os.replace(token + ".tmp", token)
     return build("youtube", "v3", credentials=creds)
 
 

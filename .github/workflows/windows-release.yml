@@ -67,6 +67,8 @@ jobs:
         run: |
           $env:RELEASEKIT_NO_BROWSER = "1"
           $env:RELEASEKIT_HOME = "$env:RUNNER_TEMP\rkhome"
+          $env:RELEASEKIT_TOKEN = "ci-smoke-test-key-0123456789abcdef"
+          $PSDefaultParameterValues['Invoke-RestMethod:Headers'] = @{ 'X-ReleaseKit-Key' = $env:RELEASEKIT_TOKEN }
           $exe = Resolve-Path dist\ReleaseKit\ReleaseKit.exe
           $out = "$env:RUNNER_TEMP\rk-out.txt"; $err = "$env:RUNNER_TEMP\rk-err.txt"
           $p = Start-Process $exe -PassThru -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
@@ -81,6 +83,10 @@ jobs:
             Write-Host "---- app errors ----"; Get-Content $err -ErrorAction SilentlyContinue
             throw "App did not start (exited: $($p.HasExited))"
           }
+          # the API must refuse callers without the key
+          $code = 0
+          try { Invoke-WebRequest http://127.0.0.1:5577/api/init -UseBasicParsing | Out-Null; $code = 200 } catch { $code = $_.Exception.Response.StatusCode.value__ }
+          if ($code -ne 401) { throw "API without the key answered $code, expected 401" }
           if ($init.missing_tools.Count -gt 0) { throw "ffmpeg not found inside the build: $($init.missing_tools)" }
           if (-not $init.youtube_available) { throw "YouTube upload libraries missing from the build" }
           $wav = "$env:RUNNER_TEMP\tone.wav"
@@ -107,6 +113,14 @@ jobs:
           Write-Host "Rendered beat-bump video $($bump.result.path)"
           $loop = Run-Job @{ kinds = @("long_video"); release = $rel; params = @{ hours = 0.01; visual = "pan"; vstyle = @{ visualizer = "bars"; bump = "cover" } } }
           Write-Host "Rendered loop video $($loop.result.path)"
+          $ex = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ visualizer = "ring"; export = @{ format = "mov"; aspect = "9:16"; size = 720; fps = 24; quality = "draft" } } }
+          if (-not (Test-Path $ex.result.path)) { throw "Export file missing" }
+          Write-Host "Exported $($ex.result.path)"
+          $ex2 = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ visualizer = "particles"; export = @{ format = "webm"; aspect = "1:1"; size = 720; fps = 30; quality = "draft" } } }
+          Write-Host "Exported $($ex2.result.path)"
+          $smp = Run-Job @{ kinds = @("vis_samples"); release = $rel; params = @{ seconds = 3 } }
+          if ($smp.result.samples.Count -lt 12) { throw "Expected 12 visualizer samples" }
+          Write-Host "Rendered $($smp.result.samples.Count) visualizer samples"
           Stop-Process $p.Id -Force
           Get-Content $err -Tail 20 -ErrorAction SilentlyContinue
 
@@ -121,6 +135,8 @@ jobs:
           Compress-Archive -Path "$root\stage\ReleaseKit" -DestinationPath "$root\fake-update.zip"
           $env:RELEASEKIT_NO_BROWSER = "1"
           $env:RELEASEKIT_HOME = "$root\home"
+          $env:RELEASEKIT_TOKEN = "ci-update-test-key-0123456789abcdef"
+          $PSDefaultParameterValues['Invoke-RestMethod:Headers'] = @{ 'X-ReleaseKit-Key' = $env:RELEASEKIT_TOKEN }
           $env:RELEASEKIT_UPDATE_TEST_ZIP = "$root\fake-update.zip"
           $env:RELEASEKIT_UPDATE_TEST_VERSION = "99.0.0"
           $inst = "$root\installed\ReleaseKit"

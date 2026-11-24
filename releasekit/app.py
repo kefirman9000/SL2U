@@ -14,18 +14,27 @@ import zlib
 
 from flask import Flask, abort, jsonify, request, send_file
 
-from . import __version__, art, audio, ff, links, meta, packages, schedule, sl2link, update, video, youtube
+from . import __version__, art, audio, drawn, ff, links, meta, packages, reactive, schedule, security, sl2link, update, video, youtube
 
 DATA_DIR = os.environ.get("RELEASEKIT_HOME", os.path.join(os.path.expanduser("~"), "ReleaseKit"))
 PROJECTS = os.path.join(DATA_DIR, "projects")
 INBOX = os.path.join(DATA_DIR, "inbox")
 SETTINGS = os.path.join(DATA_DIR, "settings.json")
+HAD_SETTINGS = os.path.exists(SETTINGS)
 for d in (DATA_DIR, PROJECTS):
     os.makedirs(d, exist_ok=True)
 
 AUDIO_EXT = (".wav", ".flac", ".aif", ".aiff", ".mp3", ".m4a", ".ogg", ".opus")
+VIDEO_EXT = (".mp4", ".mov", ".mkv", ".webm", ".m4v")
 
 app = Flask(__name__, static_folder=None)
+
+
+def port():
+    return int(os.environ.get("RELEASEKIT_PORT", 5577))
+
+
+GUARD = security.Guard(app, DATA_DIR, port)
 
 
 # ---------------------------------------------------------------- settings / projects
@@ -228,6 +237,47 @@ def build_job(kind, r, p):
             track["path"], img, os.path.join(out, "youtube", name), t_title, artist, p.get("resolution", "1080p"),
             vis, p.get("layout", "cover"), text, progress=prog, cancel=cancel, opts=vopts)
 
+    if kind == "export_video":
+        _require(track, "Add a track first.")
+        img = _first_image(r, p)
+        _require(img, "Set a cover or choose an image.")
+        ex = p.get("export") if isinstance(p.get("export"), dict) else {}
+        fmt = ex.get("format") if ex.get("format") in video.EXPORT_FORMATS else "mp4"
+        aspect = ex.get("aspect") if ex.get("aspect") in video.ASPECTS else "16:9"
+        size = int(ex.get("size") or 1080)
+        _require(size in video.SIZES, "Choose a video size.")
+        fps = int(ex.get("fps") or 30)
+        _require(fps in video.FPS_CHOICES, "Choose a frame rate.")
+        quality = ex.get("quality") if ex.get("quality") in video.QUALITIES else "standard"
+        start = float(ex.get("start") or 0)
+        length = float(ex["length"]) if ex.get("length") not in (None, "", 0, "0") else None
+        full = ff.duration(track["path"])
+        _require(0 <= start < full, f"Start is past the end of the track ({full:.0f} s long).")
+        seconds = min(full - start, length or full)
+        w, h = video.export_size(aspect, size)
+        check_space(out, video.export_bytes(fmt, w, h, fps, seconds, quality))
+        vis = p.get("visualizer") or vis_global
+        vis_name = reactive.VISUALIZERS.get(vis, vis) if vis != "none" else ""
+        tag = " - ".join(x for x in (vis_name, aspect.replace(":", "x"), f"{size}p" if size != 2160 else "4K") if x)
+        name = packages.safe(f"{artist} - {t_title} ({tag})") + video.EXPORT_FORMATS[fmt]["ext"]
+        return f"Export video: {t_title} ({fmt.upper()} {w}×{h} {fps} fps)", lambda prog, cancel: video.export_video(
+            track["path"], img, os.path.join(out, "videos", name), t_title, artist, vis, ex.get("layout", "cover"),
+            text, fmt, aspect, size, fps, quality, start, length, bool(ex.get("fade", True)), prog, cancel, opts=vopts)
+
+    if kind == "vis_samples":
+        img = _first_image(r, p)  # optional: generated art stands in
+        if img and not os.path.isfile(img):
+            img = None
+        seconds = max(3.0, min(15.0, float(p.get("seconds") or 6)))
+        aspect = p.get("aspect") if p.get("aspect") in video.ASPECTS else "16:9"
+        start = p.get("start")
+        start = float(start) if start not in (None, "") else None
+        folder = os.path.join(out if track else os.path.join(DATA_DIR, "samples"), "visualizer samples")
+        label = f"Visualizer samples: {t_title}" if track else "Visualizer samples (demo beat)"
+        return label, lambda prog, cancel: video.visualizer_samples(
+            track["path"] if track else None, img, folder, t_title if track else "", artist, seconds, start, vopts,
+            aspect=aspect, progress=prog, cancel=cancel)
+
     if kind == "album_video":
         _require(len(tracks) > 0, "Add tracks first.")
         img = _first_image(r, p)
@@ -370,8 +420,8 @@ def index():
 @app.get("/static/<path:name>")
 def static_file(name):
     base = os.path.join(os.path.dirname(__file__), "static")
-    path = os.path.normpath(os.path.join(base, name))
-    if not path.startswith(base) or not os.path.isfile(path):
+    path = os.path.realpath(os.path.join(base, name))
+    if os.path.commonpath([path, os.path.realpath(base)]) != os.path.realpath(base) or not os.path.isfile(path):
         abort(404)
     return send_file(path, max_age=86400)
 
@@ -434,7 +484,7 @@ def api_browse():
         else:
             low = e.lower()
             kind = "audio" if low.endswith(AUDIO_EXT) else "image" if low.endswith(art.IMAGE_EXT) else \
-                "video" if low.endswith((".mp4", ".mov", ".mkv")) else "other"
+                "video" if low.endswith(VIDEO_EXT) else "other"
             files.append({"name": e, "kind": kind})
     return jsonify({"path": path, "parent": os.path.dirname(path), "dirs": dirs, "files": files})
 
@@ -560,7 +610,7 @@ def api_open():
 def _kind(name):
     low = name.lower()
     return "audio" if low.endswith(AUDIO_EXT) else "image" if low.endswith(art.IMAGE_EXT) else \
-        "video" if low.endswith((".mp4", ".mov", ".mkv")) else "other"
+        "video" if low.endswith(VIDEO_EXT) else "other"
 
 
 @app.post("/api/upload")
@@ -613,8 +663,11 @@ def api_preview():
     img = b.get("image")
     if not img or not os.path.isfile(img):
         return jsonify({"error": "Set a cover or choose an image first."}), 400
-    vertical = bool(b.get("vertical"))
-    w, h = (540, 960) if vertical else (960, 540)
+    if b.get("aspect") in video.ASPECTS:
+        w, h = video.export_size(b["aspect"], 540)
+    else:
+        w, h = (540, 960) if b.get("vertical") else (960, 540)
+    vertical = h > w
     tmp = os.path.join(DATA_DIR, "preview.png")
     style = b.get("vstyle") if isinstance(b.get("vstyle"), dict) else {}
     bump = style.get("bump") or "none"
@@ -624,11 +677,21 @@ def api_preview():
         ff.run(["-ss", "1", "-i", clip, "-frames:v", "1", "-vf",
                 f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}", tmp])
     else:
-        layout = "blur" if bump != "none" else b.get("layout", "cover")
+        vis = style.get("visualizer") or "none"
+        layout = "blur" if bump != "none" or vis == "scope" or vis in drawn.DRAWN else b.get("layout", "cover")
         video.make_frame(img, tmp, w, h, b.get("title", ""), b.get("artist", ""), layout,
-                         b.get("text", True) and bump != "text")
+                         b.get("text", True) and bump != "text",
+                         vis_room=bool(b.get("aspect")) and vis in reactive.BOTTOM and layout == "cover")
+    vis = style.get("visualizer") or "none"
+    if vis in drawn.DRAWN and not clip:
+        opts = dict(style, visualizer=vis, image=img, title=b.get("title", ""), artist=b.get("artist", ""))
+        video.style_defaults(opts)
+        layer = drawn.still(vis, w, h, reactive.pick_color(style.get("vis_color", "white"), img), opts, vertical)
+        fr = Image.open(tmp).convert("RGBA")
+        fr.alpha_composite(layer)
+        fr.convert("RGB").save(tmp)
+        bump = "none"
     if bump != "none":
-        from . import reactive
         canvas = int(min(w, h) * (0.56 if not vertical else 0.8)) // 2 * 2
         rgb = reactive.pick_color(style.get("vis_color", "white"), img)
         tile = reactive.bump_frames(bump, canvas, float(style.get("bump_amount") or 0.12), levels=2, image=img,
@@ -651,6 +714,13 @@ def api_covers():
     items = [os.path.join(d, f) for f in os.listdir(d) if f.lower().endswith((".jpg", ".png")) and f.startswith("cover")]
     items.sort(key=os.path.getmtime, reverse=True)
     return jsonify({"covers": items})
+
+
+@app.get("/api/export_options")
+def api_export_options():
+    return jsonify({"formats": {k: v["label"] for k, v in video.EXPORT_FORMATS.items()},
+                    "aspects": list(video.ASPECTS), "sizes": list(video.SIZES), "fps": list(video.FPS_CHOICES),
+                    "qualities": list(video.QUALITIES), "visualizers": reactive.VISUALIZERS})
 
 
 @app.post("/api/estimate")
@@ -981,16 +1051,18 @@ def api_version():
 
 def main():
     import webbrowser
-    port = int(os.environ.get("RELEASEKIT_PORT", 5577))
+    p = port()
     missing = ff.check_tools()
     if missing:
         print("WARNING: missing", ", ".join(missing), "- install ffmpeg (see README).")
-    url = f"http://127.0.0.1:{port}"
+    url = GUARD.url(p)
     update.check_in_background(load_settings().get("check_updates", True))
-    print(f"Release Kit running at {url}  (data folder: {DATA_DIR})")
-    if not os.environ.get("RELEASEKIT_NO_BROWSER"):
+    print(f"Release Kit running. Open it with this private link (don't share it):\n  {url}\n(data folder: {DATA_DIR})")
+    # after the update that adds the session key, the old tab can't get in: open the private link once
+    if not os.environ.get("RELEASEKIT_NO_BROWSER") or (GUARD.new_key and HAD_SETTINGS):
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
-    app.run(host="127.0.0.1", port=port, debug=False, threaded=True)
+    # only ever listen on this computer, never on the network
+    app.run(host="127.0.0.1", port=p, debug=False, threaded=True)
 
 
 if __name__ == "__main__":

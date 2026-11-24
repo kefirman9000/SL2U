@@ -39,7 +39,7 @@ Mac and Linux: see [Run from source](#run-from-source).
 |---|---|
 | **Release** | One form for title, artist, genre, mood, dates, (P)/(C) lines and UPC, plus per-track ISRC, credits, BPM, key and lyrics. A **Ready to release?** checklist flags what's missing. **Analyze** checks loudness (LUFS), true peak, sample rate and lossy sources, and estimates BPM. |
 | **Artwork** | Pick a photo folder; photos are ranked by resolution, sharpness and contrast. Make a 3000×3000 cover (smart crop, center crop, or fit + blurred fill) with optional title text and explicit label, or **generate** art in 6 styles. Export every platform size. All your covers stay in a gallery. |
-| **YouTube & video** | One **video style** for everything: visualizers (frequency bars, mirrored bars, waveform, line, circle scope, scrolling spectrum) in the colour of your choice, and a **cover, spinning disc, logo or title text that bumps to the kick**. Release videos, full-album videos with chapters, Shorts/Reels/TikTok, Spotify Canvas. **10-hour (1–12 h) loop videos** with a seamless loop point and backgrounds: still cover, slow zoom, slow pan, film grain/VHS, breathing glow, photo slideshow, **your own video clip** (looped by dissolving the end into the start, ping-pong, or straight repeat; crop or fit) or **a folder of clips**. **Overnight batch**: a loop video and paste-ready YouTube text for every track in a folder. |
+| **YouTube & video** | One **video style** for everything: 12 visualizers (frequency bars, mirrored bars, waveform, line, circle scope, scrolling spectrum, **radial ring, radial waveform, particles, geometric shapes, tunnel, synthwave grid**) in the colour of your choice, and a **cover, spinning disc, logo or title text that bumps to the kick**. Release videos, full-album videos with chapters, Shorts/Reels/TikTok, Spotify Canvas. **10-hour (1–12 h) loop videos** with a seamless loop point and backgrounds: still cover, slow zoom, slow pan, film grain/VHS, breathing glow, photo slideshow, **your own video clip** (looped by dissolving the end into the start, ping-pong, or straight repeat; crop or fit) or **a folder of clips**. **Overnight batch**: a loop video and paste-ready YouTube text for every track in a folder. **Visualizer samples**: a few seconds of every visualizer with your music, side by side, with picks for your genre. **Export video**: any song as MP4, MOV (ProRes) or WebM, in 16:9, 9:16, 1:1 or 4:5, 720p–4K, 24–60 fps, whole song or a section. |
 | **Packages** | **Distributor** (WAV, cover, metadata.csv/json, lyrics, checklist), **Bandcamp + SoundCloud**, **Stock music** (WAVs, 60/30/15 s cut-downs, MP3s, keyword CSV), **Stock photo pack**. |
 | **Upload** | YouTube title, description (with your links, credits, chapters, hashtags) and tags; upload now or add to the schedule. |
 | **Schedule** | An upload queue with publish times: set a rhythm (one a day at 3 pm, every 12 hours…), pick or create a playlist, and import a whole overnight-batch folder with its titles, descriptions, tags and thumbnails. Videos upload ahead of time as Private with a publish date, so YouTube publishes them on time even if your computer is off. Stays under a daily upload cap and waits when YouTube's daily limit is hit. Includes help writing the YouTube API audit request. |
@@ -53,7 +53,7 @@ Mac and Linux: see [Run from source](#run-from-source).
 
 1. **Python 3.10+** from python.org (Windows: tick "Add to PATH").
 2. **ffmpeg**: Mac `brew install ffmpeg`, Windows `winget install Gyan.FFmpeg`, Linux `sudo apt install ffmpeg`.
-3. Run `./start-mac-linux.sh` (Mac/Linux) or double-click `start-windows.bat`. The first start installs Flask, Pillow and numpy into `.venv`, then opens http://127.0.0.1:5577.
+3. Run `./start-mac-linux.sh` (Mac/Linux) or double-click `start-windows.bat`. The first start installs Flask, Pillow and numpy into `.venv`, then opens Release Kit in your browser.
 
 Your projects, settings and renders live in `~/ReleaseKit` (change the output folder in Settings).
 
@@ -72,6 +72,17 @@ Uploads from API projects Google hasn't audited are **Private only**, scheduled 
 ## Updates
 
 The Windows app checks GitHub for a new version when it starts and shows a banner. **Update now** downloads it, closes Release Kit, swaps in the new files and reopens it; your releases, settings and renders aren't touched. Turn the check off in Settings. Running from source, the banner links to the release instead.
+
+## Privacy and security
+
+Release Kit is a web page served by your own computer, and it only ever listens on 127.0.0.1, never on your network. On top of that:
+
+- **Private link.** The browser opens `http://127.0.0.1:5577/?key=…`; the key is swapped for a cookie and every request must carry it. Other programs and websites don't have it. The link is printed in the black window too. The key lives in `~/ReleaseKit/session_key` (delete it to make a new one).
+- **Other websites are refused.** Requests from other sites (and "DNS rebinding" tricks that point a website at 127.0.0.1) are rejected, and the page can't be embedded in another site.
+- **Verified updates.** The updater only downloads from this repo's GitHub releases and checks the file against GitHub's SHA-256 checksum before installing.
+- Your YouTube sign-in token is saved readable by your user account only.
+
+For scripts: send the key as an `X-ReleaseKit-Key` header, or set `RELEASEKIT_TOKEN` to choose it yourself.
 
 ## Good to know
 

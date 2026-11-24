@@ -107,7 +107,11 @@ td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertic
 .covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
 .covers img{width:100%;border-radius:8px;cursor:pointer;border:2px solid transparent}
 .covers img.on{border-color:var(--accent)}
-.prev{margin-top:10px;max-width:100%;border-radius:8px;border:1px solid var(--line);display:none}
+.prev{margin-top:10px;max-width:100%;max-height:480px;border-radius:8px;border:1px solid var(--line);display:none}
+.samples{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:6px}
+.sample{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.sample.on{border-color:var(--accent)}
+.sample video{width:100%;max-height:300px;border-radius:6px;background:#000;display:block;margin-bottom:6px}
 details.raw summary{cursor:pointer;font-size:11px;color:var(--muted)}
 .big{font-size:15px;padding:11px 18px}
 .upd{display:none;align-items:center;gap:12px;padding:10px 20px;background:#071a07;border-bottom:1px solid #1d5c14;font-size:14px}
@@ -228,14 +232,46 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
   <div class="card">
     <h3>Video style <span class="muted" style="font-weight:400;font-size:12px">applies to every video below, including 10-hour loops and Shorts</span></h3>
     <div class="grid g4">
-      <div><label>Visualizer</label><select id="stVis"><option value="none">None</option><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></select></div>
+      <div><label>Visualizer</label><select id="stVis"><option value="none">None</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
       <div><label>Bumping to the beat</label><select id="stBump" onchange="stLogoRow.style.display=this.value==='logo'?'':'none'"><option value="none">Nothing</option><option value="cover">Cover art</option><option value="disc">Spinning disc (cover)</option><option value="logo">My logo (PNG)</option><option value="text">Artist &amp; title text</option></select></div>
       <div><label>Color</label><select id="stColor"><option value="white">White</option><option value="green">Green</option><option value="cyan">Cyan</option><option value="pink">Pink</option><option value="gold">Gold</option><option value="red">Red</option><option value="cover">Match the cover</option></select></div>
       <div><label>Bump strength</label><select id="stAmt"><option value="0.06">Subtle</option><option value="0.12" selected>Medium</option><option value="0.2">Strong</option><option value="0.3">Huge</option></select></div>
     </div>
     <div class="row" id="stLogoRow" style="margin-top:10px;display:none"><input class="grow" id="stLogo" placeholder="Logo image (PNG with transparent background)"><button class="b s" onclick="pick({kind:'image'},p=>stLogo.value=p)">…</button></div>
-    <div class="row" style="margin-top:10px"><button class="b" onclick="preview('stPrev',{})">Preview</button><span class="muted" style="font-size:12px">Bars, scope and bumps react to the music: the logo/cover pulses on the kick.</span></div>
+    <div class="row" style="margin-top:10px"><button class="b" onclick="preview('stPrev',{})">Preview</button><span class="muted" style="font-size:12px">Everything reacts to the music: the logo/cover pulses on the kick, rings and particles grow in louder sections. Ring, particle, shape and tunnel styles put your cover in the middle if "Bumping" is Nothing.</span><span class="muted grow" style="font-size:12px;text-align:right" id="genreTip"></span></div>
     <img class="prev" id="stPrev">
+  </div>
+  <div class="card">
+    <h3>Visualizer samples <span class="muted" style="font-weight:400;font-size:12px">a few seconds of every visualizer with your music, cover and style, side by side</span></h3>
+    <div class="grid g4">
+      <div><label>Track</label><select class="trackSel" id="vsTrack"></select></div>
+      <div><label>Shape</label><select id="vsAspect"><option value="16:9">16:9 landscape</option><option value="9:16">9:16 vertical</option><option value="1:1">1:1 square</option><option value="4:5">4:5 portrait</option></select></div>
+      <div><label>Length of each sample (s)</label><input id="vsSec" type="number" value="6" min="3" max="15"></div>
+      <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="visSamples()">Make samples</button></div>
+    </div>
+    <p class="muted" style="font-size:12px">Makes all 12 styles using the color and bump from Video style above and the most energetic part of the track (about a minute). No tracks yet? You get a demo beat. Press <b>Use this</b> on the one you like.</p>
+    <div id="vsGrid" class="samples"></div>
+  </div>
+  <div class="card">
+    <h3>Export video <span class="muted" style="font-weight:400;font-size:12px">a visualizer (or plain) video of a song with your own format, shape, size and frame rate</span></h3>
+    <div class="grid g4">
+      <div><label>Track</label><select class="trackSel" id="exTrack"></select></div>
+      <div><label>Visualizer</label><select id="exVis"><option value="">Same as Video style</option><option value="none">None (cover only)</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
+      <div><label>Format</label><select id="exFmt"><option value="mp4">MP4 (H.264): plays everywhere</option><option value="mov">MOV (ProRes 422): for editing</option><option value="webm">WebM (VP9): small, for websites</option></select></div>
+      <div><label>Shape</label><select id="exAspect"><option value="16:9">16:9 landscape (YouTube)</option><option value="9:16">9:16 vertical (Shorts, Reels, TikTok)</option><option value="1:1">1:1 square</option><option value="4:5">4:5 portrait (Instagram feed)</option></select></div>
+      <div><label>Size</label><select id="exSize"><option value="720">720p</option><option value="1080" selected>1080p</option><option value="1440">1440p</option><option value="2160">4K</option></select></div>
+      <div><label>Frame rate</label><select id="exFps"><option>24</option><option>25</option><option selected>30</option><option>50</option><option>60</option></select></div>
+      <div><label>Quality</label><select id="exQ"><option value="draft">Draft (fast, bigger blocks)</option><option value="standard" selected>Standard</option><option value="high">High (slower, best detail)</option></select></div>
+      <div><label>Layout</label><select id="exLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills frame</option></select></div>
+      <div><label>Start at (s)</label><input id="exStart" type="number" value="0" min="0" step="0.5"></div>
+      <div><label>Length (s, blank = to the end)</label><input id="exLen" type="number" min="1" placeholder="whole song"></div>
+      <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="exText" checked>Show title &amp; artist</label></div>
+      <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="exFade" checked>Fade audio in &amp; out</label></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="b" onclick="exportPreview()">Preview frame</button><button class="b p" onclick="exportVideo()">Export</button>
+      <button class="b" onclick="exportVideo(true)">Export every track</button><span class="muted" id="exNote" style="font-size:12px"></span></div>
+    <img class="prev" id="exPrev">
+    <p class="muted" style="font-size:12px">Saved in the <b>videos</b> folder of this release. Bump, color and logo come from Video style. MOV files are large (about 1 GB per minute at 1080p) but scrub smoothly in editors; browsers can't preview them here.</p>
   </div>
   <div class="card">
     <h3>Release video</h3>
@@ -494,7 +530,8 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function blank(){return {title:"",artist:"",tracks:[]}}
 async function api(url,body){const o=body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)};
-  const r=await fetch(url,o);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||(j.errors||[]).join("\n")||r.statusText);return j}
+  const r=await fetch(url,o);if(r.status===401&&url!=="/api/version"){location.reload();throw new Error("Release Kit is locked")}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||(j.errors||[]).join("\n")||r.statusText);return j}
 function toast(m,ms=2600){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",ms)}
 
 // ---------- tabs
@@ -502,7 +539,7 @@ $("nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join
 $("nav").onclick=e=>{const k=e.target.dataset.t;if(k)show(k)};
 function show(k){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===k));
   document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;scrollTo(0,0);syncForm();
-  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
+  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate();genreTip()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
 
 // ---------- init / projects
 async function init(){
@@ -594,6 +631,33 @@ function doEverything(){const kinds=["analyze","variants","album_video","pkg_dis
   job(kinds);R.tracks.forEach((t,i)=>job("release_video",{track_index:i}));
   job("long_video",{tracks:[0],hours:10});job("short",{track_index:0,seconds:30});job("canvas",{});}
 
+// ---------- genre suggestions
+const GENRE_VIS=[[/edm|electro|house|techno|trance|dubstep|drum|dnb|bass|club|dance/i,["particles","geometric","ring"]],
+  [/synthwave|retrowave|outrun|vapor|80s/i,["synthwave","tunnel","ring"]],
+  [/hip.?hop|rap|trap|pop|r&b|rnb|drill|afro/i,["ring","bars","ringwave"]],
+  [/ambient|lo.?fi|lofi|chill|acoustic|piano|podcast|sleep|study|classical|folk/i,["waves","ringwave","line"]],
+  [/rock|indie|metal|punk|grunge|alt/i,["spectrum","mirror","geometric"]],
+  [/cinematic|experimental|trailer|score/i,["tunnel","particles","scope"]]];
+function genreVis(){const g=(R.genre||"")+" "+(R.subgenre||"");for(const [re,v] of GENRE_VIS)if(re.test(g))return v;return null}
+function genreTip(){const v=genreVis(),el=$("genreTip");if(!el)return;
+  el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc($("stVis").querySelector(`option[value="${k}"]`).textContent)}</a>`).join(", "):""}
+
+// ---------- visualizer samples & export
+let SAMPLES_AT=0;
+function visSamples(){job("vis_samples",{track_index:R.tracks.length?$("vsTrack").value:undefined,aspect:$("vsAspect").value,seconds:$("vsSec").value,image:vidImage()})}
+function renderSamples(res,scroll){if(!res||!res.samples)return;const cur=$("stVis").value,bust=Date.now();
+  $("vsGrid").innerHTML=res.samples.map(s=>`<div class="sample ${s.visualizer===cur?"on":""}" data-vis="${esc(s.visualizer)}"><video src="/api/file?path=${encodeURIComponent(s.path)}&v=${bust}" muted loop autoplay playsinline controls preload="auto"></video>
+    <div class="row"><b class="grow">${esc(s.label)}</b>${(genreVis()||[]).includes(s.visualizer)?'<span class="pill ok" title="Fits your genre">suits genre</span>':""}<button class="b s" onclick="useVis('${jsq(s.visualizer)}')">Use this</button></div></div>`).join("")+
+    (res.demo?'<p class="muted" style="font-size:12px;grid-column:1/-1">Made with a demo beat. Add a track to see them with your own music. Unmute a sample to hear it.</p>':"");
+  if(scroll)$("vsGrid").scrollIntoView({behavior:"smooth",block:"center"})}
+function useVis(k){const el=$("stVis");el.value=k;el.dispatchEvent(new Event("change"));$("exVis").value="";
+  document.querySelectorAll(".sample").forEach(x=>x.classList.toggle("on",x.dataset.vis===k));toast("Video style visualizer: "+el.options[el.selectedIndex].text)}
+function exportParams(i){return {track_index:i??$("exTrack").value,visualizer:$("exVis").value||undefined,text:$("exText").checked,image:vidImage(),
+  export:{format:$("exFmt").value,aspect:$("exAspect").value,size:$("exSize").value,fps:$("exFps").value,quality:$("exQ").value,layout:$("exLayout").value,start:$("exStart").value,length:$("exLen").value,fade:$("exFade").checked}}}
+function exportVideo(all){if(!R.tracks.length)return toast("Add a track first");if(all)R.tracks.forEach((t,i)=>job("export_video",exportParams(i)));else job("export_video",exportParams())}
+function exportPreview(){const v=$("exVis").value,st=getStyle();if(v)st.visualizer=v;
+  preview("exPrev",{aspect:$("exAspect").value,layout:$("exLayout").value,text:$("exText").checked,vstyle:st,title:(R.tracks[$("exTrack").value]||{}).title||R.title})}
+
 // ---------- jobs
 function getStyle(){return {visualizer:$("stVis").value,bump:$("stBump").value,vis_color:$("stColor").value,bump_amount:$("stAmt").value,logo:$("stLogo").value}}
 function clipRows(){const v=$("lvVisual").value;$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
@@ -621,13 +685,15 @@ function jobHtml(j){const r=j.result||{},pct=Math.round(j.progress*100);let body
   const eta=j.status==="running"&&j.progress>0.03?" · ~"+fmtDur((Date.now()/1000-j.started)*(1-j.progress)/j.progress)+" left":"";
   if(j.status==="done"){const p=r.path||"";
     if(/\.(jpe?g|png)$/i.test(p))body+=`<img src="${thumb(p,500)}">${j.kind==="cover"?`<div class="row" style="margin-top:6px"><button class="b s p" onclick="useCover('${jsq(p)}')">Use as cover</button></div>`:""}`;
-    if(/\.mp4$/i.test(p))body+=`<video src="/api/file?path=${encodeURIComponent(p)}" controls preload="metadata"></video>`;
+    if(/\.(mp4|webm)$/i.test(p))body+=`<video src="/api/file?path=${encodeURIComponent(p)}" controls preload="metadata"></video>`;
+    if(/\.mov$/i.test(p))body+=`<div class="muted" style="font-size:12px;margin-top:6px">ProRes MOV ${esc(r.size||"")}: open it in your editor.</div>`;
+    if(j.kind==="vis_samples")body+=`<div class="row" style="margin-top:6px"><button class="b s p" onclick="show('video');renderSamples(JOBRES['${j.id}'],true)">See the samples</button></div>`;
     if(r.warnings&&r.warnings.length)body+=r.warnings.map(w=>`<div class="warn" style="font-size:12px">• ${esc(w)}</div>`).join("");
     if(r.cover_issues&&r.cover_issues.length)body+=r.cover_issues.map(w=>`<div class="warn" style="font-size:12px">• ${esc(w)}</div>`).join("");
     if(r.chapters)body+=`<div class="muted" style="font-size:12px;margin-top:6px">Chapters copied to Upload tab.</div>`;
     if(r.url)body+=`<div><a href="${r.url}" target="_blank" style="color:var(--accent2)">${r.url}</a></div>`+(r.notes||[]).map(n=>`<div class="warn" style="font-size:12px">${esc(n)}</div>`).join("");
     if(r.tracks)body+=`<div class="muted" style="font-size:12px">See results under Tracks.</div>`;
-    const open=p||(r.files&&r.files[0]);if(open)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(open)}')">Show in folder</button>${/\.mp4$/i.test(p)?`<button class="b s" onclick="toUpload('${jsq(p)}','${j.kind}')">Upload this…</button>`:""}</div>`;}
+    const open=p||(r.files&&r.files[0]);if(open)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(open)}')">Show in folder</button>${/\.(mp4|mov|webm)$/i.test(p)?`<button class="b s" onclick="toUpload('${jsq(p)}','${j.kind}')">Upload this…</button>`:""}</div>`;}
   if(j.status==="error"||j.status==="interrupted")body=(j.hint?`<div class="err" style="font-size:13px;margin-top:4px">${esc(j.hint)}</div><details class="raw"><summary>Technical details</summary><pre>${esc(j.error)}</pre></details>`:`<pre>${esc(j.error)}</pre>`);
   if(j.kind==="sl2_import"&&r.project)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="loadProject('${jsq(r.project)}').then(()=>show('release'))">Open release</button></div>`;
   if(r.text_file)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(r.text_file)}')">YouTube text file</button></div>`;
@@ -635,7 +701,9 @@ function jobHtml(j){const r=j.result||{},pct=Math.round(j.progress*100);let body
     ${j.status==="running"||j.status==="queued"?`<button class="b s" onclick="api('/api/jobs/${j.id}/cancel',{}).then(pollJobs)">Stop</button>`:""}</div>
     ${j.status==="running"||j.status==="queued"?`<div class="bar"><i style="width:${pct}%"></i></div><div class="muted" style="font-size:11px">${pct}%${eta}</div>`:""}${body}</div>`}
 const jsq=s=>String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-function onDone(j){if(j.kind==="analyze")renderAnalysis(j.result);if(j.kind==="album_video"&&j.result.chapters)CHAPTERS=j.result.chapters;
+const JOBRES={};
+function onDone(j){JOBRES[j.id]=j.result;if(j.kind==="vis_samples"&&(!SAMPLES_AT||j.finished>SAMPLES_AT)){SAMPLES_AT=j.finished;renderSamples(j.result)}
+  if(j.kind==="analyze")renderAnalysis(j.result);if(j.kind==="album_video"&&j.result.chapters)CHAPTERS=j.result.chapters;
   if(j.kind==="cover"){coverHist();if(WZ.wantCover&&j.result&&j.result.path){WZ.wantCover=false;useCover(j.result.path);if(WZ.open)wizRender()}}
   if(j.kind==="sl2_import"){api("/api/init").then(x=>{INIT.projects=x.projects;refreshProjList(INIT.projects)})}
   if(!FIRSTPOLL)notifyDone(j)}

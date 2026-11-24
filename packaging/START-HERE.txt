@@ -1,8 +1,10 @@
 RELEASE KIT
 
 1. Double-click ReleaseKit.exe.
-2. Your web browser opens the app at http://127.0.0.1:5577
-   (if it doesn't, open that address yourself).
+2. Your web browser opens the app.
+   If it doesn't, copy the link shown in the black window
+   (http://127.0.0.1:5577/?key=...). The key keeps other websites
+   from controlling Release Kit, so don't share that link.
 3. Leave the black window open while you work. Close it to quit.
 
 Your releases, settings and renders are saved in your user folder under ReleaseKit.

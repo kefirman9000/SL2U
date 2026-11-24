@@ -13,7 +13,11 @@ COLORS = {"white": (255, 255, 255), "green": (57, 255, 20), "cyan": (40, 220, 25
           "gold": (255, 200, 60), "red": (255, 60, 60)}
 
 VISUALIZERS = {"none": "None", "bars": "Frequency bars", "mirror": "Mirrored bars", "waves": "Waveform",
-               "line": "Line", "scope": "Circle scope", "spectrum": "Scrolling spectrum"}
+               "line": "Line", "scope": "Circle scope", "spectrum": "Scrolling spectrum",
+               # drawn frame by frame (see drawn.py)
+               "ring": "Radial ring", "ringwave": "Radial waveform", "particles": "Particles",
+               "geometric": "Geometric shapes", "tunnel": "Tunnel", "synthwave": "Synthwave grid"}
+BOTTOM = ("bars", "mirror", "waves", "line", "spectrum")  # visualizers drawn along the bottom edge
 BUMPS = {"none": "Nothing", "cover": "Cover art", "disc": "Spinning disc (cover)", "logo": "My logo (PNG)",
          "text": "Artist & title text"}
 
@@ -55,8 +59,12 @@ def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255)):
             base += (",split=2[mt][mb];[mb]vflip,colorchannelmixer=aa=0.35[mbf];[mt][mbf]vstack")
             return base, f"(W-w)/2:H-h-{bottom}"
         return base, f"(W-w)/2:H-h-{bottom}"
+    # waveforms need about one column per audio sample in a frame, or they break up into dots
+    # on small videos: draw them wide, then scale down
+    ww = vw if vw >= 1200 else 1600
+    fit = "" if ww == vw else f",scale={vw}:{vh}:flags=area"
     if kind == "line":
-        return f"showwaves=s={vw}x{vh}:mode=line:rate={fps}:colors={hexc}", f"(W-w)/2:H-h-{bottom}"
+        return f"showwaves=s={ww}x{vh}:mode=line:rate={fps}:colors={hexc}{fit}", f"(W-w)/2:H-h-{bottom}"
     if kind == "spectrum":
         return (f"showspectrum=s={vw}x{vh}:mode=combined:slide=scroll:color=intensity:scale=log,fps={fps}",
                 f"(W-w)/2:H-h-{bottom}")
@@ -64,7 +72,7 @@ def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255)):
         s = ev(min(w, h) * (0.62 if not vertical else 0.8))
         return (f"avectorscope=s={s}x{s}:r={fps}:draw=line:zoom=1.6:rc=40:gc=160:bc=80:rf=12:gf=8:bf=10,"
                 f"{_tint(rgb)},format=rgba,colorkey=black:0.03"), "(W-w)/2:(H-h)/2"
-    return f"showwaves=s={vw}x{vh}:mode=cline:rate={fps}:colors={hexc}", f"(W-w)/2:H-h-{bottom}"
+    return f"showwaves=s={ww}x{vh}:mode=cline:rate={fps}:colors={hexc}{fit}", f"(W-w)/2:H-h-{bottom}"
 
 
 # ---------------------------------------------------------------- bass envelope

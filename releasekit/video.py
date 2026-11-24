@@ -6,7 +6,7 @@ import tempfile
 
 from PIL import Image, ImageOps
 
-from . import art, audio, ff, reactive
+from . import art, audio, drawn, ff, reactive
 
 RES = {"1080p": (1920, 1080), "1440p": (2560, 1440), "4k": (3840, 2160), "720p": (1280, 720)}
 VIS_COLORS = "white@0.85"
@@ -30,8 +30,9 @@ def _x264(fps, still=False, crf=20):
 AAC = ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
 
 
-def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True):
-    """Background frame. layout: cover (square art centred on blurred bg), full (photo fills frame)."""
+def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True, vis_room=False):
+    """Background frame. layout: cover (square art centred on blurred bg), full (photo fills frame).
+    vis_room: keep the bottom free for a bar/wave visualizer (smaller cover, moved up)."""
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     im = art.open_rgb(image)
     if layout == "blur":  # soft background only, for a bumping logo/cover in the middle
@@ -42,21 +43,34 @@ def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True)
         return out
     if layout == "full":
         frame = ImageOps.fit(im, (w, h), Image.LANCZOS)
+    elif 0.7 <= w / h <= 1.4:  # square and 4:5 (Instagram feed): cover on top, text under it
+        frame = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.45)
+        side = int(min(h * 0.5, w * 0.7))
+        top = int(h * 0.08)
+        frame.paste(art.center_square(im, side), ((w - side) // 2, top))
+        if text and (title or artist):
+            y0 = top + side
+            region = frame.crop((0, y0, w, min(h, y0 + int(h * 0.16))))
+            frame.paste(art.add_text(region, title, artist, position="center", scale=0.9), (0, y0))
+        frame.save(out, "PNG")
+        return out
     else:
         bg = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.45)
-        side = int(min(w, h) * (0.62 if w > h else 0.8))
+        side = int(min(w, h) * ((0.5 if vis_room else 0.62) if w > h else 0.8))
         cover = art.center_square(im, side)
         frame = bg
         if w > h:
-            frame.paste(cover, ((w - side) // 2 - (int(w * 0.18) if text and (title or artist) else 0), (h - side) // 2))
+            y = int(h * 0.1) if vis_room else (h - side) // 2
+            frame.paste(cover, ((w - side) // 2 - (int(w * 0.18) if text and (title or artist) else 0), y))
         else:
             frame.paste(cover, ((w - side) // 2, int(h * 0.18)))
     if text and (title or artist):
         if w > h and layout != "full":
             # text block to the right of the cover
-            region = frame.crop((int(w * 0.6), 0, w, h))
-            txt = art.add_text(region, title, artist, position="center", scale=1.6)
-            frame.paste(txt, (int(w * 0.6), 0))
+            band = (int(h * 0.1), int(h * 0.1) + side) if vis_room else (0, h)  # line up with the cover
+            region = frame.crop((int(w * 0.6), band[0], w, band[1]))
+            txt = art.add_text(region, title, artist, position="center", scale=1.6 if not vis_room else 1.25)
+            frame.paste(txt, (int(w * 0.6), band[0]))
         elif w > h:
             frame = art.add_text(frame, title, artist, position="bottom-left", scale=0.6)
         else:
@@ -72,8 +86,9 @@ def _vis_filter(kind, w, h, fps, vertical=False):
 
 
 def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, afade="", with_audio=True,
-                    vertical=False, n_frames=None, spin_period=12.0, progress=None, cancel=None):
-    """Background + visualizer + bumping element, all locked to the audio."""
+                    vertical=False, n_frames=None, spin_period=12.0, progress=None, cancel=None, enc=None):
+    """Background + visualizer + bumping element, all locked to the audio.
+    enc: export settings from encoder(); None = the YouTube defaults (H.264 MP4, AAC 320k)."""
     vis, bump = opts.get("visualizer", "none"), opts.get("bump", "none")
     rgb = reactive.pick_color(opts.get("vis_color", "white"), opts.get("image"))
     n_frames = n_frames or int(round(dur * fps))
@@ -81,13 +96,21 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     fc = [f"[0:v]fps={fps},scale={w}:{h},setsar=1[bg]",
           f"[1:a]{afade + ',' if afade else ''}asplit=2[aout][av]" if with_audio else "[1:a]anull[av]"]
     cur = "bg"
-    if vis != "none":
+    feed = None
+    if vis in drawn.DRAWN:
+        # drawn in Python (with the bump element in the middle) and streamed in as one transparent layer
+        lw, lh, feed = drawn.feeder(vis, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period)
+        args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", str(fps), "-i", "pipe:0"]
+        scale = "" if (lw, lh) == (w, h) else f"scale={w}:{h}:flags=bicubic,"
+        fc += ["[av]anullsink", f"[2:v]{scale}format=rgba[lay]", f"[{cur}][lay]overlay=0:0:format=auto[v1]"]
+        cur = "v1"
+        bump = "none"  # already in the layer
+    elif vis != "none":
         chain, pos = reactive.vis_chain(vis, w, h, fps, vertical, rgb)
         fc += [f"[av]{chain}[vis]", f"[{cur}][vis]overlay={pos}:shortest=1[v1]"]
         cur = "v1"
     else:
         fc.append("[av]anullsink")
-    feed = None
     if bump != "none":
         canvas = int(min(w, h) * (0.56 if not vertical else 0.8)) // 2 * 2
         tiles = reactive.bump_frames(bump, canvas, float(opts.get("bump_amount", 0.12)), image=opts.get("image"),
@@ -104,12 +127,23 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
         y = f"(H-h)/2-H*{lift + (0.06 if vertical else 0):.2f}"
         fc.append(f"[{cur}]{b}overlay=(W-w)/2:{y}[v2]")
         cur = "v2"
-    fc.append(f"[{cur}]format=yuv420p[v]")
+    fc.append(f"[{cur}]format={enc['pix_fmt'] if enc else 'yuv420p'}[v]")
     args += ["-filter_complex", ";".join(fc), "-map", "[v]"]
-    args += (["-map", "[aout]"] + AAC) if with_audio else ["-an"]
-    args += _x264(fps) + ["-frames:v", str(n_frames), "-movflags", "+faststart", out]
+    args += (["-map", "[aout]"] + (enc["audio"] if enc else AAC)) if with_audio else ["-an"]
+    args += (enc["video"] if enc else _x264(fps)) + ["-frames:v", str(n_frames)]
+    args += (["-movflags", "+faststart"] if not enc or enc["faststart"] else []) + [out]
     ff.run(args, dur, progress, cancel, feed=feed)
     return out
+
+
+def style_defaults(opts):
+    """Fill in what a visualizer needs: drawn ring/particle styles are built around the cover,
+    so they get it in the middle when no bump was chosen. Returns the layout to use."""
+    vis, bump = opts.get("visualizer", "none"), opts.get("bump", "none")
+    if vis in drawn.CENTERED and bump == "none" and opts.get("image"):
+        opts["bump"] = bump = "cover"
+        opts["bump_amount"] = min(float(opts.get("bump_amount") or 0.06), 0.06)
+    return "blur" if bump != "none" or vis == "scope" or vis in drawn.DRAWN else None
 
 
 def _reactive_on(opts):
@@ -120,16 +154,22 @@ def _reactive_on(opts):
 
 def release_video(audio_path, image, out, title="", artist="", resolution="1080p", visualizer="none",
                   layout="cover", text=True, fps=None, start=0.0, length=None, fade=True,
-                  vertical=False, progress=None, cancel=None, opts=None):
-    """opts: extra reactive options {bump, logo, vis_color, bump_amount}."""
+                  vertical=False, progress=None, cancel=None, opts=None, size=None, enc=None):
+    """opts: extra reactive options {bump, logo, vis_color, bump_amount}.
+    size: (w, h) to override resolution/vertical. enc: export settings from encoder()."""
     opts = dict(opts or {}, visualizer=visualizer, image=image, title=title, artist=artist)
-    if opts.get("bump", "none") != "none" or visualizer == "scope":
+    if style_defaults(opts):
         layout = "blur"
         text = text and opts.get("bump") != "text"
-    w, h = (1080, 1920) if vertical else RES[resolution]
+    if size:
+        w, h = size
+        vertical = h > w
+    else:
+        w, h = (1080, 1920) if vertical else RES[resolution]
     fps = fps or (30 if _reactive_on(opts) or vertical else 12)
     tmp = tempfile.mkdtemp(prefix="rk_")
-    frame = make_frame(image, os.path.join(tmp, "frame.png"), w, h, title, artist, layout, text)
+    frame = make_frame(image, os.path.join(tmp, "frame.png"), w, h, title, artist, layout, text,
+                       vis_room=bool(enc) and visualizer in reactive.BOTTOM)
     dur = ff.duration(audio_path) - start
     if length:
         dur = min(dur, length)
@@ -137,6 +177,11 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     if fade:
         fo = 1.5 if dur < 90 else 3
         afade = f"afade=t=in:st=0:d={0.3 if start else 0.05},afade=t=out:st={max(0, dur - fo)}:d={fo}"
+    if enc:
+        # export settings: one pass with the chosen codec, frame rate and quality
+        reactive_render(["-loop", "1", "-framerate", str(fps), "-i", frame], audio_path, out, w, h, fps, dur, opts,
+                        start=start, afade=afade, vertical=vertical, progress=progress, cancel=cancel, enc=enc)
+        return {"path": out, "duration": dur}
     if not _reactive_on(opts):
         # fast path: encode a 10 s still clip once, stream-copy it for the full length, encode audio once
         clip = os.path.join(tmp, "clip.mp4")
@@ -406,6 +451,7 @@ def long_video(tracks, out, hours=10.0, visual="static", image=None, images=None
     picture and sound stay locked together for the whole 10 hours.
     """
     opts = dict(opts or {}, visualizer=visualizer, image=image or (images or [None])[0], title=title, artist=artist)
+    blur_layout = style_defaults(opts)
     reactive_mode = _reactive_on(opts)
     bump = opts.get("bump", "none")
     if bump == "text":
@@ -429,7 +475,7 @@ def long_video(tracks, out, hours=10.0, visual="static", image=None, images=None
     clip_len = make_loop_clip(visual, clip, w, h, image, images, title, artist,
                               text, slide_seconds, video_clip, clip_folder, clip_mode, clip_fit, cancel,
                               text_pos="top" if reactive_mode else "bottom",
-                              layout="blur" if bump != "none" or visualizer == "scope" else "cover")
+                              layout=blur_layout or "cover")
     if progress:
         progress(0.12)
 
@@ -460,6 +506,136 @@ def long_video(tracks, out, hours=10.0, visual="static", image=None, images=None
             "-c", "copy", "-t", str(target), "-movflags", "+faststart", out],
            target, _stage(progress, 0.9, 1.0), cancel)
     return {"path": out, "duration": target, "cycle_seconds": cycle_len, "loops": loops}
+
+
+# ---------------------------------------------------------------- export settings
+
+EXPORT_FORMATS = {
+    "mp4": {"label": "MP4 (H.264): plays everywhere", "ext": ".mp4"},
+    "mov": {"label": "MOV (ProRes 422): for editing in Premiere, Resolve, Final Cut", "ext": ".mov"},
+    "webm": {"label": "WebM (VP9): small files for websites", "ext": ".webm"},
+}
+ASPECTS = {"16:9": (16, 9), "9:16": (9, 16), "1:1": (1, 1), "4:5": (4, 5)}
+SIZES = (720, 1080, 1440, 2160)  # the short side
+FPS_CHOICES = (24, 25, 30, 50, 60)
+QUALITIES = ("draft", "standard", "high")
+
+
+def export_size(aspect="16:9", size=1080):
+    """(w, h) for an aspect ratio, `size` being the short side. Always even numbers."""
+    a, b = ASPECTS.get(aspect, (16, 9))
+    short = int(size) if int(size) in SIZES else 1080
+    even = lambda v: int(round(v / 2)) * 2
+    return (even(short * a / b), short) if a >= b else (short, even(short * b / a))
+
+
+def encoder(fmt="mp4", quality="standard", fps=30):
+    """ffmpeg output settings for an export: video args, audio args, pixel format, file extension."""
+    fmt = fmt if fmt in EXPORT_FORMATS else "mp4"
+    q = QUALITIES.index(quality) if quality in QUALITIES else 1
+    fps = int(fps)
+    gop = ["-r", str(fps), "-g", str(fps * 2)]
+    if fmt == "mov":
+        video = ["-c:v", "prores_ks", "-profile:v", ("0", "2", "3")[q], "-vendor", "apl0", "-r", str(fps)]
+        return {"video": video, "audio": ["-c:a", "pcm_s16le", "-ar", "48000"], "pix_fmt": "yuv422p10le",
+                "ext": ".mov", "faststart": True, "format": fmt}
+    if fmt == "webm":
+        video = (["-c:v", "libvpx-vp9", "-crf", ("40", "32", "24")[q], "-b:v", "0", "-row-mt", "1",
+                  "-deadline", ("realtime", "good", "good")[q], "-cpu-used", ("8", "4", "2")[q]] + gop)
+        return {"video": video, "audio": ["-c:a", "libopus", "-b:a", "256k", "-ar", "48000"],
+                "pix_fmt": "yuv420p", "ext": ".webm", "faststart": False, "format": fmt}
+    video = (["-c:v", "libx264", "-preset", ("ultrafast", "veryfast", "slow")[q], "-crf", ("28", "20", "16")[q],
+              "-profile:v", "high"] + gop)
+    return {"video": video, "audio": AAC, "pix_fmt": "yuv420p", "ext": ".mp4", "faststart": True, "format": fmt}
+
+
+def export_bytes(fmt, w, h, fps, seconds, quality="standard"):
+    """Rough file size, for the disk-space check."""
+    scale = (w * h * int(fps)) / (1920 * 1080 * 30)
+    mbps = {"mp4": 8, "webm": 5, "mov": (45, 147, 220)[QUALITIES.index(quality) if quality in QUALITIES else 1]}
+    audio_kbps = 1536 if fmt == "mov" else 320
+    return int(seconds * (mbps.get(fmt, 8) * 1e6 * scale + audio_kbps * 1000) / 8)
+
+
+def export_video(audio_path, image, out, title="", artist="", visualizer="none", layout="cover", text=True,
+                 fmt="mp4", aspect="16:9", size=1080, fps=30, quality="standard", start=0.0, length=None,
+                 fade=True, progress=None, cancel=None, opts=None):
+    """A song video with your own export settings (format, shape, size, frame rate, quality, section)."""
+    enc = encoder(fmt, quality, fps)
+    res = release_video(audio_path, image, out, title, artist, visualizer=visualizer, layout=layout, text=text,
+                        fps=int(fps), start=float(start or 0), length=length, fade=fade,
+                        size=export_size(aspect, size), enc=enc, progress=progress, cancel=cancel, opts=opts)
+    res.update(format=enc["format"], size="%dx%d" % export_size(aspect, size), fps=int(fps))
+    return res
+
+
+# ---------------------------------------------------------------- visualizer samples
+
+def demo_beat(out, seconds=12, bpm=120):
+    """A short synthetic stereo groove (kick, hats, bass, chord pad, arpeggio) so the samples have
+    something to react to before you've added any music."""
+    p = 60.0 / bpm
+    tb = f"mod(t,{p:.5f})"
+    root = f"if(lt(mod(t,{8 * p:.5f}),{4 * p:.5f}),55,43.65)"  # A then F, two bars each
+    def side(ch):  # ch 0 = left, 1 = right: phase and pan differences make the stereo scope open up
+        ph = 0.35 * ch
+        kick = f"0.85*sin(2*PI*(45*{tb}+3.2*(1-exp(-{tb}*28)))+{0.9 * ch})*exp(-{tb}*7)"
+        bass = f"0.28*sin(2*PI*{root}*t+{1.4 * ch})*(0.55+0.45*exp(-{tb}*3))"
+        hat = f"0.16*(random({ch})*2-1)*exp(-mod(t+{p / 2:.5f},{p:.5f})*45)"
+        shaker = f"0.05*(random({ch + 2})*2-1)*exp(-mod(t,{p / 4:.5f})*70)"
+        # chord pad: three detuned saw-like voices (a few harmonics each), swelling every two beats
+        voices = []
+        for v, (mult, det) in enumerate(((4, 1.0), (5.04, 1.003), (6, 0.997))):
+            f = f"{root}*{mult * (det + 0.002 * ch):.4f}"
+            gain = (1.4, 1.0, 0.6)[v] if ch == 0 else (0.6, 1.0, 1.4)[v]  # spread the voices left to right
+            voices.append(f"{gain}*(" + "+".join(f"sin(2*PI*{f}*{k}*t+{ph * k:.2f})/{k}" for k in (1, 2, 3, 4, 5)) + ")")
+        pad = f"0.035*({'+'.join(voices)})*(0.55+0.45*sin(2*PI*t/{2 * p:.5f}+{ph:.2f}))"
+        step = f"floor(t/{p / 4:.5f})"
+        arp_f = f"{root}*8*if(eq(mod({step},4),0),1,if(eq(mod({step},4),1),1.5,if(eq(mod({step},4),2),2,1.26)))"
+        pan = f"if(eq(mod({step},2),{ch}),1,0.25)"  # the arpeggio bounces between the speakers
+        arp = f"0.12*{pan}*sin(2*PI*{arp_f}*t)*exp(-mod(t,{p / 4:.5f})*9)"
+        return f"({kick})+({bass})+({hat})+({shaker})+({pad})+({arp})"
+
+    ff.run(["-f", "lavfi", "-i", f"aevalsrc=exprs='{side(0)}|{side(1)}':s=48000:d={seconds}",
+            "-af", "alimiter=limit=0.9,afade=t=in:d=0.05", "-c:a", "pcm_s16le", out])
+    return out
+
+
+SAMPLE_KINDS = ("bars", "mirror", "waves", "line", "scope", "spectrum",
+                "ring", "ringwave", "particles", "geometric", "tunnel", "synthwave")
+
+
+def visualizer_samples(audio_path, image, out_dir, title="", artist="", seconds=6.0, start=None, opts=None,
+                       kinds=SAMPLE_KINDS, aspect="16:9", progress=None, cancel=None):
+    """Short low-res clips of every visualizer with your music, cover and style, to compare side by side.
+    With no track (or no cover) a demo beat (or generated art) stands in."""
+    os.makedirs(out_dir, exist_ok=True)
+    tmp = tempfile.mkdtemp(prefix="rk_samples_")
+    demo = not audio_path
+    if demo:
+        audio_path = demo_beat(os.path.join(tmp, "demo.wav"), seconds=max(8, seconds + 2))
+        start = 0.0 if start is None else start
+    if not image:
+        image = art.make_cover(None, "generate", os.path.join(tmp, "demo_cover.jpg"), generate_style="aurora",
+                               seed=7)["path"]
+    if start is None:
+        start = audio.loudest_window(audio_path, seconds)
+    w, h = export_size(aspect, 720)
+    w, h = (640, int(round(640 * h / w / 2)) * 2) if w >= h else (int(round(640 * w / h / 2)) * 2, 640)
+    enc = encoder("mp4", "draft", 30)
+    from .reactive import VISUALIZERS
+    samples = []
+    for i, kind in enumerate(kinds):
+        if cancel and cancel():
+            raise RuntimeError("Cancelled")
+        path = os.path.join(out_dir, f"sample_{kind}.mp4")
+        release_video(audio_path, image, path, title or ("Demo beat" if demo else ""), artist, visualizer=kind,
+                      fps=30, start=start, length=seconds, size=(w, h), enc=enc, opts=opts, cancel=cancel,
+                      progress=_stage(progress, i / len(kinds), (i + 1) / len(kinds)))
+        samples.append({"visualizer": kind, "label": VISUALIZERS.get(kind, kind), "path": path})
+    if progress:
+        progress(1.0)
+    return {"samples": samples, "files": [s["path"] for s in samples], "start": start, "demo": demo}
 
 
 # ---------------------------------------------------------------- Shorts / Reels / TikTok
