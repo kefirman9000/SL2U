@@ -6,7 +6,7 @@ import tempfile
 
 from PIL import Image, ImageOps
 
-from . import art, audio, drawn, ff, reactive
+from . import art, audio, drawn, ff, overlay, reactive
 
 RES = {"1080p": (1920, 1080), "1440p": (2560, 1440), "4k": (3840, 2160), "720p": (1280, 720)}
 VIS_COLORS = "white@0.85"
@@ -28,7 +28,82 @@ def _x264(fps, still=False, crf=20):
 AAC = ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
 
 
-def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True, vis_room=False, dim=None):
+# ---------------------------------------------------------------- your video clips (and photos) as the background
+
+CACHE_DIR = os.path.join(tempfile.gettempdir(), "releasekit_cache")  # app.py points this at the data folder
+VIDEO_EXT = (".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi", ".gif")
+
+
+def _prep_media(src, w, h, fps, fit="fill", cancel=None):
+    """A clip (or photo, as a slow zoom) scaled to w x h at fps, cached so previews and re-renders are quick."""
+    import hashlib
+    st = os.stat(src)
+    key = hashlib.sha1(f"{os.path.abspath(src)}|{st.st_mtime}|{st.st_size}|{w}x{h}|{fps}|{fit}".encode()).hexdigest()[:16]
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    out = os.path.join(CACHE_DIR, f"clip_{key}.mp4")
+    if os.path.exists(out) and os.path.getsize(out) > 0:
+        return out, ff.duration(out)
+    tmp = out + ".part.mp4"
+    if src.lower().endswith(art.IMAGE_EXT):
+        _clip_zoom(src, tmp, w, h, "", "", False, seconds=16, fps=fps, amount=0.06, cancel=cancel)
+    else:
+        _norm_clip(src, tmp, w, h, fps, fit, max_seconds=120, cancel=cancel)
+    os.replace(tmp, out)
+    return out, ff.duration(out)
+
+
+def clips_background(clips, w, h, fps, dur, audio_path=None, start=0.0, switch="beat", bars=4, fit="fill",
+                     tmp=None, progress=None, cancel=None):
+    """One background video at least `dur` long from your clips and photos.
+    switch: beat = cut to the next clip every `bars` bars, on the beat; full = play each clip through."""
+    tmp = tmp or tempfile.mkdtemp(prefix="rk_bg_")
+    clips = [c for c in clips if c and os.path.isfile(c)]
+    if not clips:
+        raise ValueError("None of the chosen clips could be found.")
+    preps = []
+    for i, c in enumerate(clips):
+        preps.append(_prep_media(c, w, h, fps, fit, cancel))
+        if progress:
+            progress(0.5 * (i + 1) / len(clips))
+    if switch == "beat":
+        bpm, phase = reactive.beat_grid(audio_path, start, dur) if audio_path else (120.0, 0.0)
+        seg = max(2.0, min(30.0, int(bars) * 4 * 60.0 / bpm))
+        lengths = [phase + seg] if phase > 0.05 else [seg]
+        while sum(lengths) < dur + 0.5:
+            lengths.append(seg)
+    else:
+        lengths = []
+        i = 0
+        while sum(lengths) < dur + 0.5:
+            lengths.append(preps[i % len(preps)][1])
+            i += 1
+    if len(preps) == 1 and switch != "beat" and preps[0][1] >= dur:
+        return preps[0][0]
+    pieces, offsets = [], [0.0] * len(preps)
+    enc = ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "17", "-pix_fmt", "yuv420p", "-r", str(fps), "-g", str(fps)]
+    for i, length in enumerate(lengths):
+        k = i % len(preps)
+        src, plen = preps[k]
+        off = offsets[k] % max(0.1, plen)
+        piece = os.path.join(tmp, f"piece_{i:04d}.mp4")
+        ff.run(["-stream_loop", "-1", "-ss", f"{off:.3f}", "-i", src, "-t", f"{length:.3f}", "-an"] + enc + [piece],
+               cancel=cancel)
+        offsets[k] = off + length  # next time this clip comes round, carry on where it left off
+        pieces.append(piece)
+        if progress:
+            progress(0.5 + 0.5 * (i + 1) / len(lengths))
+    if len(pieces) == 1:
+        return pieces[0]
+    lst = os.path.join(tmp, "pieces.txt")
+    with open(lst, "w", encoding="utf-8") as f:
+        f.writelines(f"file '{p.replace(chr(92), '/')}'\n" for p in pieces)
+    out = os.path.join(tmp, "background.mp4")
+    ff.run(["-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out], cancel=cancel)
+    return out
+
+
+def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True, vis_room=False, dim=None,
+               text_top=False):
     """Background frame. layout: cover (square art centred on blurred bg), full (photo fills frame),
     blur (blurred picture only), dark (near-black with a hint of the art's colours).
     vis_room: keep the bottom free for a bar/wave visualizer (smaller cover, moved up).
@@ -81,7 +156,8 @@ def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True,
             txt = art.add_text(region, title, artist, position="center", scale=1.6 if not vis_room else 1.25)
             frame.paste(txt, (int(w * 0.6), band[0]))
         elif w > h:
-            frame = art.add_text(frame, title, artist, position="top-left" if vis_room else "bottom-left", scale=0.6)
+            frame = art.add_text(frame, title, artist, position="top-left" if vis_room or text_top else "bottom-left",
+                                 scale=0.6)
         else:
             region = frame.crop((0, int(h * 0.18) + int(min(w, h) * 0.8), w, h))
             txt = art.add_text(region, title, artist, position="top", scale=1.1)
@@ -95,7 +171,8 @@ def _vis_filter(kind, w, h, fps, vertical=False):
 
 
 # settings from the editor ("the look") that every video uses
-STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos", "bg", "dim", "motion", "center_size")
+STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos", "bg", "dim", "motion", "center_size",
+              "clips", "clip_switch", "clip_bars", "clip_fit", "progress", "now_playing")
 
 MOTIONS = {"still": "Still", "drift": "Slow drift", "zoom": "Slow zoom in and out", "breathe": "Breathing light",
            "grain": "Film grain"}
@@ -118,7 +195,7 @@ def _motion_filter(motion, w, h, fps):
 
 def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, afade="", with_audio=True,
                     vertical=False, n_frames=None, spin_period=12.0, progress=None, cancel=None, enc=None,
-                    motion="still", text_png=None):
+                    motion="still", text_png=None, ass=None, bg_dim=None):
     """Background + visualizer + bumping element, all locked to the audio.
     enc: export settings from encoder(); None = the YouTube defaults (H.264 MP4, AAC 320k).
     motion: movement for a still background (see MOTIONS). text_png: title overlay kept still on top."""
@@ -126,7 +203,11 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     rgb = reactive.pick_color(opts.get("vis_color", "white"), opts.get("image"))
     n_frames = n_frames or int(round(dur * fps))
     args = list(bg_args) + (["-ss", str(start)] if start else []) + ["-t", str(dur), "-i", audio_path]
-    fc = [f"[0:v]fps={fps},scale={w}:{h}{_motion_filter(motion, w, h, fps)},setsar=1,format=yuv420p[bg]",
+    darken = ""
+    if bg_dim:  # your clips, made darker so the visualizer and text stand out
+        k = max(0.1, 1 - float(bg_dim))
+        darken = f",colorchannelmixer=rr={k:.3f}:gg={k:.3f}:bb={k:.3f}"
+    fc = [f"[0:v]fps={fps},scale={w}:{h}{_motion_filter(motion, w, h, fps)}{darken},setsar=1,format=yuv420p[bg]",
           f"[1:a]{afade + ',' if afade else ''}asplit=2[aout][av]" if with_audio else "[1:a]anull[av]"]
     cur = "bg"
     feed = None
@@ -165,6 +246,9 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     if text_png:  # title that stays put while the background moves
         fc += [f"movie='{ff.esc_path(text_png)}',format=rgba[txt]", f"[{cur}][txt]overlay=0:0[vt]"]
         cur = "vt"
+    if ass:  # progress bar, timer, "now playing" (and lyrics and titles) drawn on top of everything
+        fc.append(f"[{cur}]{overlay.filter_for(ass, ff.esc_path)}[vo]")
+        cur = "vo"
     fc.append(f"[{cur}]format={enc['pix_fmt'] if enc else 'yuv420p'}[v]")
     args += ["-filter_complex", ";".join(fc), "-map", "[v]"]
     args += (["-map", "[aout]"] + (enc["audio"] if enc else AAC)) if with_audio else ["-an"]
@@ -197,9 +281,10 @@ def _reactive_on(opts):
 
 def release_video(audio_path, image, out, title="", artist="", resolution="1080p", visualizer="none",
                   layout="cover", text=True, fps=None, start=0.0, length=None, fade=True,
-                  vertical=False, progress=None, cancel=None, opts=None, size=None, enc=None):
+                  vertical=False, progress=None, cancel=None, opts=None, size=None, enc=None, chapters=None):
     """opts: extra reactive options {bump, logo, vis_color, bump_amount}.
-    size: (w, h) to override resolution/vertical. enc: export settings from encoder()."""
+    size: (w, h) to override resolution/vertical. enc: export settings from encoder().
+    chapters: [(seconds, title)] for "now playing" titles in playlist videos."""
     opts = dict(opts or {}, visualizer=visualizer, image=image, title=title, artist=artist)
     centre_taken = style_defaults(opts)
     bg = opts.get("bg")  # chosen in the editor: cover, full, blur, dark
@@ -223,14 +308,17 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     tmp = tempfile.mkdtemp(prefix="rk_")
     vis_room = (bool(enc) or layout == "full") and visualizer in reactive.BOTTOM and \
         (opts.get("vis_pos") or "bottom") == "bottom"
-    # the title must not slide around with the picture, or vanish behind a full-screen scene
-    moving = motion in ("drift", "zoom") or visualizer in drawn.OPAQUE
+    clips = [c for c in (opts.get("clips") or []) if c and os.path.isfile(c)] if bg == "clips" else []
+    prog_bar = opts.get("progress") if opts.get("progress") in ("bar", "bar_time") else "off"
+    bottom_taken = prog_bar != "off" or bool(chapters)  # progress bar / "now playing" live at the bottom
+    # the title must not slide around with the picture, or vanish behind a full-screen scene / your clips
+    moving = motion in ("drift", "zoom") or visualizer in drawn.OPAQUE or bool(clips)
     frame = make_frame(image, os.path.join(tmp, "frame.png"), w, h, title, artist, layout, text and not moving,
-                       vis_room=vis_room, dim=dim)
+                       vis_room=vis_room, dim=dim, text_top=bottom_taken)
     text_png = None
     if moving and text and (title or artist):
         text_png = _text_png(os.path.join(tmp, "text.png"), w, h, title, artist,
-                             "top" if centre_taken or visualizer in reactive.BOTTOM else "bottom")
+                             "top" if centre_taken or visualizer in reactive.BOTTOM or bottom_taken else "bottom")
     dur = ff.duration(audio_path) - start
     if length:
         dur = min(dur, length)
@@ -238,13 +326,27 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     if fade:
         fo = 1.5 if dur < 90 else 3
         afade = f"afade=t=in:st=0:d={0.3 if start else 0.05},afade=t=out:st={max(0, dur - fo)}:d={fo}"
-    if enc or motion != "still":
-        # export settings / moving background: one pass with the chosen codec, frame rate and quality
-        if motion != "still" and not _reactive_on(opts):
+    ass = None
+    if prog_bar != "off" or chapters:
+        shifted = [(max(0.0, t0 - start), name) for t0, name in (chapters or []) if t0 - start < dur]
+        ass = overlay.build(os.path.join(tmp, "overlay.ass"), w, h, dur,
+                            reactive.pick_color(opts.get("vis_color", "white"), image), prog_bar, shifted,
+                            now_playing=bool(chapters) and opts.get("now_playing", True) is not False)
+    if enc or motion != "still" or ass or clips:
+        # export settings / moving background / overlays / clips: one pass with everything
+        if (motion != "still" or clips) and not _reactive_on(opts):
             fps = max(fps, 24)
-        reactive_render(["-loop", "1", "-framerate", str(fps), "-i", frame], audio_path, out, w, h, fps, dur, opts,
+        bg_args = ["-loop", "1", "-framerate", str(fps), "-i", frame]
+        if clips:
+            bg = clips_background(clips, w, h, fps, dur, audio_path, start, opts.get("clip_switch", "beat"),
+                                  int(opts.get("clip_bars") or 4), opts.get("clip_fit", "fill"), tmp=tmp,
+                                  progress=_stage(progress, 0, 0.25), cancel=cancel)
+            bg_args = ["-stream_loop", "-1", "-i", bg]
+            progress = _stage(progress, 0.25, 1.0)
+        reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts,
                         start=start, afade=afade, vertical=vertical, progress=progress, cancel=cancel, enc=enc,
-                        motion=motion, text_png=text_png)
+                        motion="still" if clips else motion, text_png=text_png, ass=ass,
+                        bg_dim=(dim if dim is not None else 0.25) if clips else None)
         return {"path": out, "duration": dur}
     if not _reactive_on(opts):
         # fast path: encode a 10 s still clip once, stream-copy it for the full length, encode audio once
@@ -274,7 +376,8 @@ def fmt_ts(sec):
 
 
 def album_video(tracks, image, out, titles=None, album_title="", artist="", resolution="1080p",
-                visualizer="none", gap=1.0, progress=None, cancel=None, opts=None):
+                visualizer="none", gap=1.0, progress=None, cancel=None, opts=None, size=None, enc=None):
+    """All tracks back to back in one video, with chapters, and "now playing" titles if the look has them on."""
     titles = titles or [os.path.splitext(os.path.basename(t))[0] for t in tracks]
     tmp = tempfile.mkdtemp(prefix="rk_")
     joined = os.path.join(tmp, "album.wav")
@@ -283,9 +386,10 @@ def album_video(tracks, image, out, titles=None, album_title="", artist="", reso
     for path, name in zip(tracks, titles):
         chapters.append((t, name))
         t += ff.duration(path) + gap
-    tmp_out = os.path.join(tmp, "album_nochap.mp4")
+    tmp_out = os.path.join(tmp, "album_nochap" + os.path.splitext(out)[1])
     release_video(joined, image, tmp_out, album_title, artist, resolution, visualizer, fade=False,
-                  progress=_stage(progress, 0.15, 0.97), cancel=cancel, opts=opts)
+                  progress=_stage(progress, 0.15, 0.97), cancel=cancel, opts=opts, size=size, enc=enc,
+                  chapters=chapters if len(chapters) > 1 else None)
     # embed chapter markers into the MP4 as well
     meta = os.path.join(tmp, "chapters.txt")
     total = ff.duration(tmp_out)

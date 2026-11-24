@@ -4,6 +4,13 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.6.0
+- **Music for these videos:** at the top of the Video tab, drop music files (or press ＋ Add music) to build the list of songs your videos use, and drag ⋮⋮ to change the order. It starts as your release's tracks; changing it doesn't change the release.
+- **Playlist video:** every song in that list in one video, in order, with YouTube chapters and a **"Now playing"** title as each song starts. Choose YouTube, 4K, square, vertical, editing or web.
+- **Your video clips instead of a visualizer:** in the Background layer choose **🎬 Video clips**, then drop videos (or photos) in. They **change on the beat** every 1, 2, 4 or 8 bars, or play all the way through. Turn the Visualizer layer off to show only your clips, or keep it on top.
+- **Progress bar:** a new layer with a slim bar that fills as the song plays, with or without the time.
+- **Drops on the Video tab go where you'd expect:** music to the music list, videos to your clips, pictures to your pictures.
+
 ### New in 1.5.3
 - **3D Pipes grow at a steady speed** instead of in little start-stop pulses, and the reset when the screen fills is a slower, softer fade.
 

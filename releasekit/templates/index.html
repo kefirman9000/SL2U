@@ -192,6 +192,17 @@ details.more[open]>summary{margin-bottom:4px}
 .sw0{width:38px;flex:none}
 .inspector{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel)}
 .insp{display:none}.insp.on{display:block}.insp h4{margin:0 0 10px;font-size:14px}
+.vpl{display:flex;flex-direction:column;gap:4px;min-height:44px;border:1px dashed transparent;border-radius:8px;padding:4px}
+.vpl.over{border-color:var(--accent);background:rgba(57,255,20,.05)}
+.vpl-row{display:flex;align-items:center;gap:10px;padding:6px 8px;background:var(--panel2);border:1px solid var(--line);border-radius:8px}
+.vpl-row.drag{opacity:.4}.vpl-row.tgt{border-color:var(--accent)}
+.vpl-row .h{cursor:grab;color:var(--muted);user-select:none;font-size:14px;padding:0 2px}
+.vpl-row .n{width:22px;text-align:right;color:var(--muted);font-size:12px}
+.vpl-row input{flex:1;padding:4px 8px;min-width:0}
+.vpl-row .src{font-size:11px;color:var(--muted);white-space:nowrap}
+.vpl-row .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px}.vpl-row .x:hover{color:#ff6b6b}
+.asset .ord{position:absolute;top:4px;left:4px;min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:var(--ontext);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.asset.skip{opacity:.45}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;flex-direction:column;gap:14px;font-size:18px}
 .overlay.on{display:flex}
 </style>
@@ -309,6 +320,13 @@ details.more[open]>summary{margin-bottom:4px}
   <h2>Video</h2>
   <p class="sub">Pick a look once, then choose what to make. Everything renders on your computer and shows up in the Jobs panel.</p>
   <div id="vidNoTracks"></div>
+  <div class="card" id="vplCard">
+    <div class="row" style="margin-bottom:8px;flex-wrap:wrap"><h3 class="grow" style="margin:0">Music for these videos <span class="muted" style="font-weight:400;font-size:12px">drop music files here · drag ⋮⋮ to change the order</span></h3>
+      <button class="b s p" onclick="$('vplFile').click()">＋ Add music</button><button class="b s" id="vplReset" onclick="vplReset()" title="Go back to this release's own tracks">Use the release's tracks</button></div>
+    <input type="file" id="vplFile" accept="audio/*,.wav,.flac,.aif,.aiff,.mp3,.m4a,.ogg,.opus" multiple hidden onchange="vplAddFiles([...this.files]);this.value=''">
+    <div class="vpl" id="vplList"></div>
+    <div class="muted" style="font-size:12px;margin-top:6px" id="vplNote"></div>
+  </div>
 
   <div class="card editor" id="editor">
     <div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px"><h3 class="grow" style="margin:0"><span class="stepn">A</span>Video editor <span class="muted" style="font-weight:400;font-size:12px">set up the look once · every video you make below uses it</span></h3>
@@ -337,6 +355,11 @@ details.more[open]>summary{margin-bottom:4px}
             <div class="ed-row"><label>Artist</label><input class="grow" id="edArtist" placeholder="the release artist"></div>
             <p class="muted" style="font-size:12px">Leave blank to use each track's own title. Files keep the real names.</p>
           </div>
+          <div class="insp" data-l="prog">
+            <h4>Progress bar</h4>
+            <div class="seg wrap" id="edProg"><button data-v="bar">Bar</button><button data-v="bar_time">Bar and time</button></div>
+            <p class="muted" style="font-size:12px">A slim bar along the bottom that fills up as the song plays, in the visualizer's color. In playlist videos it runs over the whole video.</p>
+          </div>
           <div class="insp" data-l="center">
             <h4>Center</h4>
             <div class="seg wrap" id="edBump"><button data-v="logo">My logo</button><button data-v="cover">Cover</button><button data-v="disc">Spinning record</button><button data-v="text">Title text</button></div>
@@ -363,13 +386,23 @@ details.more[open]>summary{margin-bottom:4px}
           </div>
           <div class="insp" data-l="bg">
             <h4>Background</h4>
-            <div class="seg wrap" id="edBg"><button data-v="cover">Cover on blur</button><button data-v="full">Picture fills screen</button><button data-v="blur">Blurred picture</button><button data-v="dark">Dark</button></div>
+            <div class="seg wrap" id="edBg"><button data-v="cover">Cover on blur</button><button data-v="full">Picture fills screen</button><button data-v="blur">Blurred picture</button><button data-v="dark">Dark</button><button data-v="clips">🎬 Video clips</button></div>
+            <div id="edClipBox" style="display:none;margin-top:12px">
+              <label>Your clips <span class="muted" style="font-weight:400">click to use or skip a clip (numbers = playing order) · drop videos or photos here</span></label>
+              <div class="assets" id="edClips"></div>
+              <input type="file" id="edClipFile" accept="video/*,image/*,.mov,.mkv,.gif" multiple hidden onchange="[...this.files].forEach(f=>uploadAsset('clip',f));this.value=''">
+              <div class="ed-row"><label>Change clips</label><select id="edClipSwitch"><option value="1">On the beat, every bar</option><option value="2">On the beat, every 2 bars</option><option value="4">On the beat, every 4 bars</option><option value="8">On the beat, every 8 bars</option><option value="full">Play each clip all the way through</option></select></div>
+              <div class="ed-row"><label>Fit</label><div class="seg" id="edClipFit"><button data-v="fill">Fill the screen</button><button data-v="fit">Whole clip</button></div></div>
+              <p class="muted" style="font-size:12px">Clips play instead of the picture. Turn the Visualizer layer off to show only your clips, or keep it on top.</p>
+            </div>
+            <div id="edPicBox">
             <label style="margin-top:14px">Picture <span class="muted" style="font-weight:400">the cover, or one of your pictures · drop a picture here to add one</span></label>
             <div class="assets" id="edPics"></div>
             <input type="file" id="edPicFile" accept="image/*,.svg" hidden onchange="uploadAsset('picture',this.files[0]);this.value=''">
             <input type="hidden" id="vidImg">
+            </div>
             <div class="ed-row"><label>Darkness</label><input type="range" id="edDim" min="0" max="0.85" step="0.05" value="0.5"><span class="val" id="edDimV"></span></div>
-            <div class="ed-row"><label>Movement</label><select id="edMotion"><option value="still">Still</option><option value="drift">Slow drift</option><option value="zoom">Slow zoom in and out</option><option value="breathe">Breathing light</option><option value="grain">Film grain</option></select></div>
+            <div class="ed-row" id="edMotionRow"><label>Movement</label><select id="edMotion"><option value="still">Still</option><option value="drift">Slow drift</option><option value="zoom">Slow zoom in and out</option><option value="breathe">Breathing light</option><option value="grain">Film grain</option></select></div>
             <p class="muted" style="font-size:12px">10-hour loops have their own background choice.</p>
           </div>
         </div>
@@ -382,7 +415,7 @@ details.more[open]>summary{margin-bottom:4px}
     <div class="vtile" data-vp="song"><b>Song video</b><span>One track, any shape: YouTube, vertical, square, 4K, for editing</span></div>
     <div class="vtile" data-vp="loop"><b>10-hour loop</b><span>One or more tracks repeated for hours, seamless</span></div>
     <div class="vtile" data-vp="short"><b>Short / Reel / TikTok</b><span>15–60 s vertical clip of the best part</span></div>
-    <div class="vtile" data-vp="album"><b>Full album</b><span>All tracks in one video with chapters</span></div>
+    <div class="vtile" data-vp="album"><b>Playlist video</b><span>All your music in one video, with chapters and "now playing"</span></div>
     <div class="vtile" data-vp="batch"><b>Overnight batch</b><span>A loop video for every track in a folder</span></div>
     <div class="vtile" data-vp="canvas"><b>Spotify Canvas</b><span>8-second looping clip for Spotify</span></div>
     <div class="vtile" data-vp="samples"><b>Compare visualizers</b><span>All 16 styles side by side with your music</span></div>
@@ -460,10 +493,15 @@ details.more[open]>summary{margin-bottom:4px}
   </div>
 
   <div class="card vpanel" data-vp="album">
-    <h3>Full album video</h3>
-    <div class="grid g4"><div><label>Gap between tracks (s)</label><input id="avGap" type="number" value="1" step="0.5"></div></div>
-    <p class="muted" style="font-size:12px">All tracks of this release in order. The chapter timestamps are added to the description on the Upload tab, so YouTube shows chapters.</p>
-    <button class="b p" onclick="job('album_video',{gap:avGap.value,image:vidImage()})">Make album video</button>
+    <h3>Playlist video</h3>
+    <p class="muted" style="font-size:12px;margin-top:0">Every song in "Music for these videos" above, in that order, in one video. YouTube chapters are added, and the title of each song shows as it starts.</p>
+    <div class="grid g4">
+      <div><label>Made for</label><select id="plPreset"><option value="yt">YouTube (16:9, 1080p, MP4)</option><option value="yt4k">YouTube 4K (16:9, MP4)</option><option value="square">Instagram square (1:1, MP4)</option><option value="vertical">Vertical (9:16, MP4)</option><option value="edit">Video editing (ProRes MOV)</option><option value="web">A website (WebM)</option></select></div>
+      <div><label>Gap between songs (s)</label><input id="avGap" type="number" value="1" step="0.5" min="0"></div>
+      <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="plNow" checked>"Now playing" titles</label></div>
+      <div><label>Name (optional)</label><input id="plName" placeholder="e.g. Late Night Mix"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="b p" onclick="playlistVideo()">Make playlist video</button><span class="muted" id="plSummary" style="font-size:12px"></span></div>
   </div>
 
   <div class="card vpanel" data-vp="batch">
@@ -758,7 +796,7 @@ function renderTracks(){
   </div><div class="row" style="flex-direction:column"><button class="b s" onclick="mv(${i},-1)">↑</button><button class="b s" onclick="mv(${i},1)">↓</button><button class="b s" onclick="R.tracks.splice(${i},1);renderTracks();save()">✕</button></div></div>`).join("")
   :`<p class="muted">No tracks yet. Add WAV/FLAC masters (MP3 works too, but distributors prefer lossless).</p>`;
   document.querySelectorAll(".trackSel").forEach(s=>{const v=s.value;s.innerHTML=R.tracks.map((t,i)=>`<option value="${i}">${i+1}. ${esc(t.title)}</option>`).join("");if(v)s.value=v});
-  renderLvTracks();
+  renderLvTracks();if(typeof vplRender==="function"&&$("vplList"))vplRender();
 }
 function mv(i,d){const j=i+d;if(j<0||j>=R.tracks.length)return;[R.tracks[i],R.tracks[j]]=[R.tracks[j],R.tracks[i]];renderTracks();save()}
 function renderAnalysis(res){$("analysis").innerHTML=`<table><tr><th>Track</th><th>Format</th><th>Loudness</th><th>True peak</th><th>BPM est.</th><th>Notes</th></tr>`+
@@ -788,11 +826,11 @@ function useCover(p){R.art_path=p;save();renderCover();toast("Cover set");edRefr
 
 // ---------- video
 const vidImage=()=>LOOK.picture||undefined;
-function renderLvTracks(){$("lvTracks").innerHTML=R.tracks.map((t,i)=>`<label class="chk" style="margin-right:12px"><input type="checkbox" class="lvT" value="${i}" ${i===0?"checked":""}>${esc(t.title)}</label>`).join("")||'<span class="muted">Add tracks first.</span>'}
+function renderLvTracks(){$("lvTracks").innerHTML=vpl().map((t,i)=>`<label class="chk" style="margin-right:12px"><input type="checkbox" class="lvT" value="${i}" ${i===0?"checked":""}>${esc(t.title)}</label>`).join("")||'<span class="muted">Add tracks first.</span>'}
 function renderLong(){const idx=[...document.querySelectorAll(".lvT:checked")].map(x=>+x.value);
   job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,image:vidImage(),video_clip:$("lvClip").value,clip_folder:$("lvClipDir").value,clip_mode:$("lvClipMode").value,clip_fit:$("lvClipFit").value})}
 function doEverything(){const kinds=["analyze","variants","album_video","pkg_distro","pkg_direct","pkg_stock"];
-  job(kinds);R.tracks.forEach((t,i)=>job("release_video",{track_index:i}));
+  job(kinds,{release_tracks:true});R.tracks.forEach((t,i)=>job("release_video",{track_index:i,release_tracks:true}));
   job("long_video",{tracks:[0],hours:10});job("short",{track_index:0,seconds:30});job("canvas",{});}
 
 // ---------- genre suggestions
@@ -807,15 +845,16 @@ function genreTip(){const v=genreVis(),el=$("genreTip");if(!el)return;
   el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc(VIS_NAME(k))}</a>`).join(", "):""}
 
 // ---------- your logos and pictures (remembered in Release Kit, newest first)
-const ASSETS={logo:[],picture:[]};
+const ASSETS={logo:[],picture:[],clip:[]};
 const samePath=(a,b)=>!!a&&!!b&&a.replace(/\\/g,"/").toLowerCase()===b.replace(/\\/g,"/").toLowerCase();
 async function loadAssets(kind){try{ASSETS[kind]=(await api("/api/assets/"+kind)).items}catch(e){}
+  if(kind==="clip"){setLook({clips:(LOOK.clips||[]).filter(c=>ASSETS.clip.some(p=>samePath(p,c)))},true);return renderClips()}
   // a logo/picture chosen before the library existed: add it so it's remembered too
   const cur=kind==="logo"?LOOK.logo:LOOK.picture;
   if(cur&&!ASSETS[kind].some(p=>samePath(p,cur))){try{const j=await api(`/api/assets/${kind}/add`,{path:cur});ASSETS[kind]=j.items;
     setLook(kind==="logo"?{logo:j.path}:{picture:j.path},true)}catch(e){}}
   renderAssets(kind)}
-function renderAssets(kind){const box=$(kind==="logo"?"edLogos":"edPics");if(!box)return;const cur=kind==="logo"?LOOK.logo:LOOK.picture;
+function renderAssets(kind){if(kind==="clip")return renderClips();const box=$(kind==="logo"?"edLogos":"edPics");if(!box)return;const cur=kind==="logo"?LOOK.logo:LOOK.picture;
   let html=kind==="picture"?`<div class="asset ${!cur?"on":""}" onclick="usePicture('')" title="Use the release cover"><div class="th">${R.art_path?`<img src="${thumb(R.art_path,200)}">`:"<span>no cover yet</span>"}</div><span>The cover</span></div>`:"";
   html+=ASSETS[kind].map(p=>{const n=p.split(/[\\/]/).pop().replace(/-[0-9a-f]{8}\.(png|jpg)$/,"");
     return `<div class="asset ${samePath(p,cur)?"on":""}" title="${esc(n)}" onclick="${kind==="logo"?"useLogo":"usePicture"}('${jsq(p)}')"><div class="th ${kind==="logo"?"chk":""}"><img src="${thumb(p,200)}" loading="lazy"></div><span>${esc(n)}</span><button class="x" title="Remove from this list" onclick="event.stopPropagation();forgetAsset('${kind}','${jsq(p)}')">×</button></div>`}).join("");
@@ -826,6 +865,7 @@ function useLogo(p){setLook({logo:p,bump:"logo"});renderAssets("logo")}
 function usePicture(p){setLook({picture:p});$("vidImg").value=p;renderAssets("picture")}
 // the browser opens the file (SVG, WebP, AVIF, GIF… anything it can show) and sends a PNG/JPG
 async function toUploadable(file,kind){
+  if(kind==="clip")return file;  // videos go as they are
   if(kind==="logo"?file.type==="image/png":/^image\/(png|jpeg)$/.test(file.type))return file;
   const url=URL.createObjectURL(file);
   try{const img=new Image();img.src=url;await img.decode();
@@ -842,22 +882,73 @@ async function uploadAsset(kind,file){if(!file)return;toast(`Adding ${file.name}
   const fd=new FormData();fd.append("file",f,f.name);
   let j;try{const r=await fetch("/api/assets/"+kind,{method:"POST",body:fd});j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText)}
   catch(e){return toast("Couldn't add it: "+e.message,5000)}
-  ASSETS[kind]=j.items;kind==="logo"?useLogo(j.path):usePicture(j.path);toast(kind==="logo"?"Logo added and in use":"Picture added and in use")}
-async function addAssetPath(kind,path){try{const j=await api(`/api/assets/${kind}/add`,{path});ASSETS[kind]=j.items;kind==="logo"?useLogo(j.path):usePicture(j.path)}catch(e){toast(e.message,5000)}}
+  ASSETS[kind]=j.items;
+  if(kind==="clip"){setLook({clips:[...(LOOK.clips||[]),j.path],bg:"clips"});return toast("Clip added and playing in the background")}
+  kind==="logo"?useLogo(j.path):usePicture(j.path);toast(kind==="logo"?"Logo added and in use":"Picture added and in use")}
+async function addAssetPath(kind,path){try{const j=await api(`/api/assets/${kind}/add`,{path});ASSETS[kind]=j.items;
+  if(kind==="clip")return setLook({clips:[...(LOOK.clips||[]),j.path],bg:"clips"});kind==="logo"?useLogo(j.path):usePicture(j.path)}catch(e){toast(e.message,5000)}}
 async function forgetAsset(kind,p){try{const j=await api(`/api/assets/${kind}/remove`,{path:p});ASSETS[kind]=j.items}catch(e){return toast(e.message)}
+  if(kind==="clip")setLook({clips:(LOOK.clips||[]).filter(c=>!samePath(c,p))});
   if(kind==="logo"&&samePath(LOOK.logo,p))setLook({logo:""});if(kind==="picture"&&samePath(LOOK.picture,p))usePicture("");renderAssets(kind)}
 function dropZone(el,kind){
   el.addEventListener("dragover",e=>{e.preventDefault();e.stopPropagation();el.classList.add("over")});
   el.addEventListener("dragleave",()=>el.classList.remove("over"));
   el.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();el.classList.remove("over");$("drop").classList.remove("on");
+    if(kind==="clip"){const fs=[...e.dataTransfer.files].filter(f=>/^(video|image)\//.test(f.type)||/\.(mp4|mov|mkv|webm|m4v|avi|gif|png|jpe?g|webp)$/i.test(f.name));
+      return fs.length?fs.forEach(f=>uploadAsset("clip",f)):toast("Drop video or photo files here")}
     const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("image/")||/\.(svg|png|jpe?g|jfif|webp|gif|avif|bmp|tiff?)$/i.test(f.name));
     f?uploadAsset(kind,f):toast("Drop a picture file here")})}
+
+
+// ---------- music for these videos (a playlist just for videos; the release's tracks by default)
+const VIDEO_KINDS=["export_video","release_video","long_video","short","album_video","vis_samples","canvas"];
+const vpl=()=>Array.isArray(R.vplaylist)?R.vplaylist:R.tracks;
+function vplEdit(){if(!Array.isArray(R.vplaylist))R.vplaylist=R.tracks.map(t=>({path:t.path,title:t.title,from_release:true}))}
+function vplRender(){const L=vpl();
+  $("vplList").innerHTML=L.length?L.map((t,i)=>`<div class="vpl-row" draggable="true" data-i="${i}"><span class="h" title="Drag to change the order">⋮⋮</span><span class="n">${i+1}</span>
+    <input value="${esc(t.title||"")}" title="Title shown in the video" oninput="vplEdit();R.vplaylist[${i}].title=this.value;save();vplSelects()">
+    <span class="src">${Array.isArray(R.vplaylist)&&!t.from_release?"added":"release track"}</span><button class="x" title="Remove from this list (the file stays)" onclick="vplRemove(${i})">×</button></div>`).join("")
+    :'<div class="muted" style="font-size:12px;padding:8px">No music yet. Drop music files here, press ＋ Add music, or add tracks on the Release tab.</div>';
+  $("vplReset").style.display=Array.isArray(R.vplaylist)?"":"none";
+  $("vplNote").textContent=Array.isArray(R.vplaylist)?"This list is only for videos; your release's tracks aren't changed.":"These are your release's tracks. Changing this list here won't change the release.";
+  vplSelects();if($("plSummary"))$("plSummary").textContent=L.length?`${L.length} song${L.length>1?"s":""}`:""}
+function vplSelects(){const L=vpl();document.querySelectorAll("#t-video .trackSel").forEach(s=>{const v=s.value;
+  s.innerHTML=L.map((t,i)=>`<option value="${i}">${i+1}. ${esc(t.title||t.path.split(/[\\/]/).pop())}</option>`).join("");if(v&&+v<L.length)s.value=v});
+  renderLvTracks();vidNoTracks()}
+function vplRemove(i){vplEdit();R.vplaylist.splice(i,1);save();vplRender();edRefresh()}
+function vplReset(){R.vplaylist=null;save();vplRender();edRefresh();toast("Using the release's tracks")}
+async function vplAddFiles(files){files=files.filter(f=>/^audio\//.test(f.type)||/\.(wav|flac|aiff?|mp3|m4a|ogg|opus)$/i.test(f.name));
+  if(!files.length)return toast("Those aren't music files");toast(`Adding ${files.length} song(s)…`,60000);
+  const fd=new FormData();files.forEach(f=>fd.append("files",f,f.name));
+  let res;try{res=await (await fetch("/api/upload",{method:"POST",body:fd})).json()}catch(e){return toast("Couldn't add them: "+e)}
+  vplAddPaths(res.files.filter(f=>f.kind==="audio"))}
+function vplAddPaths(items){if(!items.length)return;vplEdit();
+  items.forEach(f=>R.vplaylist.push({path:f.path,title:(f.tags&&f.tags.title)||f.name.replace(/\.[^.]+$/,"")}));
+  save();vplRender();edRefresh();toast(`${items.length} song${items.length>1?"s":""} added to the video music list`)}
+function vplDnD(){const list=$("vplList");let from=null;
+  list.addEventListener("dragstart",e=>{const r=e.target.closest(".vpl-row");if(!r)return;from=+r.dataset.i;r.classList.add("drag");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain","rk-row")});
+  list.addEventListener("dragend",()=>{from=null;list.querySelectorAll(".vpl-row").forEach(r=>r.classList.remove("drag","tgt"))});
+  list.addEventListener("dragover",e=>{e.preventDefault();e.stopPropagation();const r=e.target.closest(".vpl-row");
+    list.querySelectorAll(".vpl-row").forEach(x=>x.classList.toggle("tgt",x===r&&from!==null));if(from===null)list.classList.add("over")});
+  list.addEventListener("dragleave",()=>list.classList.remove("over"));
+  list.addEventListener("drop",async e=>{e.preventDefault();e.stopPropagation();list.classList.remove("over");$("drop").classList.remove("on");
+    if(from!==null){const r=e.target.closest(".vpl-row");const to=r?+r.dataset.i:vpl().length-1;
+      if(to!==from){vplEdit();const [m]=R.vplaylist.splice(from,1);R.vplaylist.splice(to,0,m);save();vplRender();edRefresh()}from=null;return}
+    const files=(await collectFiles(e.dataTransfer)).map(x=>x[0]);vplAddFiles(files)})}
+
+// ---------- your clips (background instead of a picture)
+function renderClips(){const box=$("edClips");if(!box)return;const sel=LOOK.clips||[];
+  box.innerHTML=ASSETS.clip.map(p=>{const k=sel.findIndex(c=>samePath(c,p));const n=fileName(p);
+    return `<div class="asset ${k>=0?"on":"skip"}" title="${esc(n)}: click to ${k>=0?"skip":"use"} it" onclick="toggleClip('${jsq(p)}')"><div class="th"><img src="${thumb(p,200)}" loading="lazy"></div>${k>=0?`<span class="ord">${k+1}</span>`:""}<span>${esc(n)}</span><button class="x" title="Remove from this list" onclick="event.stopPropagation();forgetAsset('clip','${jsq(p)}')">×</button></div>`}).join("")+
+    `<div class="asset add" onclick="$('edClipFile').click()" title="Choose videos or photos from your computer"><div class="th"><b>＋</b></div><span>Add clips</span></div>`}
+function toggleClip(p){const sel=[...(LOOK.clips||[])];const k=sel.findIndex(c=>samePath(c,p));k>=0?sel.splice(k,1):sel.push(p);setLook({clips:sel,bg:sel.length?"clips":LOOK.bg})}
 
 // ================= video editor: layers ("the look")
 const VIS_ORDER=["bars","mirror","waves","line","spectrum","scope","ring","ringwave","particles","geometric","tunnel","synthwave","maze","pipes","starfield","mystify"];
 const VIS_NAME=k=>{const o=$("stVis").querySelector(`option[value="${k}"]`);return o?o.textContent.replace(" (bars in a circle)",""):k};
 const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan","#28dcff","Cyan"],["pink","#ff46aa","Pink"],["gold","#ffc83c","Gold"],["red","#ff3c3c","Red"],["#a060ff","#a060ff","Purple"],["#ff7a00","#ff7a00","Orange"],["cover","conic-gradient(#f5a,#fa5,#af5,#5af,#f5a)","From the cover"]];
-const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo"};
+const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
+  clips:[],clip_switch:"beat",clip_bars:4,clip_fit:"fill",progress:"off",prog_last:"bar_time",now_playing:true};
 let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
   if(!localStorage.getItem("rk_look")){const o=k=>localStorage.getItem("rk_f_"+k);  // carry over the old Video style settings
     if(o("stVis"))saved.visualizer=o("stVis");if(o("stBump"))saved.bump=o("stBump");if(o("stColor"))saved.vis_color=o("stColor");if(o("stAmt"))saved.bump_amount=+o("stAmt")}
@@ -865,27 +956,28 @@ let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")
 const ED={shape:"16:9",t:null,ctl:null,n:0,sound:false,layer:localStorage.getItem("rk_layer")||"vis"};
 function getStyle(){return Object.assign({},LOOK)}
 function setLook(ch,quiet){Object.assign(LOOK,ch);
-  if(LOOK.visualizer!=="none")LOOK.vis_last=LOOK.visualizer;if(LOOK.bump!=="none")LOOK.bump_last=LOOK.bump;
+  if(LOOK.visualizer!=="none")LOOK.vis_last=LOOK.visualizer;if(LOOK.bump!=="none")LOOK.bump_last=LOOK.bump;if(LOOK.progress!=="off")LOOK.prog_last=LOOK.progress;
   try{localStorage.setItem("rk_look",JSON.stringify(LOOK))}catch(e){}  // other Release Kit tabs pick this up
   clearTimeout(setLook.t);setLook.t=setTimeout(()=>api("/api/settings",{look:LOOK}).then(s=>S=s).catch(()=>{}),800);
   edSync();if(!quiet)edRefresh()}
 function seg(id,val,fn){const el=$(id);el.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===String(val)));if(fn)el.onclick=e=>{const b=e.target.closest("button");if(b)fn(b.dataset.v)}}
 const PULSE=v=>v<=0?"no pulse":v<0.08?"subtle pulse":v<0.16?"medium pulse":v<0.24?"strong pulse":"huge pulse";
 const COLORNAME=c=>(SWATCHES.find(s=>s[0]===c)||[0,0,/^#/.test(c)?"custom color":c])[2];
-const BGNAME={cover:"Cover on blur",full:"Picture fills screen",blur:"Blurred picture",dark:"Dark"};
+const BGNAME={cover:"Cover on blur",full:"Picture fills screen",blur:"Blurred picture",dark:"Dark",clips:"Video clips"};
 const MOVENAME={still:"still",drift:"slow drift",zoom:"slow zoom",breathe:"breathing light",grain:"film grain"};
 const CENTERNAME={logo:"My logo",cover:"Cover",disc:"Spinning record",text:"Title text"};
 const fileName=p=>(p||"").split(/[\\/]/).pop().replace(/-[0-9a-f]{8}\.(png|jpg)$/,"");
 const CENTERED_VIS=["ring","ringwave","particles","geometric","tunnel","starfield"];
-function layerInfo(){const L=LOOK,tr=R.tracks[+$("exTrack").value||0]||{};
+function layerInfo(){const L=LOOK,tr=vpl()[+$("exTrack").value||0]||{};
   const centerSum=L.bump==="none"?(CENTERED_VIS.includes(L.visualizer)?"Off (this visualizer shows the cover here)":"Off")
     :L.bump==="logo"?(L.logo?`Logo: ${fileName(L.logo)}`:"Logo: none chosen yet, the cover is used")+` · ${Math.round(L.center_size*100)}% · ${PULSE(+L.bump_amount)}`
     :`${CENTERNAME[L.bump]} · ${Math.round(L.center_size*100)}% · ${PULSE(+L.bump_amount)}`;
   return [
+    {k:"prog",name:"Progress bar",on:L.progress!=="off",sum:L.progress==="off"?"Off":L.progress==="bar"?"Bar":"Bar and time"},
     {k:"text",name:"Title and artist",on:L.text_on!==false,sum:L.text_on!==false?`${L.text_title||tr.title||R.title||"Title"} · ${L.text_artist||R.artist||"Artist"}`:"Off"},
     {k:"center",name:"Center",on:L.bump!=="none",sum:centerSum,warn:L.bump==="logo"&&!L.logo},
     {k:"vis",name:"Visualizer",on:L.visualizer!=="none",sum:L.visualizer==="none"?"Off":`${VIS_NAME(L.visualizer)} · ${COLORNAME(L.vis_color)} · ${Math.round(L.vis_size*100)}%`},
-    {k:"bg",name:"Background",on:null,sum:`${BGNAME[L.bg]||L.bg} · ${MOVENAME[L.motion]||L.motion}`+(L.picture?` · ${fileName(L.picture)}`:"")}]}
+    {k:"bg",name:"Background",on:null,warn:L.bg==="clips"&&!(L.clips||[]).length,sum:L.bg==="clips"?((L.clips||[]).length?`${L.clips.length} video clip${L.clips.length>1?"s":""} · ${L.clip_switch==="full"?"each played through":"changing every "+L.clip_bars+" bar"+(L.clip_bars>1?"s":"")}`:"Video clips: none chosen yet"):`${BGNAME[L.bg]||L.bg} · ${MOVENAME[L.motion]||L.motion}`+(L.picture?` · ${fileName(L.picture)}`:"")}]}
 function renderLayers(){$("edLayers").innerHTML=layerInfo().map(l=>`<div class="layer ${ED.layer===l.k?"sel":""} ${l.on===false?"off":""}" data-l="${l.k}">
     ${l.on===null?'<span class="sw0"></span>':`<button class="tog ${l.on?"on":""}" data-tog="${l.k}" title="${l.on?"Turn off":"Turn on"}"><i></i></button>`}
     <div class="li"><b>${l.name}</b><span class="${l.warn?"warnt":""}">${esc(l.sum)}</span></div><span class="chev">›</span></div>`).join("")}
@@ -893,6 +985,7 @@ function selectLayer(k){ED.layer=k;localStorage.setItem("rk_layer",k);renderLaye
   document.querySelectorAll(".insp").forEach(p=>p.classList.toggle("on",p.dataset.l===k))}
 function toggleLayer(k){const L=LOOK;
   if(k==="text")setLook({text_on:L.text_on===false});
+  if(k==="prog")setLook({progress:L.progress==="off"?(L.prog_last||"bar_time"):"off"});
   if(k==="vis")setLook({visualizer:L.visualizer==="none"?(L.vis_last||"bars"):"none"});
   if(k==="center")setLook({bump:L.bump==="none"?(L.bump_last||(L.logo?"logo":"cover")):"none"});
   selectLayer(k)}
@@ -907,9 +1000,11 @@ function edSync(){const L=LOOK;
   $("edCenter").value=L.center_size;$("edCenterV").textContent=Math.round(L.center_size*100)+"%";
   $("edPulse").value=L.bump_amount;$("edPulseV").textContent=PULSE(+L.bump_amount).replace(" pulse","");
   seg("edBg",L.bg);const dim=L.dim===""?0.5:+L.dim;$("edDim").value=dim;$("edDimV").textContent=L.dim===""?"Normal":Math.round(dim*100)+"%";
-  $("edMotion").value=L.motion;
+  $("edMotion").value=L.motion;seg("edProg",L.progress);
+  const clipsOn=L.bg==="clips";$("edClipBox").style.display=clipsOn?"":"none";$("edPicBox").style.display=clipsOn?"none":"";$("edMotionRow").style.display=clipsOn?"none":"";
+  $("edClipSwitch").value=L.clip_switch==="full"?"full":String(L.clip_bars||4);seg("edClipFit",L.clip_fit||"fill");renderClips();
   if(document.activeElement!==$("edTitle"))$("edTitle").value=L.text_title||"";if(document.activeElement!==$("edArtist"))$("edArtist").value=L.text_artist||"";
-  $("edTitle").placeholder=(R.tracks[+$("exTrack").value||0]||{}).title||"the track's title";$("edArtist").placeholder=R.artist||"the release artist";
+  $("edTitle").placeholder=(vpl()[+$("exTrack").value||0]||{}).title||"the track's title";$("edArtist").placeholder=R.artist||"the release artist";
   renderAssets("logo");renderAssets("picture");genreTip()}
 function edInit(){
   $("edVisGrid").innerHTML=VIS_ORDER.map(k=>`<div class="vt" data-v="${k}" title="${esc(VIS_NAME(k))}"><img src="/static/vis/${k}.jpg" alt="" loading="lazy"><span>${esc(VIS_NAME(k))}</span></div>`).join("");
@@ -923,15 +1018,18 @@ function edInit(){
   $("edDim").oninput=e=>setLook({dim:+e.target.value});
   $("edMotion").onchange=e=>setLook({motion:e.target.value});
   $("edTitle").oninput=e=>setLook({text_title:e.target.value});$("edArtist").oninput=e=>setLook({text_artist:e.target.value});
-  seg("edPos",LOOK.vis_pos,v=>setLook({vis_pos:v}));seg("edBg",LOOK.bg,v=>setLook({bg:v}));
+  seg("edPos",LOOK.vis_pos,v=>setLook({vis_pos:v}));
+  seg("edBg",LOOK.bg,v=>{setLook({bg:v});if(v==="clips"&&!ASSETS.clip.length)$("edClipFile").click()});
+  seg("edProg",LOOK.progress,v=>setLook({progress:v}));seg("edClipFit",LOOK.clip_fit,v=>setLook({clip_fit:v}));
+  $("edClipSwitch").onchange=e=>setLook(e.target.value==="full"?{clip_switch:"full"}:{clip_switch:"beat",clip_bars:+e.target.value});
   seg("edBump",LOOK.bump,v=>{setLook({bump:v});if(v==="logo"&&!LOOK.logo&&!ASSETS.logo.length)$("edLogoFile").click()});
   seg("edShape",ED.shape,v=>edShapeSet(v));
   $("edLayers").onclick=e=>{const t=e.target.closest("[data-tog]");if(t){toggleLayer(t.dataset.tog);return}
     const l=e.target.closest(".layer");if(l)selectLayer(l.dataset.l)};
   $("edMove").onchange=edRefresh;$("exTrack").addEventListener("change",()=>{edSync();edRefresh()});
   if(S.look)Object.assign(LOOK,S.look);  // the look saved in Release Kit wins over this browser's copy
-  dropZone($("edLogoRow"),"logo");dropZone($("edPics"),"picture");
-  selectLayer(ED.layer);edSync();renderSaved();loadAssets("logo");loadAssets("picture")}
+  dropZone($("edLogoRow"),"logo");dropZone($("edPics"),"picture");dropZone($("edClipBox"),"clip");vplDnD();
+  selectLayer(ED.layer);edSync();renderSaved();loadAssets("logo");loadAssets("picture");loadAssets("clip");vplRender()}
 // several Release Kit tabs open: keep them all showing the same look
 addEventListener("storage",e=>{if(e.key!=="rk_look"||!e.newValue)return;try{const v=JSON.parse(e.newValue);if(JSON.stringify(v)!==JSON.stringify(LOOK)){LOOK=Object.assign({},LOOK_DEFAULT,v);edSync();edRefresh()}}catch(_){}});
 document.addEventListener("visibilitychange",()=>{if(document.hidden)return;try{const v=JSON.parse(localStorage.getItem("rk_look")||"null");
@@ -944,7 +1042,7 @@ async function edRender(){if(!$("t-video").classList.contains("on"))return;
   const img=vidImage()||R.art_path;
   if(!img)return edMsg("Make or choose a cover on the Artwork tab (or pick a picture in the Background layer) to see the preview.");
   const n=++ED.n;if(ED.ctl)ED.ctl.abort();const ctl=ED.ctl=new AbortController();
-  const tr=R.tracks[+$("exTrack").value||0];
+  const tr=vpl()[+$("exTrack").value||0];
   $("edWhat").textContent=tr?`the loudest part of "${tr.title}"`:"a demo beat (add a track to hear yours)";
   const body={image:img,track:tr?tr.path:null,title:tr?tr.title:(R.title||"Your title"),artist:R.artist||"Artist",aspect:ED.shape,text:LOOK.text_on!==false,vstyle:getStyle()};
   const get=async seconds=>{const r=await fetch("/api/look_preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({seconds},body)),signal:ctl.signal});
@@ -972,7 +1070,7 @@ function vpanel(k,scroll){k=k||localStorage.getItem("rk_vpanel")||"song";localSt
   document.querySelectorAll(".vpanel").forEach(p=>p.classList.toggle("on",p.dataset.vp===k));
   if(scroll)document.querySelector(`.vpanel[data-vp="${k}"]`).scrollIntoView({behavior:"smooth",block:"start"})}
 $("vtiles").onclick=e=>{const t=e.target.closest(".vtile");if(t)vpanel(t.dataset.vp)};
-function vidNoTracks(){$("vidNoTracks").innerHTML=R.tracks.length?"":`<div class="note row"><span class="grow">Add a track on the Release tab first (or drop audio files anywhere on this window). You can still try the visualizers with a demo beat.</span><button class="b s" onclick="show('release')">Go to Release</button></div>`}
+function vidNoTracks(){if(!$("vidNoTracks"))return;$("vidNoTracks").innerHTML=vpl().length?"":`<div class="note row"><span class="grow">Add a track on the Release tab first (or drop audio files anywhere on this window). You can still try the visualizers with a demo beat.</span><button class="b s" onclick="show('release')">Go to Release</button></div>`}
 const PRESETS={yt:["mp4","16:9",1080,30],yt4k:["mp4","16:9",2160,30],vertical:["mp4","9:16",1080,30],square:["mp4","1:1",1080,30],
   portrait:["mp4","4:5",1080,30],edit:["mov","16:9",1080,30],web:["webm","16:9",1080,30]};
 function applyPreset(){const p=PRESETS[$("exPreset").value];
@@ -989,7 +1087,7 @@ async function clearJobs(){try{await api("/api/jobs/clear",{})}catch(e){return t
 
 // ---------- visualizer samples & export
 let SAMPLES_AT=0;
-function visSamples(){job("vis_samples",{track_index:R.tracks.length?$("vsTrack").value:undefined,aspect:$("vsAspect").value,seconds:$("vsSec").value,image:vidImage()})}
+function visSamples(){job("vis_samples",{track_index:vpl().length?$("vsTrack").value:undefined,aspect:$("vsAspect").value,seconds:$("vsSec").value,image:vidImage()})}
 function renderSamples(res,scroll){if(!res||!res.samples)return;const cur=LOOK.visualizer,bust=Date.now();
   $("vsGrid").innerHTML=res.samples.map(s=>`<div class="sample ${s.visualizer===cur?"on":""}" data-vis="${esc(s.visualizer)}"><video src="/api/file?path=${encodeURIComponent(s.path)}&v=${bust}" muted loop autoplay playsinline controls preload="auto"></video>
     <div class="row" style="margin-bottom:6px"><b class="grow">${esc(s.label)}</b>${(genreVis()||[]).includes(s.visualizer)?'<span class="pill ok" title="Fits your genre">suits genre</span>':""}</div>
@@ -1000,22 +1098,26 @@ function renderSamples(res,scroll){if(!res||!res.samples)return;const cur=LOOK.v
   SAMPLES_RES=res;
   if(scroll)$("vsGrid").scrollIntoView({behavior:"smooth",block:"center"})}
 let SAMPLES_RES=null;
-function fullFromSample(k){const res=SAMPLES_RES||{};let i=R.tracks.findIndex(t=>t.path===res.track);
-  if(i<0){if(!R.tracks.length)return toast("Add a track first");i=+$("vsTrack").value||0}
+function fullFromSample(k){const res=SAMPLES_RES||{};let i=vpl().findIndex(t=>t.path===res.track);
+  if(i<0){if(!vpl().length)return toast("Add a track first");i=+$("vsTrack").value||0}
   useVis(k);const pr=exportParams(i);pr.visualizer=k;if(res.aspect)pr.export.aspect=res.aspect;
-  job("export_video",pr).then(()=>toast(`Making the full video of "${R.tracks[i].title}" in ${VIS_NAME(k)}. Watch the Jobs panel.`,5000))}
+  job("export_video",pr).then(()=>toast(`Making the full video of "${vpl()[i].title}" in ${VIS_NAME(k)}. Watch the Jobs panel.`,5000))}
 function useVis(k){setLook({visualizer:k});
   document.querySelectorAll(".sample").forEach(x=>x.classList.toggle("on",x.dataset.vis===k));toast("Visualizer: "+VIS_NAME(k))}
 function exportParams(i){return {track_index:i??$("exTrack").value,image:vidImage(),
   export:{format:$("exFmt").value,aspect:$("exAspect").value,size:$("exSize").value,fps:$("exFps").value,quality:$("exQ").value,layout:$("exLayout").value,start:$("exStart").value,length:$("exLen").value,fade:$("exFade").checked}}}
-function exportVideo(all){if(!R.tracks.length)return toast("Add a track first");if(all)R.tracks.forEach((t,i)=>job("export_video",exportParams(i)));else job("export_video",exportParams())}
+function exportVideo(all){if(!vpl().length)return toast("Add music first (top of this tab)");if(all)vpl().forEach((t,i)=>job("export_video",exportParams(i)));else job("export_video",exportParams())}
+function playlistVideo(){if(!vpl().length)return toast("Add music first (top of this tab)");const p=PRESETS[$("plPreset").value];
+  job("album_video",{gap:$("avGap").value,playlist:true,name:$("plName").value.trim()||undefined,image:vidImage(),
+    export:{format:p[0],aspect:p[1],size:p[2],fps:p[3],quality:"standard"},vstyle:Object.assign(getStyle(),{now_playing:$("plNow").checked})})}
 function exportPreview(){edShapeSet($("exAspect").value);
   $("editor").scrollIntoView({behavior:"smooth",block:"start"})}
 
 // ---------- jobs
 function clipRows(){const v=$("lvVisual").value;$("slideRow").style.display=v==="slideshow"?"":"none";$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
 async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];params=Object.assign({vstyle:getStyle(),text:LOOK.text_on!==false},params);
-  try{const r=await api("/api/jobs",{kinds,release:R,params});
+  const rel=Array.isArray(R.vplaylist)&&!params.release_tracks&&kinds.every(k=>VIDEO_KINDS.includes(k))?Object.assign({},R,{tracks:vpl()}):R;
+  try{const r=await api("/api/jobs",{kinds,release:rel,params});
     if(r.errors.length)toast(r.errors.join(" · "),5000);
     else{const q=LASTJOBS.filter(j=>j.status==="queued").length,run=LASTJOBS.filter(j=>j.status==="running").length;
       const when=q?` It starts after ${q} waiting job${q>1?"s":""}.`:run>=2?" It starts when a running job finishes.":" Starting now.";
@@ -1160,6 +1262,11 @@ async function collectFiles(dt){const out=[];const entries=[...dt.items].map(i=>
   for(const en of entries)await walk(en,"");return out}
 function handleDropped(res){const aud=res.files.filter(f=>f.kind==="audio"),img=res.files.filter(f=>f.kind==="image"),vid=res.files.filter(f=>f.kind==="video");
   const msgs=[];
+  if($("t-video").classList.contains("on")&&!WZ.open){  // on the Video tab, drops go where videos need them
+    if(aud.length){vplAddPaths(aud);msgs.push(`${aud.length} song(s) added to "Music for these videos"`)}
+    if(vid.length){vid.forEach(f=>addAssetPath("clip",f.path));msgs.push(`${vid.length} clip(s) added to the background`);selectLayer("bg")}
+    if(img.length){img.forEach(f=>addAssetPath("picture",f.path));msgs.push(`${img.length} picture(s) added to your pictures`);selectLayer("bg")}
+    return toast(msgs.join(" · ")||"Nothing usable in that drop",4500)}
   if(aud.length){const tags={};aud.forEach(f=>tags[f.path]=f.tags||{});
     if(!R.tracks.length&&!R.title&&!WZ.open)R=withDefaults(blank());addTracks(aud.map(f=>f.path),tags);msgs.push(aud.length+" track(s) added")}
   if(img.length){const dir=img[0].path.replace(/[\\/][^\\/]+$/,"");

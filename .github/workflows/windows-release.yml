@@ -133,6 +133,15 @@ jobs:
           $lg = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "ring"; bump = "logo"; logo = $up.path; center_size = 1.4 }; export = @{ size = 720; quality = "draft" } } }
           $nl = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "none"; bump = "logo" }; export = @{ size = 720; quality = "draft" } } }
           Write-Host "Logo videos OK"
+          # video clips as the background (changing on the beat) + progress bar; playlist video with "now playing"
+          $clip = "$env:RUNNER_TEMP\clip.mp4"
+          & "$PWD\ffbin\ffmpeg.exe" -v error -y -f lavfi -i "mandelbrot=s=640x360:r=30" -t 4 -pix_fmt yuv420p $clip
+          $cv = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "bars"; bg = "clips"; clips = @($clip, $rel.art_path); clip_switch = "beat"; clip_bars = 1; progress = "bar_time" }; export = @{ size = 720; quality = "draft" } } }
+          Write-Host "Clip background video OK: $($cv.result.path)"
+          $rel2 = @{ title = "CI"; artist = "CI"; art_path = $rel.art_path; tracks = @($rel.tracks[0], $rel.tracks[0]) }
+          $pl = Run-Job @{ kinds = @("album_video"); release = $rel2; params = @{ playlist = $true; gap = 0.5; export = @{ format = "mp4"; aspect = "16:9"; size = 720; fps = 30; quality = "draft" }; vstyle = @{ progress = "bar"; now_playing = $true } } }
+          if (-not $pl.result.chapters) { throw "Playlist video has no chapters" }
+          Write-Host "Playlist video OK"
           $g = Invoke-RestMethod http://127.0.0.1:5577/api/gpu
           Write-Host "Graphics card status: $($g | ConvertTo-Json -Compress)"
           $smp = Run-Job @{ kinds = @("vis_samples"); release = $rel; params = @{ seconds = 3 } }

@@ -26,7 +26,7 @@ for d in (DATA_DIR, PROJECTS):
     os.makedirs(d, exist_ok=True)
 
 AUDIO_EXT = (".wav", ".flac", ".aif", ".aiff", ".mp3", ".m4a", ".ogg", ".opus")
-VIDEO_EXT = (".mp4", ".mov", ".mkv", ".webm", ".m4v")
+VIDEO_EXT = (".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi")
 
 app = Flask(__name__, static_folder=None)
 
@@ -36,6 +36,7 @@ def port():
 
 
 GUARD = security.Guard(app, DATA_DIR, port)
+video.CACHE_DIR = os.path.join(DATA_DIR, "cache")  # resized clips and video thumbnails
 
 
 # ---------------------------------------------------------------- settings / projects
@@ -295,11 +296,24 @@ def build_job(kind, r, p):
         _require(len(tracks) > 0, "Add tracks first.")
         img = _first_image(r, p)
         _require(img, "Set a cover first.")
-        return f"Full album video: {title}", lambda prog, cancel: video.album_video(
-            [t["path"] for t in tracks], img, os.path.join(out, "youtube", packages.safe(f"{artist} - {title} (Full Album)") + ".mp4"),
+        ex = p.get("export") if isinstance(p.get("export"), dict) else None
+        size = enc = None
+        ext = ".mp4"
+        if ex:  # chosen in the Playlist video form ("Made for")
+            fmt = ex.get("format") if ex.get("format") in video.EXPORT_FORMATS else "mp4"
+            aspect = ex.get("aspect") if ex.get("aspect") in video.ASPECTS else "16:9"
+            sz = int(ex.get("size") or 1080)
+            fps = int(ex.get("fps") or 30)
+            _require(sz in video.SIZES and fps in video.FPS_CHOICES, "Choose a size and frame rate.")
+            size, enc, ext = video.export_size(aspect, sz), video.encoder(fmt, ex.get("quality", "standard"), fps), \
+                video.EXPORT_FORMATS[fmt]["ext"]
+        name = p.get("name") or (f"{artist} - {title} (Full Album)" if not p.get("playlist") else f"{artist} - {title} (Playlist)")
+        label = ("Playlist video" if p.get("playlist") else "Full album video") + f": {len(tracks)} tracks"
+        return label, lambda prog, cancel: video.album_video(
+            [t["path"] for t in tracks], img, os.path.join(out, "youtube" if not ex else "videos", packages.safe(name) + ext),
             [t.get("title") or os.path.basename(t["path"]) for t in tracks], say(title), by,
             p.get("resolution", "1080p"), p.get("visualizer") or vis_global, float(p.get("gap", 1.0)), prog, cancel,
-            opts=vopts)
+            opts=vopts, size=size, enc=enc)
 
     if kind == "long_video":
         idx = p.get("tracks")  # list of indexes, or None for selected track
@@ -455,7 +469,7 @@ def api_init():
 # ---------------------------------------------------------------- your logos and pictures
 # Every logo or picture you use is copied into the data folder and remembered (newest first),
 # so it's one click next time, even if the original file moves.
-ASSET_KINDS = {"logo": "logos", "picture": "pictures"}
+ASSET_KINDS = {"logo": "logos", "picture": "pictures", "clip": "clips"}
 ASSET_KEEP = 24
 
 
@@ -522,6 +536,19 @@ def api_asset_upload(kind):
     f = request.files.get("file")
     if not f:
         return jsonify({"error": "No file received."}), 400
+    if kind == "clip":  # videos (and photos) for the background: saved as they are
+        name = packages.safe(os.path.basename(f.filename or "clip")) or "clip"
+        if not name.lower().endswith(VIDEO_EXT + art.IMAGE_EXT + (".gif",)):
+            return jsonify({"error": "That isn't a video or picture file."}), 400
+        dst = os.path.join(_asset_dir(kind), name)
+        base, ext = os.path.splitext(dst)
+        n = 1
+        while os.path.exists(dst):
+            dst = f"{base} ({n}){ext}"
+            n += 1
+        f.save(dst)
+        _remember_asset(kind, dst)
+        return jsonify({"path": dst, "items": _assets(kind)})
     try:
         path = _store_asset(kind, f.read(), f.filename)
     except ValueError as e:
@@ -536,6 +563,11 @@ def api_asset_add(kind):
     path = (request.json or {}).get("path", "")
     if not os.path.isfile(path):
         return jsonify({"error": "That file doesn't exist any more."}), 400
+    if kind == "clip":  # clips can be big: remembered where they are, not copied
+        if not path.lower().endswith(VIDEO_EXT + art.IMAGE_EXT + (".gif",)):
+            return jsonify({"error": "That isn't a video or picture file."}), 400
+        _remember_asset(kind, path)
+        return jsonify({"path": path, "items": _assets(kind)})
     if os.path.dirname(os.path.abspath(path)) == os.path.abspath(_asset_dir(kind)):
         _remember_asset(kind, path)
         stored = path
@@ -626,6 +658,20 @@ def api_thumb():
     if not os.path.isfile(path):
         abort(404)
     size = max(16, min(1600, int(request.args.get("size", 360))))
+    if path.lower().endswith(VIDEO_EXT + (".gif",)):
+        import hashlib
+        st = os.stat(path)
+        key = hashlib.sha1(f"{path}|{st.st_mtime}|{size}".encode()).hexdigest()[:16]
+        os.makedirs(video.CACHE_DIR, exist_ok=True)
+        png = os.path.join(video.CACHE_DIR, f"thumb_{key}.jpg")
+        if not os.path.exists(png):
+            try:
+                at = "1" if ff.duration(path) > 2 else "0"
+                ff.run(["-ss", at, "-i", path, "-frames:v", "1", "-vf", f"scale={size}:{size}:force_original_aspect_ratio=decrease",
+                        "-update", "1", png])
+            except Exception:
+                abort(415)
+        return send_file(png, mimetype="image/jpeg", max_age=60)
     try:
         with Image.open(path) as src:
             see_through = src.mode in ("RGBA", "LA", "PA") or (src.mode == "P" and "transparency" in src.info)
