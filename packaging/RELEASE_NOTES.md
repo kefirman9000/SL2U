@@ -4,6 +4,12 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.4.4
+- **The video editor no longer hides things behind tabs.** Visualizer, Color, **Your logo**, Background, Text and Saved looks are all on screen at once. Use the "Jump to" links at the top or just scroll.
+- **Your logo** has its own section with **＋ Add logo** always visible. Clicking any of your logos puts it in the middle. There's also a **＋ Logo** button next to the preview.
+- Fixed: on smaller screens (or Windows display scaling) the preview could cover the controls and block clicks.
+- Fixed: Settings → Save stopped working in 1.4.1–1.4.3.
+
 ### New in 1.4.3
 - **Logos that just work:** pick "My logo" and your computer's normal file window opens. Any picture your browser can show works (PNG, JPG, SVG, WebP, GIF, AVIF…) and is converted for you. You can also drop a picture onto the logo area.
 - **Your logos and pictures are remembered:** they're kept in a library in the editor (newest first) as thumbnails. Click one to use it, or × to remove it. They stay even if you move the original file.

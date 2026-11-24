@@ -137,7 +137,7 @@ details.more[open]>summary{margin-bottom:4px}
 .proj label{margin:0;font-size:12px}
 .ed-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:1250px){.ed-grid{grid-template-columns:1fr}}
-.ed-prev{position:sticky;top:76px}
+@media (min-width:1251px){.ed-prev{position:sticky;top:76px;z-index:1}}
 .screen{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0 auto}
 .screen img,.screen video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
 .screen video{z-index:1}
@@ -148,17 +148,20 @@ details.more[open]>summary{margin-bottom:4px}
 .seg button.on{background:var(--accent);color:var(--ontext);font-weight:600}
 .seg.wrap{display:flex;flex-wrap:wrap}.seg.wrap button{flex:1 1 auto}
 .ed-tabs{display:flex;flex-wrap:wrap;width:100%;margin-bottom:14px}.ed-tabs button{flex:1 1 auto}
-.ed-pane{display:none}.ed-pane.on{display:block}
+.ed-pane{display:block;padding:14px 0 4px;border-top:1px solid var(--line);margin-top:12px;scroll-margin-top:80px}
+.ed-pane:first-of-type{border-top:0;margin-top:0;padding-top:4px}
+.ed-pane h4{margin:0 0 10px;font-size:14px;color:var(--text)}
+.ed-jump{font-size:12px;color:var(--muted);margin-bottom:6px}.ed-jump a{color:var(--accent2)}
 .ed-pane>label{margin-top:2px}
 .ed-row{display:flex;align-items:center;gap:10px;margin-top:12px}
 .ed-row>label{margin:0;min-width:105px;font-size:12.5px}
 .ed-row input[type=range]{flex:1;accent-color:var(--accent);padding:0;border:0;background:none}
 .ed-row .val{min-width:58px;font-size:12px;color:var(--text);text-align:right}
 .ed-row select{flex:1}
-.vis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vis-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .vt{border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;background:#000}
 .vt img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
-.vt span{display:block;font-size:11.5px;padding:4px 6px;background:var(--panel2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vt span{display:block;font-size:11px;padding:3px 5px;background:var(--panel2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vt:hover{border-color:#3a5a33}.vt.on{border-color:var(--accent)}.vt.on span{color:var(--accent)}
 .swatches{display:flex;flex-wrap:wrap;gap:8px}
 .sw{display:flex;align-items:center;gap:7px;padding:4px 11px 4px 4px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;font-size:12.5px}
@@ -303,29 +306,29 @@ details.more[open]>summary{margin-bottom:4px}
         <div class="row" style="margin-top:8px">
           <label class="chk" style="margin:0"><input type="checkbox" id="edMove" checked>Moving preview</label>
           <button class="b s" id="edSound" onclick="edSound()">🔇 Sound off</button>
+          <button class="b s" onclick="$('edp-middle').scrollIntoView({behavior:'smooth',block:'start'})" title="Put your logo in the middle of the video">＋ Logo</button>
           <span class="muted grow" style="font-size:12px;text-align:right" id="edWhat"></span></div>
         <div class="muted" style="font-size:12px;margin-top:6px" id="genreTip"></div>
       </div>
       <div class="ed-ctl">
-        <div class="seg ed-tabs" id="edTabs"><button data-v="style" class="on">Visualizer</button><button data-v="color">Color</button><button data-v="middle">Middle</button><button data-v="bg">Background</button><button data-v="text">Text</button><button data-v="saved">Saved looks</button></div>
+        <div class="ed-jump">Jump to: <a href="#" data-j="style">Visualizer</a> · <a href="#" data-j="color">Color</a> · <a href="#" data-j="middle">Logo</a> · <a href="#" data-j="bg">Background</a> · <a href="#" data-j="text">Text</a> · <a href="#" data-j="saved">Saved looks</a></div>
 
-        <div class="ed-pane on" data-v="style">
+        <div class="ed-pane" data-v="style" id="edp-style"><h4>Visualizer</h4>
           <div class="vis-grid" id="edVisGrid"></div>
           <div class="ed-row" id="edSizeRow"><label>Size</label><input type="range" id="edVisSize" min="0.6" max="1.6" step="0.1" value="1"><span class="val" id="edVisSizeV"></span></div>
           <div class="ed-row" id="edPosRow"><label>Where</label><div class="seg" id="edPos"><button data-v="bottom" class="on">Bottom</button><button data-v="middle">Middle</button><button data-v="top">Top</button></div></div>
           <p class="muted" style="font-size:12px">Want to see them all moving with your song? Use <a href="#" onclick="vpanel('samples',true);return false" style="color:var(--accent2)">Compare visualizers</a> below.</p>
         </div>
 
-        <div class="ed-pane" data-v="color">
+        <div class="ed-pane" data-v="color" id="edp-color"><h4>Color</h4>
           <div class="swatches" id="edSwatches"></div>
           <div class="ed-row"><label>Any color</label><input type="color" id="edColor" value="#39ff14" style="width:60px;height:34px;padding:2px"><span class="muted" style="font-size:12px">click to pick your own</span></div>
         </div>
 
-        <div class="ed-pane" data-v="middle">
-          <label>What sits in the middle</label>
+        <div class="ed-pane" data-v="middle" id="edp-middle"><h4>Your logo (or what's in the middle)</h4>
           <div class="seg wrap" id="edBump"><button data-v="none" class="on">Nothing</button><button data-v="cover">Cover</button><button data-v="disc">Spinning record</button><button data-v="logo">My logo</button><button data-v="text">Title text</button></div>
-          <div id="edLogoRow" style="display:none;margin-top:12px">
-            <label>Your logos <span class="muted" style="font-weight:400">click one to use it · drop a picture here to add one</span></label>
+          <div id="edLogoRow" style="margin-top:12px">
+            <label>Your logos <span class="muted" style="font-weight:400">click one to put it in the middle · drop a PNG here or press ＋ Add logo</span></label>
             <div class="assets" id="edLogos"></div>
             <input type="file" id="edLogoFile" accept="image/*,.svg" hidden onchange="uploadAsset('logo',this.files[0]);this.value=''">
             <input type="hidden" id="stLogo">
@@ -337,8 +340,7 @@ details.more[open]>summary{margin-bottom:4px}
           <p class="muted" style="font-size:12px">Ring, particle, shape and tunnel visualizers put your cover here when this is "Nothing".</p>
         </div>
 
-        <div class="ed-pane" data-v="bg">
-          <label>Background</label>
+        <div class="ed-pane" data-v="bg" id="edp-bg"><h4>Background</h4>
           <div class="seg wrap" id="edBg"><button data-v="cover" class="on">Cover on blur</button><button data-v="full">Picture fills screen</button><button data-v="blur">Blurred picture</button><button data-v="dark">Dark</button></div>
           <div class="ed-row"><label>Darkness</label><input type="range" id="edDim" min="0" max="0.85" step="0.05" value="0.5"><span class="val" id="edDimV"></span></div>
           <div class="ed-row"><label>Movement</label><select id="edMotion"><option value="still">Still</option><option value="drift">Slow drift</option><option value="zoom">Slow zoom in and out</option><option value="breathe">Breathing light</option><option value="grain">Film grain</option></select></div>
@@ -349,14 +351,14 @@ details.more[open]>summary{margin-bottom:4px}
           <p class="muted" style="font-size:12px">Movement is used by song videos, Shorts and album videos. 10-hour loops choose their own background.</p>
         </div>
 
-        <div class="ed-pane" data-v="text">
+        <div class="ed-pane" data-v="text" id="edp-text"><h4>Title and artist text</h4>
           <label class="chk"><input type="checkbox" id="edText" checked>Show the title and artist on the video</label>
           <div class="ed-row"><label>Title</label><input class="grow" id="edTitle" placeholder="the track's title"></div>
           <div class="ed-row"><label>Artist</label><input class="grow" id="edArtist" placeholder="the release artist"></div>
           <p class="muted" style="font-size:12px">Leave these blank to use each track's own title. Your files are still named after the real titles.</p>
         </div>
 
-        <div class="ed-pane" data-v="saved">
+        <div class="ed-pane" data-v="saved" id="edp-saved"><h4>Saved looks</h4>
           <p class="muted" style="font-size:12px;margin-top:0">Save this look to reuse it on every release, so your channel looks consistent.</p>
           <div class="ed-row"><input class="grow" id="edSaveName" placeholder="Name, e.g. Channel style"><button class="b s p" onclick="saveLook()">Save look</button></div>
           <div id="edSaved" style="margin-top:10px"></div>
@@ -367,16 +369,16 @@ details.more[open]>summary{margin-bottom:4px}
 
   <h3 style="margin:22px 0 10px"><span class="stepn">B</span>What do you want to make?</h3>
   <div class="vtiles" id="vtiles">
-    <div class="vtile" data-p="song"><b>Song video</b><span>One track, any shape: YouTube, vertical, square, 4K, for editing</span></div>
-    <div class="vtile" data-p="loop"><b>10-hour loop</b><span>One or more tracks repeated for hours, seamless</span></div>
-    <div class="vtile" data-p="short"><b>Short / Reel / TikTok</b><span>15–60 s vertical clip of the best part</span></div>
-    <div class="vtile" data-p="album"><b>Full album</b><span>All tracks in one video with chapters</span></div>
-    <div class="vtile" data-p="batch"><b>Overnight batch</b><span>A loop video for every track in a folder</span></div>
-    <div class="vtile" data-p="canvas"><b>Spotify Canvas</b><span>8-second looping clip for Spotify</span></div>
-    <div class="vtile" data-p="samples"><b>Compare visualizers</b><span>All 16 styles side by side with your music</span></div>
+    <div class="vtile" data-vp="song"><b>Song video</b><span>One track, any shape: YouTube, vertical, square, 4K, for editing</span></div>
+    <div class="vtile" data-vp="loop"><b>10-hour loop</b><span>One or more tracks repeated for hours, seamless</span></div>
+    <div class="vtile" data-vp="short"><b>Short / Reel / TikTok</b><span>15–60 s vertical clip of the best part</span></div>
+    <div class="vtile" data-vp="album"><b>Full album</b><span>All tracks in one video with chapters</span></div>
+    <div class="vtile" data-vp="batch"><b>Overnight batch</b><span>A loop video for every track in a folder</span></div>
+    <div class="vtile" data-vp="canvas"><b>Spotify Canvas</b><span>8-second looping clip for Spotify</span></div>
+    <div class="vtile" data-vp="samples"><b>Compare visualizers</b><span>All 16 styles side by side with your music</span></div>
   </div>
 
-  <div class="card vpanel" data-p="song">
+  <div class="card vpanel" data-vp="song">
     <h3>Song video</h3>
     <div class="grid g3">
       <div><label>Track</label><select class="trackSel" id="exTrack"></select></div>
@@ -406,7 +408,7 @@ details.more[open]>summary{margin-bottom:4px}
     <p class="muted" style="font-size:12px">Saved in the <b>videos</b> folder of this release. MOV (ProRes) files are big, about 1 GB a minute at 1080p, and can't be previewed in the browser.</p>
   </div>
 
-  <div class="card vpanel" data-p="loop">
+  <div class="card vpanel" data-vp="loop">
     <h3>10-hour loop</h3>
     <div class="grid g4">
       <div><label>Length (hours)</label><select id="lvHours"><option>1</option><option>2</option><option>3</option><option>8</option><option selected>10</option><option>12</option></select></div>
@@ -436,7 +438,7 @@ details.more[open]>summary{margin-bottom:4px}
     <p class="muted" style="font-size:12px">No click or gap at each repeat. A 10-hour 1080p video with a still background is about 1–2 GB and takes minutes, not hours.</p>
   </div>
 
-  <div class="card vpanel" data-p="short">
+  <div class="card vpanel" data-vp="short">
     <h3>Short / Reel / TikTok</h3>
     <div class="grid g3">
       <div><label>Track</label><select class="trackSel" id="shTrack"></select></div>
@@ -448,14 +450,14 @@ details.more[open]>summary{margin-bottom:4px}
     <img class="prev" id="shPrev" style="max-width:220px">
   </div>
 
-  <div class="card vpanel" data-p="album">
+  <div class="card vpanel" data-vp="album">
     <h3>Full album video</h3>
     <div class="grid g4"><div><label>Gap between tracks (s)</label><input id="avGap" type="number" value="1" step="0.5"></div></div>
     <p class="muted" style="font-size:12px">All tracks of this release in order. The chapter timestamps are added to the description on the Upload tab, so YouTube shows chapters.</p>
     <button class="b p" onclick="job('album_video',{gap:avGap.value,image:vidImage()})">Make album video</button>
   </div>
 
-  <div class="card vpanel" data-p="batch">
+  <div class="card vpanel" data-vp="batch">
     <h3>Overnight batch</h3>
     <p class="muted" style="font-size:12px;margin-top:0">Every track in a folder gets its own loop video, a thumbnail, and a text file with the YouTube title, description and tags. Add the folder to the Schedule tab afterwards to upload them all.</p>
     <div class="grid g4">
@@ -470,14 +472,14 @@ details.more[open]>summary{margin-bottom:4px}
     <div class="row" style="margin-top:12px"><button class="b p" onclick="batch()">Queue batch</button><span class="muted" id="btEst" style="font-size:12px"></span></div>
   </div>
 
-  <div class="card vpanel" data-p="canvas">
+  <div class="card vpanel" data-vp="canvas">
     <h3>Spotify Canvas</h3>
     <p class="muted" style="font-size:12px;margin-top:0">A 7.5-second vertical loop with a slow zoom and no sound. Upload it in Spotify for Artists.</p>
     <div class="row"><input class="grow" id="cvImg" placeholder="Image (blank = the cover)"><button class="b s" onclick="pick({kind:'image'},p=>cvImg.value=p)">Browse…</button>
       <button class="b p" onclick="job('canvas',{image:cvImg.value||undefined,track_index:exTrack.value})">Make Canvas</button></div>
   </div>
 
-  <div class="card vpanel" data-p="samples">
+  <div class="card vpanel" data-vp="samples">
     <h3>Compare visualizers</h3>
     <div class="grid g4">
       <div><label>Track</label><select class="trackSel" id="vsTrack"></select></div>
@@ -860,7 +862,7 @@ function edSync(){
   $("edVisSize").value=LOOK.vis_size;$("edVisSizeV").textContent=Math.round(LOOK.vis_size*100)+"%";seg("edPos",LOOK.vis_pos);
   $("edSwatches").querySelectorAll(".sw").forEach(b=>b.classList.toggle("on",b.dataset.v===LOOK.vis_color));
   if(/^#[0-9a-f]{6}$/i.test(LOOK.vis_color))$("edColor").value=LOOK.vis_color;
-  seg("edBump",LOOK.bump);$("edLogoRow").style.display=LOOK.bump==="logo"?"":"none";$("stLogo").value=LOOK.logo||"";$("vidImg").value=LOOK.picture||"";
+  seg("edBump",LOOK.bump);$("stLogo").value=LOOK.logo||"";$("vidImg").value=LOOK.picture||"";
   renderAssets("logo");renderAssets("picture");
   $("edCenter").value=LOOK.center_size;$("edCenterV").textContent=Math.round(LOOK.center_size*100)+"%";
   $("edPulse").value=LOOK.bump_amount;$("edPulseV").textContent=PULSE(+LOOK.bump_amount);
@@ -884,7 +886,7 @@ function edInit(){
   $("edTitle").oninput=e=>setLook({text_title:e.target.value});$("edArtist").oninput=e=>setLook({text_artist:e.target.value});
   seg("edPos",LOOK.vis_pos,v=>setLook({vis_pos:v}));seg("edBump",LOOK.bump,v=>{setLook({bump:v});if(v==="logo"&&!LOOK.logo&&!ASSETS.logo.length)$("edLogoFile").click()});seg("edBg",LOOK.bg,v=>setLook({bg:v}));
   seg("edShape",ED.shape,v=>edShapeSet(v));
-  seg("edTabs","style",v=>{seg("edTabs",v);document.querySelectorAll(".ed-pane").forEach(p=>p.classList.toggle("on",p.dataset.v===v))});
+  document.querySelector(".ed-jump").onclick=e=>{const a=e.target.closest("a");if(!a)return;e.preventDefault();$("edp-"+a.dataset.j).scrollIntoView({behavior:"smooth",block:"start"})};
   $("edMove").onchange=edRefresh;$("exTrack").addEventListener("change",()=>{edSync();edRefresh()});
   if(S.look)Object.assign(LOOK,S.look);  // the look saved in Release Kit wins over this browser's copy
   dropZone($("edLogoRow"),"logo");dropZone($("edPics"),"picture");
@@ -920,10 +922,10 @@ async function delLook(n){if(!confirm(`Delete the saved look "${n}"?`))return;co
 
 // ---------- video tab: one form at a time
 function vpanel(k,scroll){k=k||localStorage.getItem("rk_vpanel")||"song";localStorage.setItem("rk_vpanel",k);
-  document.querySelectorAll(".vtile").forEach(t=>t.classList.toggle("on",t.dataset.p===k));
-  document.querySelectorAll(".vpanel").forEach(p=>p.classList.toggle("on",p.dataset.p===k));
-  if(scroll)document.querySelector(`.vpanel[data-p="${k}"]`).scrollIntoView({behavior:"smooth",block:"start"})}
-$("vtiles").onclick=e=>{const t=e.target.closest(".vtile");if(t)vpanel(t.dataset.p)};
+  document.querySelectorAll(".vtile").forEach(t=>t.classList.toggle("on",t.dataset.vp===k));
+  document.querySelectorAll(".vpanel").forEach(p=>p.classList.toggle("on",p.dataset.vp===k));
+  if(scroll)document.querySelector(`.vpanel[data-vp="${k}"]`).scrollIntoView({behavior:"smooth",block:"start"})}
+$("vtiles").onclick=e=>{const t=e.target.closest(".vtile");if(t)vpanel(t.dataset.vp)};
 function vidNoTracks(){$("vidNoTracks").innerHTML=R.tracks.length?"":`<div class="note row"><span class="grow">Add a track on the Release tab first (or drop audio files anywhere on this window). You can still try the visualizers with a demo beat.</span><button class="b s" onclick="show('release')">Go to Release</button></div>`}
 const PRESETS={yt:["mp4","16:9",1080,30],yt4k:["mp4","16:9",2160,30],vertical:["mp4","9:16",1080,30],square:["mp4","1:1",1080,30],
   portrait:["mp4","4:5",1080,30],edit:["mov","16:9",1080,30],web:["webm","16:9",1080,30]};
@@ -1058,8 +1060,8 @@ async function sig(k,f,v){S.signups=S.signups||{};S.signups[k]=S.signups[k]||{};
 function applyTheme(t){document.body.classList.toggle('ember',t==='ember');localStorage.setItem('rk_theme',t)}
 applyTheme(localStorage.getItem('rk_theme')||'studio');
 function showVersion(){if($("verTag")&&INIT&&INIT.version)$("verTag").textContent="v"+INIT.version}
-function fillSettings(){showVersion();$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
-async function saveSettings(){const profile={};document.querySelectorAll("[data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
+function fillSettings(){showVersion();$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("#profileFields [data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
+async function saveSettings(){const profile={};document.querySelectorAll("#profileFields [data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
   const defaults={};document.querySelectorAll("[data-d]").forEach(el=>defaults[el.dataset.d]=el.value.trim());
   if($("sNotify").checked&&window.Notification&&Notification.permission==="default")Notification.requestPermission();
   S=await api("/api/settings",{check_updates:$("sUpd").checked,output_dir:$("sOut").value.trim(),stock_author:$("sAuthor").value.trim(),profile,defaults,notify:$("sNotify").checked});toast("Saved")}
