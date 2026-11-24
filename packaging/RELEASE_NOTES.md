@@ -4,6 +4,16 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.4.2
+- **4 retro screensaver visualizers:** 3D Maze (walk brick corridors, faster in loud parts, walls flash on the beat), 3D Pipes (pipes grow with the music), Starfield (warp speed on the kick) and Mystify (bouncing line trails). That makes 16 styles.
+- **Video editor ("The look"):** a live preview that updates by itself as you change things, rendered from your actual song, and plays as a silent moving loop (turn the sound on if you like). Switch it between 16:9, 9:16, 1:1 and 4:5.
+- Pick a visualizer by its **picture**; choose a **color** from swatches or any color you like.
+- **Middle:** cover, spinning record, your logo or title text, with a **size slider** (logos from small to big) and how much it **pulses to the beat**.
+- **Background:** cover on blur, picture fills the screen, blurred picture or dark; a **darkness** slider; **movement** (slow drift, slow zoom, breathing light, film grain).
+- **Visualizer size and position** (bottom, middle or top for bars and waves).
+- **Text:** turn the title/artist on or off, or write your own words for the video.
+- **Saved looks:** keep your channel's style and reuse it on every release.
+
 ### New in 1.4.1
 - **Clearer layout:** the tabs are numbered steps (Release → Artwork → Video → Packages → Upload → Schedule) with a **Next** button at the bottom of each. Plan, SL2 songs, Sign-ups and Settings sit apart on the right.
 - **Video tab:** set **the look** once (visualizer, bump, color, picture), then pick what to make. Only that form shows. **Song video** replaces Release video and Export video, with one-click presets: YouTube, 4K, Shorts/Reels, Instagram square or 4:5, video editing, web.

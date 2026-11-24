@@ -16,13 +16,19 @@ VISUALIZERS = {"none": "None", "bars": "Frequency bars", "mirror": "Mirrored bar
                "line": "Line", "scope": "Circle scope", "spectrum": "Scrolling spectrum",
                # drawn frame by frame (see drawn.py)
                "ring": "Radial ring", "ringwave": "Radial waveform", "particles": "Particles",
-               "geometric": "Geometric shapes", "tunnel": "Tunnel", "synthwave": "Synthwave grid"}
+               "geometric": "Geometric shapes", "tunnel": "Tunnel", "synthwave": "Synthwave grid",
+               "starfield": "Starfield", "mystify": "Mystify", "pipes": "3D Pipes", "maze": "3D Maze"}
 BOTTOM = ("bars", "mirror", "waves", "line", "spectrum")  # visualizers drawn along the bottom edge
 BUMPS = {"none": "Nothing", "cover": "Cover art", "disc": "Spinning disc (cover)", "logo": "My logo (PNG)",
          "text": "Artist & title text"}
 
 
 def pick_color(name, image=None):
+    if isinstance(name, str) and len(name) == 7 and name.startswith("#"):  # custom colour from the colour picker
+        try:
+            return tuple(int(name[i:i + 2], 16) for i in (1, 3, 5))
+        except ValueError:
+            pass
     if name == "cover" and image:
         try:
             pal = art.palette(art.open_rgb(image), 6)
@@ -44,35 +50,38 @@ def _tint(rgb):
             f":b='min(255\\,val*3)*{b}/255'")
 
 
-def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255)):
-    """ffmpeg filter text that turns an audio stream into a transparent visualizer layer, and where to put it."""
+def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255), size=1.0, pos="bottom"):
+    """ffmpeg filter text that turns an audio stream into a transparent visualizer layer, and where to put it.
+    size: 0.6-1.6 times the normal size. pos: bottom, middle or top (bar and wave styles)."""
     hexc = "0x%02x%02x%02x" % rgb
-    ev = lambda v: int(v) // 2 * 2  # filters want even sizes
-    vw = ev(w * (0.86 if vertical else 0.7))
-    vh = ev(h * (0.12 if vertical else 0.2))
+    ev = lambda v: max(16, int(v) // 2 * 2)  # filters want even sizes
+    size = max(0.5, min(1.8, float(size or 1)))
+    vw = ev(min(w * 0.96, w * (0.86 if vertical else 0.7) * (1 + (size - 1) * 0.6)))
+    vh = ev(h * (0.12 if vertical else 0.2) * size)
     bottom = int(h * (0.1 if vertical else 0.08))
+    place = {"middle": "(W-w)/2:(H-h)/2", "top": f"(W-w)/2:{int(h * 0.16)}"}.get(pos, f"(W-w)/2:H-h-{bottom}")
     if kind in ("bars", "mirror"):
-        vh = ev(h * (0.14 if vertical else 0.22) * (0.5 if kind == "mirror" else 1))
+        vh = ev(h * (0.14 if vertical else 0.22) * (0.5 if kind == "mirror" else 1) * size)
         base = (f"showcqt=s={vw}x{vh}:r={fps}:sono_h=0:axis_h=0:bar_g=2:basefreq=40:endfreq=12000,"
                 f"{_tint(rgb)},format=rgba,colorkey=black:0.03")
         if kind == "mirror":
             base += (",split=2[mt][mb];[mb]vflip,colorchannelmixer=aa=0.35[mbf];[mt][mbf]vstack")
-            return base, f"(W-w)/2:H-h-{bottom}"
-        return base, f"(W-w)/2:H-h-{bottom}"
+            return base, place
+        return base, place
     # waveforms need about one column per audio sample in a frame, or they break up into dots
     # on small videos: draw them wide, then scale down
     ww = vw if vw >= 1200 else 1600
     fit = "" if ww == vw else f",scale={vw}:{vh}:flags=area"
     if kind == "line":
-        return f"showwaves=s={ww}x{vh}:mode=line:rate={fps}:colors={hexc}{fit}", f"(W-w)/2:H-h-{bottom}"
+        return f"showwaves=s={ww}x{vh}:mode=line:rate={fps}:colors={hexc}{fit}", place
     if kind == "spectrum":
         return (f"showspectrum=s={vw}x{vh}:mode=combined:slide=scroll:color=intensity:scale=log,fps={fps}",
-                f"(W-w)/2:H-h-{bottom}")
+                place)
     if kind == "scope":
-        s = ev(min(w, h) * (0.62 if not vertical else 0.8))
+        s = ev(min(w, h) * (0.62 if not vertical else 0.8) * min(size, 1.4))
         return (f"avectorscope=s={s}x{s}:r={fps}:draw=line:zoom=1.6:rc=40:gc=160:bc=80:rf=12:gf=8:bf=10,"
                 f"{_tint(rgb)},format=rgba,colorkey=black:0.03"), "(W-w)/2:(H-h)/2"
-    return f"showwaves=s={ww}x{vh}:mode=cline:rate={fps}:colors={hexc}{fit}", f"(W-w)/2:H-h-{bottom}"
+    return f"showwaves=s={ww}x{vh}:mode=cline:rate={fps}:colors={hexc}{fit}", place
 
 
 # ---------------------------------------------------------------- bass envelope

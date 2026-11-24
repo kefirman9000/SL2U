@@ -30,21 +30,32 @@ def _x264(fps, still=False, crf=20):
 AAC = ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
 
 
-def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True, vis_room=False):
-    """Background frame. layout: cover (square art centred on blurred bg), full (photo fills frame).
-    vis_room: keep the bottom free for a bar/wave visualizer (smaller cover, moved up)."""
+def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True, vis_room=False, dim=None):
+    """Background frame. layout: cover (square art centred on blurred bg), full (photo fills frame),
+    blur (blurred picture only), dark (near-black with a hint of the art's colours).
+    vis_room: keep the bottom free for a bar/wave visualizer (smaller cover, moved up).
+    dim: 0 (bright) .. 0.9 (very dark) for the background; None = the usual."""
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     im = art.open_rgb(image)
+    bright = None if dim is None else max(0.08, 1 - float(dim))
+    if layout == "dark":
+        frame = art.blurred_bg(im, w, h, blur=max(40, w // 10), dim=0.12 if bright is None else bright * 0.3)
+        if text and (title or artist):
+            frame = art.add_text(frame, title, artist, position="top-left", scale=0.42)
+        frame.save(out, "PNG")
+        return out
     if layout == "blur":  # soft background only, for a bumping logo/cover in the middle
-        frame = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.5)
+        frame = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.5 if bright is None else bright)
         if text and (title or artist):
             frame = art.add_text(frame, title, artist, position="top-left", scale=0.42)
         frame.save(out, "PNG")
         return out
     if layout == "full":
         frame = ImageOps.fit(im, (w, h), Image.LANCZOS)
+        if bright is not None and bright < 1:
+            frame = Image.blend(Image.new("RGB", (w, h), (0, 0, 0)), frame, bright)
     elif 0.7 <= w / h <= 1.4:  # square and 4:5 (Instagram feed): cover on top, text under it
-        frame = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.45)
+        frame = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.45 if bright is None else bright)
         side = int(min(h * 0.5, w * 0.7))
         top = int(h * 0.08)
         frame.paste(art.center_square(im, side), ((w - side) // 2, top))
@@ -55,7 +66,7 @@ def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True,
         frame.save(out, "PNG")
         return out
     else:
-        bg = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.45)
+        bg = art.blurred_bg(im, w, h, blur=max(20, w // 40), dim=0.45 if bright is None else bright)
         side = int(min(w, h) * ((0.5 if vis_room else 0.62) if w > h else 0.8))
         cover = art.center_square(im, side)
         frame = bg
@@ -72,7 +83,7 @@ def make_frame(image, out, w, h, title="", artist="", layout="cover", text=True,
             txt = art.add_text(region, title, artist, position="center", scale=1.6 if not vis_room else 1.25)
             frame.paste(txt, (int(w * 0.6), band[0]))
         elif w > h:
-            frame = art.add_text(frame, title, artist, position="bottom-left", scale=0.6)
+            frame = art.add_text(frame, title, artist, position="top-left" if vis_room else "bottom-left", scale=0.6)
         else:
             region = frame.crop((0, int(h * 0.18) + int(min(w, h) * 0.8), w, h))
             txt = art.add_text(region, title, artist, position="top", scale=1.1)
@@ -85,15 +96,39 @@ def _vis_filter(kind, w, h, fps, vertical=False):
     return reactive.vis_chain(kind, w, h, fps, vertical)
 
 
+# settings from the editor ("the look") that every video uses
+STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos", "bg", "dim", "motion", "center_size")
+
+MOTIONS = {"still": "Still", "drift": "Slow drift", "zoom": "Slow zoom in and out", "breathe": "Breathing light",
+           "grain": "Film grain"}
+
+
+def _motion_filter(motion, w, h, fps):
+    """Movement for a still background, as ffmpeg filters (after it's scaled to w x h)."""
+    if motion == "drift":  # slide sideways and back over 40 s, from a slightly bigger picture
+        W, H = int(w * 1.08) // 2 * 2, int(h * 1.08) // 2 * 2
+        return f",scale={W}:{H},crop={w}:{h}:x='(iw-ow)/2*(1+sin(2*PI*t/40))':y='(ih-oh)/2*(1+sin(2*PI*t/57))'"
+    if motion == "zoom":  # 0-7 % zoom over 30 s
+        return (f",zoompan=z='1+0.035*(1-cos(2*PI*on/({fps}*30)))':d=1:s={w}x{h}:fps={fps}"
+                f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'")
+    if motion == "breathe":
+        return ",eq=eval=frame:brightness='0.04*sin(2*PI*t/8)':saturation='1+0.1*sin(2*PI*t/8)'"
+    if motion == "grain":
+        return ",noise=alls=12:allf=t,vignette=PI/5"
+    return ""
+
+
 def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, afade="", with_audio=True,
-                    vertical=False, n_frames=None, spin_period=12.0, progress=None, cancel=None, enc=None):
+                    vertical=False, n_frames=None, spin_period=12.0, progress=None, cancel=None, enc=None,
+                    motion="still", text_png=None):
     """Background + visualizer + bumping element, all locked to the audio.
-    enc: export settings from encoder(); None = the YouTube defaults (H.264 MP4, AAC 320k)."""
+    enc: export settings from encoder(); None = the YouTube defaults (H.264 MP4, AAC 320k).
+    motion: movement for a still background (see MOTIONS). text_png: title overlay kept still on top."""
     vis, bump = opts.get("visualizer", "none"), opts.get("bump", "none")
     rgb = reactive.pick_color(opts.get("vis_color", "white"), opts.get("image"))
     n_frames = n_frames or int(round(dur * fps))
     args = list(bg_args) + (["-ss", str(start)] if start else []) + ["-t", str(dur), "-i", audio_path]
-    fc = [f"[0:v]fps={fps},scale={w}:{h},setsar=1[bg]",
+    fc = [f"[0:v]fps={fps},scale={w}:{h}{_motion_filter(motion, w, h, fps)},setsar=1,format=yuv420p[bg]",
           f"[1:a]{afade + ',' if afade else ''}asplit=2[aout][av]" if with_audio else "[1:a]anull[av]"]
     cur = "bg"
     feed = None
@@ -106,13 +141,14 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
         cur = "v1"
         bump = "none"  # already in the layer
     elif vis != "none":
-        chain, pos = reactive.vis_chain(vis, w, h, fps, vertical, rgb)
+        chain, pos = reactive.vis_chain(vis, w, h, fps, vertical, rgb, opts.get("vis_size") or 1.0,
+                                        opts.get("vis_pos") or "bottom")
         fc += [f"[av]{chain}[vis]", f"[{cur}][vis]overlay={pos}:shortest=1[v1]"]
         cur = "v1"
     else:
         fc.append("[av]anullsink")
     if bump != "none":
-        canvas = int(min(w, h) * (0.56 if not vertical else 0.8)) // 2 * 2
+        canvas = centre_canvas(w, h, vertical, opts.get("center_size"))
         tiles = reactive.bump_frames(bump, canvas, float(opts.get("bump_amount", 0.12)), image=opts.get("image"),
                                      logo=opts.get("logo"), title=opts.get("title", ""),
                                      artist=opts.get("artist", ""), rgb=rgb)
@@ -123,10 +159,13 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
         if bump == "disc":
             fc.append(f"{b}rotate=a='2*PI*t/{spin_period:.4f}':c=none:ow={canvas}:oh={canvas}[bp]")
             b = "[bp]"
-        lift = 0.07 if vis in ("bars", "mirror", "waves", "line", "spectrum") else 0.0
+        lift = 0.07 if vis in reactive.BOTTOM and (opts.get("vis_pos") or "bottom") == "bottom" else 0.0
         y = f"(H-h)/2-H*{lift + (0.06 if vertical else 0):.2f}"
         fc.append(f"[{cur}]{b}overlay=(W-w)/2:{y}[v2]")
         cur = "v2"
+    if text_png:  # title that stays put while the background moves
+        fc += [f"movie='{ff.esc_path(text_png)}',format=rgba[txt]", f"[{cur}][txt]overlay=0:0[vt]"]
+        cur = "vt"
     fc.append(f"[{cur}]format={enc['pix_fmt'] if enc else 'yuv420p'}[v]")
     args += ["-filter_complex", ";".join(fc), "-map", "[v]"]
     args += (["-map", "[aout]"] + (enc["audio"] if enc else AAC)) if with_audio else ["-an"]
@@ -134,6 +173,12 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     args += (["-movflags", "+faststart"] if not enc or enc["faststart"] else []) + [out]
     ff.run(args, dur, progress, cancel, feed=feed)
     return out
+
+
+def centre_canvas(w, h, vertical=False, scale=None):
+    """Size of the square tile the bumping cover/logo/text is drawn in. scale: 0.5-1.8 from the size slider."""
+    k = max(0.5, min(1.8, float(scale or 1)))
+    return max(16, int(min(min(w, h) * (0.56 if not vertical else 0.8) * k, min(w, h))) // 2 * 2)
 
 
 def style_defaults(opts):
@@ -158,9 +203,19 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     """opts: extra reactive options {bump, logo, vis_color, bump_amount}.
     size: (w, h) to override resolution/vertical. enc: export settings from encoder()."""
     opts = dict(opts or {}, visualizer=visualizer, image=image, title=title, artist=artist)
-    if style_defaults(opts):
+    centre_taken = style_defaults(opts)
+    bg = opts.get("bg")  # chosen in the editor: cover, full, blur, dark
+    if bg in ("full", "blur", "dark"):
+        layout = bg
+    elif centre_taken:
         layout = "blur"
-        text = text and opts.get("bump") != "text"
+    if bg == "cover" and not centre_taken:
+        layout = "cover"
+    if opts.get("bump", "none") == "text":
+        text = False
+    motion = opts.get("motion") if opts.get("motion") in MOTIONS else "still"
+    dim = opts.get("dim")
+    dim = None if dim in (None, "") else float(dim)
     if size:
         w, h = size
         vertical = h > w
@@ -168,8 +223,16 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
         w, h = (1080, 1920) if vertical else RES[resolution]
     fps = fps or (30 if _reactive_on(opts) or vertical else 12)
     tmp = tempfile.mkdtemp(prefix="rk_")
-    frame = make_frame(image, os.path.join(tmp, "frame.png"), w, h, title, artist, layout, text,
-                       vis_room=bool(enc) and visualizer in reactive.BOTTOM)
+    vis_room = (bool(enc) or layout == "full") and visualizer in reactive.BOTTOM and \
+        (opts.get("vis_pos") or "bottom") == "bottom"
+    # the title must not slide around with the picture, or vanish behind a full-screen scene
+    moving = motion in ("drift", "zoom") or visualizer in drawn.OPAQUE
+    frame = make_frame(image, os.path.join(tmp, "frame.png"), w, h, title, artist, layout, text and not moving,
+                       vis_room=vis_room, dim=dim)
+    text_png = None
+    if moving and text and (title or artist):
+        text_png = _text_png(os.path.join(tmp, "text.png"), w, h, title, artist,
+                             "top" if centre_taken or visualizer in reactive.BOTTOM else "bottom")
     dur = ff.duration(audio_path) - start
     if length:
         dur = min(dur, length)
@@ -177,10 +240,13 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     if fade:
         fo = 1.5 if dur < 90 else 3
         afade = f"afade=t=in:st=0:d={0.3 if start else 0.05},afade=t=out:st={max(0, dur - fo)}:d={fo}"
-    if enc:
-        # export settings: one pass with the chosen codec, frame rate and quality
+    if enc or motion != "still":
+        # export settings / moving background: one pass with the chosen codec, frame rate and quality
+        if motion != "still" and not _reactive_on(opts):
+            fps = max(fps, 24)
         reactive_render(["-loop", "1", "-framerate", str(fps), "-i", frame], audio_path, out, w, h, fps, dur, opts,
-                        start=start, afade=afade, vertical=vertical, progress=progress, cancel=cancel, enc=enc)
+                        start=start, afade=afade, vertical=vertical, progress=progress, cancel=cancel, enc=enc,
+                        motion=motion, text_png=text_png)
         return {"path": out, "duration": dur}
     if not _reactive_on(opts):
         # fast path: encode a 10 s still clip once, stream-copy it for the full length, encode audio once
@@ -312,9 +378,10 @@ def _text_png(path, w, h, title, artist, pos="bottom"):
     ov = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     if title or artist:
         pad = int(w * 0.04)
-        f_a, f_t = art.load_font(int(h * 0.035)), art.load_font(int(h * 0.065))
+        u = min(w, h)  # text sized by the short side, so vertical videos don't get giant titles
+        f_a, f_t = art.load_font(int(u * 0.035)), art.load_font(int(u * 0.065))
         d = ImageDraw.Draw(ov)
-        block = int(h * 0.065) + int(h * 0.05)
+        block = int(u * 0.065) + int(u * 0.05)
         y = pad if pos == "top" else h - pad - block
         # soft dark band for legibility on busy footage
         band = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -324,7 +391,7 @@ def _text_png(path, w, h, title, artist, pos="bottom"):
         d = ImageDraw.Draw(ov)
         if artist:
             d.text((pad, y), artist.upper(), font=f_a, fill=(255, 255, 255, 230))
-        d.text((pad, y + int(h * 0.045)), title, font=f_t, fill=(255, 255, 255, 255))
+        d.text((pad, y + int(u * 0.045)), title, font=f_t, fill=(255, 255, 255, 255))
     ov.save(path)
     return path
 
@@ -524,7 +591,7 @@ QUALITIES = ("draft", "standard", "high")
 def export_size(aspect="16:9", size=1080):
     """(w, h) for an aspect ratio, `size` being the short side. Always even numbers."""
     a, b = ASPECTS.get(aspect, (16, 9))
-    short = int(size) if int(size) in SIZES else 1080
+    short = int(size) if 144 <= int(size) <= 4320 else 1080  # SIZES are the choices offered; previews go smaller
     even = lambda v: int(round(v / 2)) * 2
     return (even(short * a / b), short) if a >= b else (short, even(short * b / a))
 
@@ -602,7 +669,8 @@ def demo_beat(out, seconds=12, bpm=120):
 
 
 SAMPLE_KINDS = ("bars", "mirror", "waves", "line", "scope", "spectrum",
-                "ring", "ringwave", "particles", "geometric", "tunnel", "synthwave")
+                "ring", "ringwave", "particles", "geometric", "tunnel", "synthwave",
+                "starfield", "mystify", "pipes", "maze")
 
 
 def visualizer_samples(audio_path, image, out_dir, title="", artist="", seconds=6.0, start=None, opts=None,

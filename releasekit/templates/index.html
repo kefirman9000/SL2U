@@ -135,6 +135,35 @@ details.more[open]>summary{margin-bottom:4px}
 .nextstep{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 .job video,.job img{max-height:190px;object-fit:contain}
 .proj label{margin:0;font-size:12px}
+.ed-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:1250px){.ed-grid{grid-template-columns:1fr}}
+.ed-prev{position:sticky;top:76px}
+.screen{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0 auto}
+.screen img,.screen video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
+.screen video{z-index:1}
+.screen-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--muted);font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--panel2);color:var(--muted);border:0;border-right:1px solid var(--line);padding:7px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.seg button:last-child{border-right:0}.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--accent);color:var(--ontext);font-weight:600}
+.seg.wrap{display:flex;flex-wrap:wrap}.seg.wrap button{flex:1 1 auto}
+.ed-tabs{display:flex;flex-wrap:wrap;width:100%;margin-bottom:14px}.ed-tabs button{flex:1 1 auto}
+.ed-pane{display:none}.ed-pane.on{display:block}
+.ed-pane>label{margin-top:2px}
+.ed-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+.ed-row>label{margin:0;min-width:105px;font-size:12.5px}
+.ed-row input[type=range]{flex:1;accent-color:var(--accent);padding:0;border:0;background:none}
+.ed-row .val{min-width:58px;font-size:12px;color:var(--text);text-align:right}
+.ed-row select{flex:1}
+.vis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vt{border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;background:#000}
+.vt img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
+.vt span{display:block;font-size:11.5px;padding:4px 6px;background:var(--panel2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vt:hover{border-color:#3a5a33}.vt.on{border-color:var(--accent)}.vt.on span{color:var(--accent)}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{display:flex;align-items:center;gap:7px;padding:4px 11px 4px 4px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;font-size:12.5px}
+.sw i{width:24px;height:24px;border-radius:50%;display:block;border:1px solid #0008}
+.sw.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;flex-direction:column;gap:14px;font-size:18px}
 .overlay.on{display:flex}
 </style>
@@ -253,20 +282,67 @@ details.more[open]>summary{margin-bottom:4px}
   <p class="sub">Pick a look once, then choose what to make. Everything renders on your computer and shows up in the Jobs panel.</p>
   <div id="vidNoTracks"></div>
 
-  <div class="card">
-    <div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0"><span class="stepn">A</span>The look <span class="muted" style="font-weight:400;font-size:12px">used by every video you make here</span></h3>
-      <button class="b s" onclick="vpanel('samples',true)">Compare all visualizers…</button></div>
-    <div class="grid g4">
-      <div><label>Visualizer</label><select id="stVis"><option value="none">None</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
-      <div><label>Bumping to the beat</label><select id="stBump" onchange="stLogoRow.style.display=this.value==='logo'?'':'none'"><option value="none">Nothing</option><option value="cover">Cover art</option><option value="disc">Spinning disc (cover)</option><option value="logo">My logo (PNG)</option><option value="text">Artist &amp; title text</option></select></div>
-      <div><label>Color</label><select id="stColor"><option value="white">White</option><option value="green">Green</option><option value="cyan">Cyan</option><option value="pink">Pink</option><option value="gold">Gold</option><option value="red">Red</option><option value="cover">Match the cover</option></select></div>
-      <div><label>Bump strength</label><select id="stAmt"><option value="0.06">Subtle</option><option value="0.12" selected>Medium</option><option value="0.2">Strong</option><option value="0.3">Huge</option></select></div>
+  <div class="card editor" id="editor">
+    <div class="row" style="margin-bottom:12px"><h3 class="grow" style="margin:0"><span class="stepn">A</span>The look <span class="muted" style="font-weight:400;font-size:12px">every video you make below uses it · the preview updates by itself</span></h3>
+      <select id="stVis" style="display:none"><option value="none">None</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup><optgroup label="Retro screensavers"><option value="maze">3D Maze</option><option value="pipes">3D Pipes</option><option value="starfield">Starfield</option><option value="mystify">Mystify</option></optgroup></select></div>
+    <div class="ed-grid">
+      <div class="ed-prev">
+        <div class="row" style="margin-bottom:8px"><div class="seg" id="edShape"><button data-v="16:9" class="on">16:9</button><button data-v="9:16">9:16</button><button data-v="1:1">1:1</button><button data-v="4:5">4:5</button></div>
+          <span class="grow"></span><span class="muted" style="font-size:12px" id="edBusy"></span></div>
+        <div class="screen" id="edScreen"><img id="edStill" alt=""><video id="edClip" muted loop playsinline></video><div class="screen-msg" id="edMsg">Preview loading…</div></div>
+        <div class="row" style="margin-top:8px">
+          <label class="chk" style="margin:0"><input type="checkbox" id="edMove" checked>Moving preview</label>
+          <button class="b s" id="edSound" onclick="edSound()">🔇 Sound off</button>
+          <span class="muted grow" style="font-size:12px;text-align:right" id="edWhat"></span></div>
+        <div class="muted" style="font-size:12px;margin-top:6px" id="genreTip"></div>
+      </div>
+      <div class="ed-ctl">
+        <div class="seg ed-tabs" id="edTabs"><button data-v="style" class="on">Visualizer</button><button data-v="color">Color</button><button data-v="middle">Middle</button><button data-v="bg">Background</button><button data-v="text">Text</button><button data-v="saved">Saved looks</button></div>
+
+        <div class="ed-pane on" data-v="style">
+          <div class="vis-grid" id="edVisGrid"></div>
+          <div class="ed-row" id="edSizeRow"><label>Size</label><input type="range" id="edVisSize" min="0.6" max="1.6" step="0.1" value="1"><span class="val" id="edVisSizeV"></span></div>
+          <div class="ed-row" id="edPosRow"><label>Where</label><div class="seg" id="edPos"><button data-v="bottom" class="on">Bottom</button><button data-v="middle">Middle</button><button data-v="top">Top</button></div></div>
+          <p class="muted" style="font-size:12px">Want to see them all moving with your song? Use <a href="#" onclick="vpanel('samples',true);return false" style="color:var(--accent2)">Compare visualizers</a> below.</p>
+        </div>
+
+        <div class="ed-pane" data-v="color">
+          <div class="swatches" id="edSwatches"></div>
+          <div class="ed-row"><label>Any color</label><input type="color" id="edColor" value="#39ff14" style="width:60px;height:34px;padding:2px"><span class="muted" style="font-size:12px">click to pick your own</span></div>
+        </div>
+
+        <div class="ed-pane" data-v="middle">
+          <label>What sits in the middle</label>
+          <div class="seg wrap" id="edBump"><button data-v="none" class="on">Nothing</button><button data-v="cover">Cover</button><button data-v="disc">Spinning record</button><button data-v="logo">My logo</button><button data-v="text">Title text</button></div>
+          <div class="ed-row" id="edLogoRow" style="display:none"><label>Logo file</label><input class="grow" id="stLogo" placeholder="PNG with a see-through background works best"><button class="b s" onclick="pick({kind:'image'},p=>{stLogo.value=p;setLook({logo:p})})">Browse…</button></div>
+          <div class="ed-row"><label>Size</label><input type="range" id="edCenter" min="0.5" max="1.8" step="0.1" value="1"><span class="val" id="edCenterV"></span></div>
+          <div class="ed-row"><label>Pulse to the beat</label><input type="range" id="edPulse" min="0" max="0.3" step="0.02" value="0.12"><span class="val" id="edPulseV"></span></div>
+          <p class="muted" style="font-size:12px">Ring, particle, shape and tunnel visualizers put your cover here when this is "Nothing".</p>
+        </div>
+
+        <div class="ed-pane" data-v="bg">
+          <label>Background</label>
+          <div class="seg wrap" id="edBg"><button data-v="cover" class="on">Cover on blur</button><button data-v="full">Picture fills screen</button><button data-v="blur">Blurred picture</button><button data-v="dark">Dark</button></div>
+          <div class="ed-row"><label>Darkness</label><input type="range" id="edDim" min="0" max="0.85" step="0.05" value="0.5"><span class="val" id="edDimV"></span></div>
+          <div class="ed-row"><label>Movement</label><select id="edMotion"><option value="still">Still</option><option value="drift">Slow drift</option><option value="zoom">Slow zoom in and out</option><option value="breathe">Breathing light</option><option value="grain">Film grain</option></select></div>
+          <div class="ed-row"><label>Picture</label><input class="grow" id="vidImg" placeholder="the release cover"><button class="b s" onclick="pick({kind:'image'},p=>{vidImg.value=p;edRefresh()})">Browse…</button><button class="b s" onclick="vidImg.value='';edRefresh()">Cover</button></div>
+          <p class="muted" style="font-size:12px">Movement is used by song videos, Shorts and album videos. 10-hour loops choose their own background.</p>
+        </div>
+
+        <div class="ed-pane" data-v="text">
+          <label class="chk"><input type="checkbox" id="edText" checked>Show the title and artist on the video</label>
+          <div class="ed-row"><label>Title</label><input class="grow" id="edTitle" placeholder="the track's title"></div>
+          <div class="ed-row"><label>Artist</label><input class="grow" id="edArtist" placeholder="the release artist"></div>
+          <p class="muted" style="font-size:12px">Leave these blank to use each track's own title. Your files are still named after the real titles.</p>
+        </div>
+
+        <div class="ed-pane" data-v="saved">
+          <p class="muted" style="font-size:12px;margin-top:0">Save this look to reuse it on every release, so your channel looks consistent.</p>
+          <div class="ed-row"><input class="grow" id="edSaveName" placeholder="Name, e.g. Channel style"><button class="b s p" onclick="saveLook()">Save look</button></div>
+          <div id="edSaved" style="margin-top:10px"></div>
+        </div>
+      </div>
     </div>
-    <div class="row" id="stLogoRow" style="margin-top:10px;display:none"><input class="grow" id="stLogo" placeholder="Logo image (PNG with transparent background)"><button class="b s" onclick="pick({kind:'image'},p=>stLogo.value=p)">Browse…</button></div>
-    <div class="row" style="margin-top:10px"><label style="margin:0">Picture</label><input class="grow" id="vidImg" placeholder="The release cover (or choose another image)"><button class="b s" onclick="pick({kind:'image'},p=>vidImg.value=p)">Browse…</button><button class="b s" onclick="vidImg.value=''">Use the cover</button></div>
-    <div class="row" style="margin-top:10px"><button class="b" onclick="preview('stPrev',{})">Preview</button><span class="muted grow" style="font-size:12px" id="genreTip"></span></div>
-    <img class="prev" id="stPrev">
-    <p class="muted" style="font-size:12px;margin:8px 0 0">Everything moves with the music: the cover/logo pulses on the kick, rings and particles grow in louder parts. Ring, particle, shape and tunnel styles put your cover in the middle when Bumping is "Nothing".</p>
   </div>
 
   <h3 style="margin:22px 0 10px"><span class="stepn">B</span>What do you want to make?</h3>
@@ -277,7 +353,7 @@ details.more[open]>summary{margin-bottom:4px}
     <div class="vtile" data-p="album"><b>Full album</b><span>All tracks in one video with chapters</span></div>
     <div class="vtile" data-p="batch"><b>Overnight batch</b><span>A loop video for every track in a folder</span></div>
     <div class="vtile" data-p="canvas"><b>Spotify Canvas</b><span>8-second looping clip for Spotify</span></div>
-    <div class="vtile" data-p="samples"><b>Compare visualizers</b><span>All 12 styles side by side with your music</span></div>
+    <div class="vtile" data-p="samples"><b>Compare visualizers</b><span>All 16 styles side by side with your music</span></div>
   </div>
 
   <div class="card vpanel" data-p="song">
@@ -289,7 +365,7 @@ details.more[open]>summary{margin-bottom:4px}
         <option value="vertical">Shorts / Reels / TikTok (9:16, MP4)</option><option value="square">Instagram square (1:1, MP4)</option>
         <option value="portrait">Instagram feed (4:5, MP4)</option><option value="edit">Video editing (16:9, ProRes MOV)</option>
         <option value="web">A website (16:9, WebM)</option><option value="custom">Custom…</option></select></div>
-      <div><label>Visualizer</label><select id="exVis"><option value="">Same as "The look"</option><option value="none">None (cover only)</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
+      <div><label>Visualizer</label><select id="exVis"><option value="">Same as "The look"</option><option value="none">None (cover only)</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup><optgroup label="Retro screensavers"><option value="maze">3D Maze</option><option value="pipes">3D Pipes</option><option value="starfield">Starfield</option><option value="mystify">Mystify</option></optgroup></select></div>
     </div>
     <div class="muted" id="exSummary" style="font-size:12px;margin-top:8px"></div>
     <details class="more" id="exMore"><summary>More settings (format, size, frame rate, part of the song…)</summary>
@@ -303,12 +379,10 @@ details.more[open]>summary{margin-bottom:4px}
       <div><label>Start at (s)</label><input id="exStart" type="number" value="0" min="0" step="0.5"></div>
       <div><label>Length (s)</label><input id="exLen" type="number" min="1" placeholder="whole song"></div>
     </div>
-    <label class="chk"><input type="checkbox" id="exText" checked>Show title &amp; artist</label>
     <label class="chk"><input type="checkbox" id="exFade" checked>Fade the audio in &amp; out</label>
     </details>
-    <div class="row" style="margin-top:12px"><button class="b" onclick="exportPreview()">Preview</button><button class="b p" onclick="exportVideo()">Make video</button>
+    <div class="row" style="margin-top:12px"><button class="b" onclick="exportPreview()" title="Shows this video's shape in the preview above">Preview this shape</button><button class="b p" onclick="exportVideo()">Make video</button>
       <button class="b" onclick="exportVideo(true)">Make one for every track</button></div>
-    <img class="prev" id="exPrev">
     <p class="muted" style="font-size:12px">Saved in the <b>videos</b> folder of this release. MOV (ProRes) files are big, about 1 GB a minute at 1080p, and can't be previewed in the browser.</p>
   </div>
 
@@ -331,14 +405,13 @@ details.more[open]>summary{margin-bottom:4px}
     </div>
     <label style="margin-top:12px">Tracks to loop (one, or several in order like a playlist)</label>
     <div id="lvTracks" class="row"></div>
-    <details class="more"><summary>Ambient sound and text</summary>
+    <details class="more"><summary>Ambient sound (rain, vinyl crackle…)</summary>
     <div class="grid g3" style="margin-top:10px">
       <div style="grid-column:span 2"><label>Ambient layer under the music (rain, vinyl crackle…)</label><div class="row"><input class="grow" id="lvAmb"><button class="b s" onclick="pick({kind:'audio'},p=>lvAmb.value=p)">Browse…</button></div></div>
       <div><label>Ambient level (dB)</label><input id="lvAmbDb" type="number" value="-18"></div>
     </div>
-    <label class="chk"><input type="checkbox" id="lvText" checked>Show title &amp; artist</label>
     </details>
-    <div class="row" style="margin-top:12px"><button class="b" onclick="preview('lvPrev',{text:lvText.checked,visual:lvVisual.value,video_clip:lvClip.value})">Preview</button><button class="b p" onclick="renderLong()">Make loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
+    <div class="row" style="margin-top:12px"><button class="b" onclick="preview('lvPrev',{text:LOOK.text_on!==false,visual:lvVisual.value,video_clip:lvClip.value})">Preview</button><button class="b p" onclick="renderLong()">Make loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
     <img class="prev" id="lvPrev">
     <p class="muted" style="font-size:12px">No click or gap at each repeat. A 10-hour 1080p video with a still background is about 1–2 GB and takes minutes, not hours.</p>
   </div>
@@ -350,7 +423,7 @@ details.more[open]>summary{margin-bottom:4px}
       <div><label>Length (s)</label><input id="shSec" type="number" value="30" min="5" max="180"></div>
       <div><label>Start (s)</label><input id="shStart" type="number" placeholder="auto: the most energetic part"></div>
     </div>
-    <div class="row" style="margin-top:12px"><button class="b" onclick="preview('shPrev',{vertical:true})">Preview</button><button class="b p" onclick="job('short',{track_index:shTrack.value,seconds:shSec.value,start:shStart.value,image:vidImage()})">Make clip</button>
+    <div class="row" style="margin-top:12px"><button class="b" onclick="edShapeSet('9:16');$('editor').scrollIntoView({behavior:'smooth'})">Preview vertical</button><button class="b p" onclick="job('short',{track_index:shTrack.value,seconds:shSec.value,start:shStart.value,image:vidImage()})">Make clip</button>
       <button class="b" onclick="[15,30,60].forEach(s=>job('short',{track_index:shTrack.value,seconds:s,image:vidImage()}))">Make 15 + 30 + 60 s</button></div>
     <img class="prev" id="shPrev" style="max-width:220px">
   </div>
@@ -392,7 +465,7 @@ details.more[open]>summary{margin-bottom:4px}
       <div><label>Seconds each</label><input id="vsSec" type="number" value="6" min="3" max="15"></div>
       <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="visSamples()">Make samples</button></div>
     </div>
-    <p class="muted" style="font-size:12px">A few seconds of all 12 styles with the color and bump from "The look", from the most energetic part of the track (about a minute). No tracks yet? You get a demo beat. Press <b>Use this</b> on the one you like.</p>
+    <p class="muted" style="font-size:12px">A few seconds of all 16 styles with the color and bump from "The look", from the most energetic part of the track (about a minute). No tracks yet? You get a demo beat. Press <b>Use this</b> on the one you like.</p>
     <div id="vsGrid" class="samples"></div>
   </div>
 </section>
@@ -594,7 +667,7 @@ $("nav").onclick=e=>{const b=e.target.closest("button");if(b&&b.dataset.t)show(b
 addEventListener("hashchange",()=>{const k=location.hash.slice(1);if(k&&$("t-"+k)&&!$("t-"+k).classList.contains("on"))show(k)});
 function show(k){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===k));
   document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;scrollTo(0,0);syncForm();
-  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate();genreTip();vidNoTracks();vpanel()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
+  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate();vidNoTracks();vpanel();edSync();edRefresh()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
 
 // ---------- init / projects
 async function init(){
@@ -603,7 +676,7 @@ async function init(){
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
   document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
   $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
-  rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();$("stLogoRow").style.display=$("stBump").value==="logo"?"":"none";
+  rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();edInit();
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -675,27 +748,105 @@ function coverFromPhoto(src){src=src||selPhotos[0];if(!src)return toast("Select 
   job("cover",{source:src,mode:$("cropMode").value,add_title:!!$("addTitle").value,text_position:$("addTitle").value||"bottom",font:$("fontSel").value,explicit_label:$("pa").checked})}
 function genArt(n){for(let i=0;i<n;i++){const seed=$("genSeed").value&&n===1?+$("genSeed").value:Math.floor(Math.random()*1e9);
   job("cover",{mode:"generate",style:n>1?["aurora","gradient","grain","geometric","sunset","mono"][i%6]:$("genStyle").value,seed,palette_from:$("genPal").value?selPhotos[0]:null,add_title:!!$("addTitle").value,text_position:$("addTitle").value||"bottom",font:$("fontSel").value,explicit_label:$("pa").checked})}}
-function useCover(p){R.art_path=p;save();renderCover();toast("Cover set")}
+function useCover(p){R.art_path=p;save();renderCover();toast("Cover set");edRefresh()}
 
 // ---------- video
 const vidImage=()=>$("vidImg").value||undefined;
 function renderLvTracks(){$("lvTracks").innerHTML=R.tracks.map((t,i)=>`<label class="chk" style="margin-right:12px"><input type="checkbox" class="lvT" value="${i}" ${i===0?"checked":""}>${esc(t.title)}</label>`).join("")||'<span class="muted">Add tracks first.</span>'}
 function renderLong(){const idx=[...document.querySelectorAll(".lvT:checked")].map(x=>+x.value);
-  job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,text:$("lvText").checked,image:vidImage(),video_clip:$("lvClip").value,clip_folder:$("lvClipDir").value,clip_mode:$("lvClipMode").value,clip_fit:$("lvClipFit").value})}
+  job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,image:vidImage(),video_clip:$("lvClip").value,clip_folder:$("lvClipDir").value,clip_mode:$("lvClipMode").value,clip_fit:$("lvClipFit").value})}
 function doEverything(){const kinds=["analyze","variants","album_video","pkg_distro","pkg_direct","pkg_stock"];
   job(kinds);R.tracks.forEach((t,i)=>job("release_video",{track_index:i}));
   job("long_video",{tracks:[0],hours:10});job("short",{track_index:0,seconds:30});job("canvas",{});}
 
 // ---------- genre suggestions
-const GENRE_VIS=[[/edm|electro|house|techno|trance|dubstep|drum|dnb|bass|club|dance/i,["particles","geometric","ring"]],
-  [/synthwave|retrowave|outrun|vapor|80s/i,["synthwave","tunnel","ring"]],
+const GENRE_VIS=[[/edm|electro|house|techno|trance|dubstep|drum|dnb|bass|club|dance/i,["particles","geometric","ring","starfield"]],
+  [/synthwave|retrowave|outrun|vapor|80s|90s|chiptune|8.?bit/i,["synthwave","maze","pipes","starfield"]],
   [/hip.?hop|rap|trap|pop|r&b|rnb|drill|afro/i,["ring","bars","ringwave"]],
-  [/ambient|lo.?fi|lofi|chill|acoustic|piano|podcast|sleep|study|classical|folk/i,["waves","ringwave","line"]],
+  [/ambient|lo.?fi|lofi|chill|acoustic|piano|podcast|sleep|study|classical|folk/i,["waves","ringwave","mystify"]],
   [/rock|indie|metal|punk|grunge|alt/i,["spectrum","mirror","geometric"]],
   [/cinematic|experimental|trailer|score/i,["tunnel","particles","scope"]]];
 function genreVis(){const g=(R.genre||"")+" "+(R.subgenre||"");for(const [re,v] of GENRE_VIS)if(re.test(g))return v;return null}
 function genreTip(){const v=genreVis(),el=$("genreTip");if(!el)return;
-  el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc($("stVis").querySelector(`option[value="${k}"]`).textContent)}</a>`).join(", "):""}
+  el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc(VIS_NAME(k))}</a>`).join(", "):""}
+
+// ================= video editor ("the look")
+const VIS_ORDER=["none","bars","mirror","waves","line","spectrum","scope","ring","ringwave","particles","geometric","tunnel","synthwave","maze","pipes","starfield","mystify"];
+const VIS_NAME=k=>{const o=$("stVis").querySelector(`option[value="${k}"]`);return o?o.textContent:k};
+const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan","#28dcff","Cyan"],["pink","#ff46aa","Pink"],["gold","#ffc83c","Gold"],["red","#ff3c3c","Red"],["#a060ff","#a060ff","Purple"],["#ff7a00","#ff7a00","Orange"],["cover","conic-gradient(#f5a,#fa5,#af5,#5af,#f5a)","From the cover"]];
+const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:""};
+let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
+  if(!localStorage.getItem("rk_look")){const o=k=>localStorage.getItem("rk_f_"+k);  // carry over the old Video style settings
+    if(o("stVis"))saved.visualizer=o("stVis");if(o("stBump"))saved.bump=o("stBump");if(o("stColor"))saved.vis_color=o("stColor");if(o("stAmt"))saved.bump_amount=+o("stAmt")}
+  return Object.assign({},LOOK_DEFAULT,saved)})();
+const ED={shape:"16:9",t:null,ctl:null,n:0,sound:false};
+function getStyle(){return Object.assign({},LOOK)}
+function setLook(ch,quiet){Object.assign(LOOK,ch);try{localStorage.setItem("rk_look",JSON.stringify(LOOK))}catch(e){}edSync();if(!quiet)edRefresh()}
+function seg(id,val,fn){const el=$(id);el.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===String(val)));if(fn)el.onclick=e=>{const b=e.target.closest("button");if(b)fn(b.dataset.v)}}
+const PULSE=v=>v<=0?"None":v<0.08?"Subtle":v<0.16?"Medium":v<0.24?"Strong":"Huge";
+function edSync(){
+  $("stVis").value=LOOK.visualizer;
+  $("edVisGrid").querySelectorAll(".vt").forEach(t=>t.classList.toggle("on",t.dataset.v===LOOK.visualizer));
+  const classic=["bars","mirror","waves","line","spectrum"].includes(LOOK.visualizer);
+  $("edPosRow").style.display=classic?"":"none";$("edSizeRow").style.display=LOOK.visualizer==="none"?"none":"";
+  $("edVisSize").value=LOOK.vis_size;$("edVisSizeV").textContent=Math.round(LOOK.vis_size*100)+"%";seg("edPos",LOOK.vis_pos);
+  $("edSwatches").querySelectorAll(".sw").forEach(b=>b.classList.toggle("on",b.dataset.v===LOOK.vis_color));
+  if(/^#[0-9a-f]{6}$/i.test(LOOK.vis_color))$("edColor").value=LOOK.vis_color;
+  seg("edBump",LOOK.bump);$("edLogoRow").style.display=LOOK.bump==="logo"?"":"none";$("stLogo").value=LOOK.logo||"";
+  $("edCenter").value=LOOK.center_size;$("edCenterV").textContent=Math.round(LOOK.center_size*100)+"%";
+  $("edPulse").value=LOOK.bump_amount;$("edPulseV").textContent=PULSE(+LOOK.bump_amount);
+  seg("edBg",LOOK.bg);const dim=LOOK.dim===""?0.5:+LOOK.dim;$("edDim").value=dim;$("edDimV").textContent=LOOK.dim===""?"Normal":Math.round(dim*100)+"%";
+  $("edMotion").value=LOOK.motion;$("edText").checked=LOOK.text_on!==false;
+  if(document.activeElement!==$("edTitle"))$("edTitle").value=LOOK.text_title||"";if(document.activeElement!==$("edArtist"))$("edArtist").value=LOOK.text_artist||"";
+  $("edTitle").placeholder=(R.tracks[+$("exTrack").value||0]||{}).title||"the track's title";$("edArtist").placeholder=R.artist||"the release artist";
+  genreTip()}
+function edInit(){
+  $("edVisGrid").innerHTML=VIS_ORDER.map(k=>`<div class="vt" data-v="${k}" title="${esc(VIS_NAME(k))}"><img src="/static/vis/${k}.jpg" alt="" loading="lazy"><span>${esc(VIS_NAME(k).replace(" (bars in a circle)",""))}</span></div>`).join("");
+  $("edVisGrid").onclick=e=>{const t=e.target.closest(".vt");if(t)setLook({visualizer:t.dataset.v})};
+  $("edSwatches").innerHTML=SWATCHES.map(([v,c,n])=>`<button class="sw" data-v="${v}"><i style="background:${c}"></i>${n}</button>`).join("");
+  $("edSwatches").onclick=e=>{const b=e.target.closest(".sw");if(b)setLook({vis_color:b.dataset.v})};
+  $("edColor").oninput=e=>setLook({vis_color:e.target.value});
+  $("edVisSize").oninput=e=>setLook({vis_size:+e.target.value});
+  $("edCenter").oninput=e=>setLook({center_size:+e.target.value});
+  $("edPulse").oninput=e=>setLook({bump_amount:+e.target.value});
+  $("edDim").oninput=e=>setLook({dim:+e.target.value});
+  $("edMotion").onchange=e=>setLook({motion:e.target.value});
+  $("edText").onchange=e=>setLook({text_on:e.target.checked});
+  $("edTitle").oninput=e=>setLook({text_title:e.target.value});$("edArtist").oninput=e=>setLook({text_artist:e.target.value});
+  $("stLogo").onchange=e=>setLook({logo:e.target.value});
+  seg("edPos",LOOK.vis_pos,v=>setLook({vis_pos:v}));seg("edBump",LOOK.bump,v=>setLook({bump:v}));seg("edBg",LOOK.bg,v=>setLook({bg:v}));
+  seg("edShape",ED.shape,v=>edShapeSet(v));
+  seg("edTabs","style",v=>{seg("edTabs",v);document.querySelectorAll(".ed-pane").forEach(p=>p.classList.toggle("on",p.dataset.v===v))});
+  $("edMove").onchange=edRefresh;$("exTrack").addEventListener("change",()=>{edSync();edRefresh()});
+  edSync();renderSaved()}
+function edShapeSet(v){ED.shape=v;seg("edShape",v);const [a,b]=v.split(":").map(Number);const sc=$("edScreen");
+  sc.style.aspectRatio=a+"/"+b;sc.style.maxWidth=b>a?"300px":a<b*1.2?"420px":"";edRefresh()}
+function edRefresh(){clearTimeout(ED.t);ED.t=setTimeout(edRender,450)}
+function edMsg(m){$("edMsg").textContent=m;$("edMsg").style.display="flex";$("edStill").style.display="none";$("edClip").style.display="none";$("edBusy").textContent=""}
+async function edRender(){if(!$("t-video").classList.contains("on"))return;
+  const img=vidImage()||R.art_path;
+  if(!img)return edMsg("Make or choose a cover on the Artwork tab (or pick a picture under Background) to see the preview.");
+  const n=++ED.n;if(ED.ctl)ED.ctl.abort();const ctl=ED.ctl=new AbortController();
+  const tr=R.tracks[+$("exTrack").value||0];
+  $("edWhat").textContent=tr?`the loudest part of "${tr.title}"`:"a demo beat (add a track to hear yours)";
+  const body={image:img,track:tr?tr.path:null,title:tr?tr.title:(R.title||"Your title"),artist:R.artist||"Artist",aspect:ED.shape,text:LOOK.text_on!==false,vstyle:getStyle()};
+  const get=async seconds=>{const r=await fetch("/api/look_preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({seconds},body)),signal:ctl.signal});
+    if(r.status===204||n!==ED.n)return null;if(r.status===401){location.reload();return null}
+    if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.statusText);const u=URL.createObjectURL(await r.blob());return n===ED.n?u:null};
+  $("edBusy").textContent="Updating…";
+  try{const u=await get(0);if(!u)return;const st=$("edStill");if(st._u)URL.revokeObjectURL(st._u);st._u=u;st.src=u;st.style.display="block";
+    $("edMsg").style.display="none";const v=$("edClip");v.pause();v.style.display="none";
+    if($("edMove").checked){$("edBusy").textContent="Making it move…";const u2=await get(4);if(!u2)return;
+      if(v._u)URL.revokeObjectURL(v._u);v._u=u2;v.src=u2;v.muted=!ED.sound;v.style.display="block";v.play().catch(()=>{})}}
+  catch(e){if(e.name!=="AbortError")edMsg("The preview didn't work: "+e.message)}
+  finally{if(n===ED.n)$("edBusy").textContent=""}}
+function edSound(){ED.sound=!ED.sound;const v=$("edClip");v.muted=!ED.sound;$("edSound").textContent=ED.sound?"🔊 Sound on":"🔇 Sound off";if(ED.sound&&v.src)v.play().catch(()=>{})}
+function renderSaved(){const L=S.looks||{},names=Object.keys(L).sort();
+  $("edSaved").innerHTML=names.length?names.map(n=>`<div class="row" style="margin-bottom:6px"><b class="grow">${esc(n)}</b><span class="muted" style="font-size:12px">${esc(VIS_NAME(L[n].visualizer||"none"))}</span><button class="b s p" onclick="loadLook('${jsq(n)}')">Use</button><button class="b s" onclick="delLook('${jsq(n)}')">Delete</button></div>`).join(""):'<span class="muted" style="font-size:12px">No saved looks yet.</span>'}
+async function saveLook(){const n=$("edSaveName").value.trim();if(!n)return toast("Give the look a name first");
+  const L=Object.assign({},S.looks||{});L[n]=getStyle();S=await api("/api/settings",{looks:L});$("edSaveName").value="";renderSaved();toast(`Saved "${n}"`)}
+function loadLook(n){setLook(Object.assign({},LOOK_DEFAULT,S.looks[n]));toast("Using the look: "+n)}
+async function delLook(n){if(!confirm(`Delete the saved look "${n}"?`))return;const L=Object.assign({},S.looks||{});delete L[n];S=await api("/api/settings",{looks:L});renderSaved()}
 
 // ---------- video tab: one form at a time
 function vpanel(k,scroll){k=k||localStorage.getItem("rk_vpanel")||"song";localStorage.setItem("rk_vpanel",k);
@@ -721,7 +872,7 @@ async function clearJobs(){try{await api("/api/jobs/clear",{})}catch(e){return t
 // ---------- visualizer samples & export
 let SAMPLES_AT=0;
 function visSamples(){job("vis_samples",{track_index:R.tracks.length?$("vsTrack").value:undefined,aspect:$("vsAspect").value,seconds:$("vsSec").value,image:vidImage()})}
-function renderSamples(res,scroll){if(!res||!res.samples)return;const cur=$("stVis").value,bust=Date.now();
+function renderSamples(res,scroll){if(!res||!res.samples)return;const cur=LOOK.visualizer,bust=Date.now();
   $("vsGrid").innerHTML=res.samples.map(s=>`<div class="sample ${s.visualizer===cur?"on":""}" data-vis="${esc(s.visualizer)}"><video src="/api/file?path=${encodeURIComponent(s.path)}&v=${bust}" muted loop autoplay playsinline controls preload="auto"></video>
     <div class="row" style="margin-bottom:6px"><b class="grow">${esc(s.label)}</b>${(genreVis()||[]).includes(s.visualizer)?'<span class="pill ok" title="Fits your genre">suits genre</span>':""}</div>
     ${res.demo?`<button class="b s" style="width:100%" onclick="useVis('${jsq(s.visualizer)}')">Use this style</button>`
@@ -734,19 +885,18 @@ let SAMPLES_RES=null;
 function fullFromSample(k){const res=SAMPLES_RES||{};let i=R.tracks.findIndex(t=>t.path===res.track);
   if(i<0){if(!R.tracks.length)return toast("Add a track first");i=+$("vsTrack").value||0}
   useVis(k);const pr=exportParams(i);pr.visualizer=k;if(res.aspect)pr.export.aspect=res.aspect;
-  job("export_video",pr).then(()=>toast(`Making the full video of "${R.tracks[i].title}" in ${$("stVis").options[$("stVis").selectedIndex].text}. Watch the Jobs panel.`,5000))}
-function useVis(k){const el=$("stVis");el.value=k;el.dispatchEvent(new Event("change"));$("exVis").value="";
-  document.querySelectorAll(".sample").forEach(x=>x.classList.toggle("on",x.dataset.vis===k));toast("Look: "+el.options[el.selectedIndex].text)}
-function exportParams(i){return {track_index:i??$("exTrack").value,visualizer:$("exVis").value||undefined,text:$("exText").checked,image:vidImage(),
+  job("export_video",pr).then(()=>toast(`Making the full video of "${R.tracks[i].title}" in ${VIS_NAME(k)}. Watch the Jobs panel.`,5000))}
+function useVis(k){setLook({visualizer:k});$("exVis").value="";
+  document.querySelectorAll(".sample").forEach(x=>x.classList.toggle("on",x.dataset.vis===k));toast("Visualizer: "+VIS_NAME(k))}
+function exportParams(i){return {track_index:i??$("exTrack").value,visualizer:$("exVis").value||undefined,image:vidImage(),
   export:{format:$("exFmt").value,aspect:$("exAspect").value,size:$("exSize").value,fps:$("exFps").value,quality:$("exQ").value,layout:$("exLayout").value,start:$("exStart").value,length:$("exLen").value,fade:$("exFade").checked}}}
 function exportVideo(all){if(!R.tracks.length)return toast("Add a track first");if(all)R.tracks.forEach((t,i)=>job("export_video",exportParams(i)));else job("export_video",exportParams())}
-function exportPreview(){const v=$("exVis").value,st=getStyle();if(v)st.visualizer=v;
-  preview("exPrev",{aspect:$("exAspect").value,layout:$("exLayout").value,text:$("exText").checked,vstyle:st,title:(R.tracks[$("exTrack").value]||{}).title||R.title})}
+function exportPreview(){const v=$("exVis").value;if(v&&v!==LOOK.visualizer)setLook({visualizer:v},true);edShapeSet($("exAspect").value);
+  $("editor").scrollIntoView({behavior:"smooth",block:"start"})}
 
 // ---------- jobs
-function getStyle(){return {visualizer:$("stVis").value,bump:$("stBump").value,vis_color:$("stColor").value,bump_amount:$("stAmt").value,logo:$("stLogo").value}}
 function clipRows(){const v=$("lvVisual").value;$("slideRow").style.display=v==="slideshow"?"":"none";$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
-async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];params=Object.assign({vstyle:getStyle()},params);
+async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];params=Object.assign({vstyle:getStyle(),text:LOOK.text_on!==false},params);
   try{const r=await api("/api/jobs",{kinds,release:R,params});if(r.errors.length)toast(r.errors.join(" · "),5000);else toast("Queued: "+kinds.join(", "));pollJobs()}
   catch(e){toast(e.message,5000)}}
 let seen={};
@@ -854,7 +1004,7 @@ function withDefaults(r){const d=S.defaults||{};const y=new Date().getFullYear()
 
 // remember the last-used options in every video/package form
 function rememberInputs(){document.querySelectorAll("#t-video select,#t-video input:not([type=checkbox]),#t-video input[type=checkbox],#t-pkg select,#t-pkg input,#t-art select").forEach(el=>{
-  if(!el.id||el.classList.contains("trackSel")||el.classList.contains("lvT"))return;const k="rk_f_"+el.id;const v=localStorage.getItem(k);
+  if(!el.id||el.classList.contains("trackSel")||el.classList.contains("lvT")||el.closest("#editor"))return;const k="rk_f_"+el.id;const v=localStorage.getItem(k);
   if(v!==null){if(el.type==="checkbox")el.checked=v==="1";else el.value=v}
   el.addEventListener("change",()=>{localStorage.setItem(k,el.type==="checkbox"?(el.checked?"1":"0"):el.value);if(["lvHours","lvRes","lvVisual","btHours","btRes","btVisual"].includes(el.id))estimate()})})}
 

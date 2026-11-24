@@ -186,7 +186,10 @@ def build_job(kind, r, p):
     t_title = (track or {}).get("title") or title
     text = p.get("text", True)
     style = p.get("vstyle") if isinstance(p.get("vstyle"), dict) else {}
-    vopts = {k: style.get(k) for k in ("bump", "logo", "vis_color", "bump_amount") if style.get(k) not in (None, "")}
+    vopts = {k: style.get(k) for k in video.STYLE_KEYS if style.get(k) not in (None, "")}
+    # words shown on the video (the editor can override them; file names keep the real titles)
+    say = lambda real: style.get("text_title") or real
+    by = style.get("text_artist") or artist
     vis_global = style.get("visualizer") or "none"
     if vopts.get("bump") == "logo" and not (vopts.get("logo") and os.path.isfile(vopts["logo"])):
         raise ValueError("Choose a logo image (PNG with transparency works best) for the bumping logo.")
@@ -234,7 +237,7 @@ def build_job(kind, r, p):
         vis = p.get("visualizer") or vis_global
         name = packages.safe(f"{artist} - {t_title}{' (Visualizer)' if vis != 'none' else ''}") + ".mp4"
         return f"YouTube video: {t_title}", lambda prog, cancel: video.release_video(
-            track["path"], img, os.path.join(out, "youtube", name), t_title, artist, p.get("resolution", "1080p"),
+            track["path"], img, os.path.join(out, "youtube", name), say(t_title), by, p.get("resolution", "1080p"),
             vis, p.get("layout", "cover"), text, progress=prog, cancel=cancel, opts=vopts)
 
     if kind == "export_video":
@@ -261,7 +264,7 @@ def build_job(kind, r, p):
         tag = " - ".join(x for x in (vis_name, aspect.replace(":", "x"), f"{size}p" if size != 2160 else "4K") if x)
         name = packages.safe(f"{artist} - {t_title} ({tag})") + video.EXPORT_FORMATS[fmt]["ext"]
         return f"Export video: {t_title} ({fmt.upper()} {w}×{h} {fps} fps)", lambda prog, cancel: video.export_video(
-            track["path"], img, os.path.join(out, "videos", name), t_title, artist, vis, ex.get("layout", "cover"),
+            track["path"], img, os.path.join(out, "videos", name), say(t_title), by, vis, ex.get("layout", "cover"),
             text, fmt, aspect, size, fps, quality, start, length, bool(ex.get("fade", True)), prog, cancel, opts=vopts)
 
     if kind == "vis_samples":
@@ -284,7 +287,7 @@ def build_job(kind, r, p):
         _require(img, "Set a cover first.")
         return f"Full album video: {title}", lambda prog, cancel: video.album_video(
             [t["path"] for t in tracks], img, os.path.join(out, "youtube", packages.safe(f"{artist} - {title} (Full Album)") + ".mp4"),
-            [t.get("title") or os.path.basename(t["path"]) for t in tracks], title, artist,
+            [t.get("title") or os.path.basename(t["path"]) for t in tracks], say(title), by,
             p.get("resolution", "1080p"), p.get("visualizer") or vis_global, float(p.get("gap", 1.0)), prog, cancel,
             opts=vopts)
 
@@ -310,7 +313,7 @@ def build_job(kind, r, p):
         name = packages.safe(f"{artist} - {name_title} ({label_h} Hours)") + ".mp4"
         return f"{label_h}h loop: {name_title}", lambda prog, cancel: video.long_video(
             [t["path"] for t in chosen], os.path.join(out, "youtube", name), hours, visual, img, images,
-            name_title, artist, text, p.get("resolution", "1080p"), float(p.get("crossfade", 4)),
+            say(name_title), by, text, p.get("resolution", "1080p"), float(p.get("crossfade", 4)),
             p.get("ambient") or None, float(p.get("ambient_db", -18)), slide_seconds=float(p.get("slide_seconds", 8)),
             visualizer=p.get("visualizer") or vis_global, video_clip=p.get("video_clip"),
             clip_folder=p.get("clip_folder"), clip_mode=p.get("clip_mode", "crossfade"),
@@ -366,7 +369,7 @@ def build_job(kind, r, p):
         start = float(start) if start not in (None, "") else None
         return f"Short/Reel/TikTok: {t_title}", lambda prog, cancel: video.short_clip(
             track["path"], img, os.path.join(out, "social", packages.safe(f"{t_title} short {int(time.time())}") + ".mp4"),
-            t_title, artist, secs, start, p.get("visualizer") or (vis_global if vis_global != "none" else "waves"),
+            say(t_title), by, secs, start, p.get("visualizer") or (vis_global if vis_global != "none" else "waves"),
             prog, cancel, opts=vopts)
 
     if kind == "canvas":
@@ -713,6 +716,67 @@ def api_preview():
         fr.alpha_composite(t_im, ((w - canvas) // 2, (h - canvas) // 2 - int(h * (lift + (0.06 if vertical else 0)))))
         fr.convert("RGB").save(tmp)
     return send_file(tmp, mimetype="image/png", max_age=0)
+
+
+_preview_lock = threading.Lock()
+_preview_gen = {"n": 0}
+_loudest = {}
+
+
+def _preview_audio(path):
+    """(audio, start): the loudest part of the track, or the demo beat when there's no track."""
+    if path and os.path.isfile(path):
+        key = (path, os.path.getmtime(path))
+        if key not in _loudest:
+            _loudest[key] = audio.loudest_window(path, 6)
+        return path, _loudest[key]
+    demo = os.path.join(DATA_DIR, "demo_beat.wav")
+    if not os.path.exists(demo):
+        video.demo_beat(demo, 12)
+    return demo, 2.0
+
+
+@app.post("/api/look_preview")
+def api_look_preview():
+    """What the video really looks like with the current look: a still frame (seconds=0)
+    or a short clip with sound, rendered small. Older requests still waiting are skipped."""
+    b = request.json or {}
+    img = b.get("image")
+    if not img or not os.path.isfile(img):
+        return jsonify({"error": "Set a cover (Artwork tab) or choose a picture first."}), 400
+    style = b.get("vstyle") if isinstance(b.get("vstyle"), dict) else {}
+    seconds = max(0.0, min(8.0, float(b.get("seconds") or 0)))
+    aspect = b.get("aspect") if b.get("aspect") in video.ASPECTS else "16:9"
+    w, h = video.export_size(aspect, 360 if seconds else 540)
+    with LOCK:
+        _preview_gen["n"] += 1
+        gen = _preview_gen["n"]
+    with _preview_lock:
+        if gen != _preview_gen["n"]:
+            return ("", 204)  # a newer preview was asked for meanwhile
+        src, start = _preview_audio(b.get("track"))
+        opts = {k: style.get(k) for k in video.STYLE_KEYS if style.get(k) not in (None, "")}
+        if opts.get("bump") == "logo" and not (opts.get("logo") and os.path.isfile(opts["logo"])):
+            opts["bump"] = "none"
+        d = os.path.join(DATA_DIR, "preview")
+        os.makedirs(d, exist_ok=True)
+        for f in os.listdir(d):
+            try:
+                os.remove(os.path.join(d, f))
+            except OSError:
+                pass  # still being played by the browser
+        clip = os.path.join(d, f"look_{gen}.mp4")
+        length = seconds or 1.0
+        video.release_video(src, img, clip, style.get("text_title") or b.get("title", ""),
+                             style.get("text_artist") or b.get("artist", ""), visualizer=style.get("visualizer") or "none",
+                             layout=b.get("layout", "cover"), text=b.get("text", True), fps=30, start=start,
+                             length=length, fade=bool(seconds), size=(w, h), enc=video.encoder("mp4", "draft", 30),
+                             opts=opts)
+        if seconds:
+            return send_file(clip, mimetype="video/mp4", max_age=0)
+        png = os.path.join(d, f"look_{gen}.png")
+        ff.run(["-sseof", "-0.1", "-i", clip, "-frames:v", "1", "-update", "1", png])
+        return send_file(png, mimetype="image/png", max_age=0)
 
 
 @app.post("/api/covers")
