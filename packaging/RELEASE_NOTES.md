@@ -4,6 +4,15 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.4.3
+- **Logos that just work:** pick "My logo" and your computer's normal file window opens. Any picture your browser can show works (PNG, JPG, SVG, WebP, GIF, AVIF…) and is converted for you. You can also drop a picture onto the logo area.
+- **Your logos and pictures are remembered:** they're kept in a library in the editor (newest first) as thumbnails. Click one to use it, or × to remove it. They stay even if you move the original file.
+- **The look is saved in Release Kit itself,** so it stays the same in any browser.
+- **No logo chosen yet? The video still gets made,** using the cover until you pick a logo.
+- **Queue:** two jobs run at once, so a Short or cover doesn't wait hours behind a 10-hour loop. Waiting jobs say where they are in line.
+- **Schedule upload** button on every finished video: writes the title, description and tags and adds it to the upload schedule.
+- The version number is shown next to the Release Kit logo.
+
 ### New in 1.4.2
 - **4 retro screensaver visualizers:** 3D Maze (walk brick corridors, faster in loud parts, walls flash on the beat), 3D Pipes (pipes grow with the music), Starfield (warp speed on the kick) and Mystify (bouncing line trails). That makes 16 styles.
 - **Video editor ("The look"):** a live preview that updates by itself as you change things, rendered from your actual song, and plays as a silent moving loop (turn the sound on if you like). Switch it between 16:9, 9:16, 1:1 and 4:5.

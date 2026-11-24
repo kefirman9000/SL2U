@@ -7,7 +7,7 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
 
-IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".bmp")
+IMAGE_EXT = (".jpg", ".jpeg", ".jfif", ".png", ".webp", ".tif", ".tiff", ".bmp", ".gif")
 
 FONT_CANDIDATES = {
     "sans": ["Inter-Bold.otf", "Inter-SemiBold.otf", "DejaVuSans-Bold.ttf", "Arial Bold.ttf", "arialbd.ttf",

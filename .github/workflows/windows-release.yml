@@ -127,6 +127,12 @@ jobs:
           $lp2 = Invoke-WebRequest -Method Post -Uri http://127.0.0.1:5577/api/look_preview -ContentType "application/json" -Body $lpBody2 -Headers @{ 'X-ReleaseKit-Key' = $env:RELEASEKIT_TOKEN } -UseBasicParsing
           if ($lp2.StatusCode -ne 200 -or $lp2.RawContentLength -lt 5000) { throw "Moving look preview failed" }
           Write-Host "Look previews OK"
+          # logo library: upload a picture as a logo, then a video with "My logo" (and one without a logo chosen: falls back to the cover)
+          $up = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5577/api/assets/logo -Form @{ file = Get-Item $rel.art_path }
+          if (-not (Test-Path $up.path)) { throw "Logo upload failed" }
+          $lg = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "ring"; bump = "logo"; logo = $up.path; center_size = 1.4 }; export = @{ size = 720; quality = "draft" } } }
+          $nl = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ vstyle = @{ visualizer = "none"; bump = "logo" }; export = @{ size = 720; quality = "draft" } } }
+          Write-Host "Logo videos OK"
           $smp = Run-Job @{ kinds = @("vis_samples"); release = $rel; params = @{ seconds = 3 } }
           if ($smp.result.samples.Count -lt 12) { throw "Expected 12 visualizer samples" }
           Write-Host "Rendered $($smp.result.samples.Count) visualizer samples"

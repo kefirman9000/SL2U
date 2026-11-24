@@ -13,6 +13,7 @@ import uuid
 import zlib
 
 from flask import Flask, abort, jsonify, request, send_file
+from PIL import Image
 
 from . import __version__, art, audio, drawn, ff, links, meta, packages, reactive, schedule, security, sl2link, update, video, youtube
 
@@ -122,13 +123,18 @@ def new_job(kind, label, fn, status="queued", result=None):
 def worker():
     while True:
         jid, fn = Q.get()
-        job = JOBS[jid]
-        if job["cancel"]:
-            job["status"] = "cancelled"
+        with LOCK:
+            job = JOBS.get(jid)
+            if job is None:  # cleared from the list before it started
+                continue
+            if job["cancel"]:
+                job["status"] = "cancelled"
+            else:
+                job["status"] = "running"
+                job["started"] = time.time()
+        if job["status"] == "cancelled":
             persist_jobs()
             continue
-        job["status"] = "running"
-        job["started"] = time.time()
         persist_jobs()
 
         def prog(f, job=job):
@@ -164,7 +170,11 @@ def check_space(path, need):
                          f"but only {free / 1e9:.1f} GB is free in {path}.")
 
 
-threading.Thread(target=worker, daemon=True).start()
+# Two renders at a time, so a quick Short or cover isn't stuck for hours behind a 10-hour loop.
+# RELEASEKIT_WORKERS changes it (1 = strictly one after the other).
+WORKERS = max(1, min(4, int(os.environ.get("RELEASEKIT_WORKERS", "2") or 2)))
+for _ in range(WORKERS):
+    threading.Thread(target=worker, daemon=True).start()
 
 
 def _first_image(r, p):
@@ -192,7 +202,7 @@ def build_job(kind, r, p):
     by = style.get("text_artist") or artist
     vis_global = style.get("visualizer") or "none"
     if vopts.get("bump") == "logo" and not (vopts.get("logo") and os.path.isfile(vopts["logo"])):
-        raise ValueError("Choose a logo image (PNG with transparency works best) for the bumping logo.")
+        vopts["bump"] = "cover"  # no logo chosen (or it was moved): use the cover rather than refuse
 
     if kind == "analyze":
         def fn(prog, cancel):
@@ -442,6 +452,115 @@ def api_init():
     })
 
 
+# ---------------------------------------------------------------- your logos and pictures
+# Every logo or picture you use is copied into the data folder and remembered (newest first),
+# so it's one click next time, even if the original file moves.
+ASSET_KINDS = {"logo": "logos", "picture": "pictures"}
+ASSET_KEEP = 24
+
+
+def _asset_dir(kind):
+    d = os.path.join(DATA_DIR, ASSET_KINDS[kind])
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _assets(kind):
+    return [p for p in load_settings().get(ASSET_KINDS[kind], []) if os.path.isfile(p)]
+
+
+def _remember_asset(kind, path):
+    with _settings_lock:
+        s = load_settings()
+        lst = [p for p in s.get(ASSET_KINDS[kind], []) if os.path.normcase(p) != os.path.normcase(path)
+               and os.path.isfile(p)]
+        s[ASSET_KINDS[kind]] = ([path] + lst)[:ASSET_KEEP]
+    save_settings(s)
+
+
+def _store_asset(kind, data, name):
+    """Check it's a picture, save it in the library as PNG (logos keep transparency) or JPG. Returns the path."""
+    import hashlib
+    try:
+        im = Image.open(io.BytesIO(data))
+        im.load()
+    except Exception:
+        raise ValueError("That file isn't a picture Release Kit can read. Try a PNG or JPG.")
+    stem = packages.safe(os.path.splitext(os.path.basename(name or kind))[0])[:60] or kind
+    tag = hashlib.sha1(data).hexdigest()[:8]
+    if kind == "logo":
+        im = im.convert("RGBA")
+        im.thumbnail((2048, 2048))
+        path = os.path.join(_asset_dir(kind), f"{stem}-{tag}.png")
+        if not os.path.exists(path):
+            im.save(path, "PNG")
+    else:
+        im = im.convert("RGB")
+        im.thumbnail((4096, 4096))
+        path = os.path.join(_asset_dir(kind), f"{stem}-{tag}.jpg")
+        if not os.path.exists(path):
+            im.save(path, "JPEG", quality=93)
+    _remember_asset(kind, path)
+    return path
+
+
+def _kind_or_404(kind):
+    if kind not in ASSET_KINDS:
+        abort(404)
+
+
+@app.get("/api/assets/<kind>")
+def api_assets(kind):
+    _kind_or_404(kind)
+    return jsonify({"items": _assets(kind)})
+
+
+@app.post("/api/assets/<kind>")
+def api_asset_upload(kind):
+    """A picture from the browser (Choose… button or drag and drop)."""
+    _kind_or_404(kind)
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "No file received."}), 400
+    try:
+        path = _store_asset(kind, f.read(), f.filename)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"path": path, "items": _assets(kind)})
+
+
+@app.post("/api/assets/<kind>/add")
+def api_asset_add(kind):
+    """A picture already on this computer (path from the file browser): copied into the library."""
+    _kind_or_404(kind)
+    path = (request.json or {}).get("path", "")
+    if not os.path.isfile(path):
+        return jsonify({"error": "That file doesn't exist any more."}), 400
+    if os.path.dirname(os.path.abspath(path)) == os.path.abspath(_asset_dir(kind)):
+        _remember_asset(kind, path)
+        stored = path
+    else:
+        try:
+            with open(path, "rb") as fh:
+                stored = _store_asset(kind, fh.read(), path)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+    return jsonify({"path": stored, "items": _assets(kind)})
+
+
+@app.post("/api/assets/<kind>/remove")
+def api_asset_remove(kind):
+    _kind_or_404(kind)
+    path = (request.json or {}).get("path", "")
+    with _settings_lock:
+        s = load_settings()
+        s[ASSET_KINDS[kind]] = [p for p in s.get(ASSET_KINDS[kind], []) if p != path]
+    save_settings(s)
+    if os.path.dirname(os.path.abspath(path)) == os.path.abspath(_asset_dir(kind)) and os.path.isfile(path):
+        os.remove(path)  # only our own copy, never your original
+    return jsonify({"items": _assets(kind)})
+
+
 @app.post("/api/settings")
 def api_settings():
     s = load_settings()
@@ -497,15 +616,24 @@ def api_thumb():
     path = request.args.get("path", "")
     if not os.path.isfile(path):
         abort(404)
-    size = int(request.args.get("size", 360))
+    size = max(16, min(1600, int(request.args.get("size", 360))))
     try:
-        im = art.thumbnail(path, size)
+        with Image.open(path) as src:
+            see_through = src.mode in ("RGBA", "LA", "PA") or (src.mode == "P" and "transparency" in src.info)
+        if see_through:  # logos: keep the transparency so they show on a checkerboard
+            im = Image.open(path).convert("RGBA")
+            im.thumbnail((size, size))
+        else:
+            im = art.thumbnail(path, size)
     except Exception:
         abort(415)
     buf = io.BytesIO()
-    im.save(buf, "JPEG", quality=82)
+    if see_through:
+        im.save(buf, "PNG")
+    else:
+        im.save(buf, "JPEG", quality=82)
     buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg", max_age=60)
+    return send_file(buf, mimetype="image/png" if see_through else "image/jpeg", max_age=60)
 
 
 @app.get("/api/file")
@@ -568,8 +696,12 @@ def api_jobs_create():
     made, errors = [], []
     for k in kinds:
         try:
-            label, fn = build_job(k, b.get("release", {}), b.get("params", {}))
-            made.append(new_job(k, label, fn)["id"])
+            params = b.get("params", {})
+            label, fn = build_job(k, b.get("release", {}), params)
+            job = new_job(k, label, fn)
+            if params.get("track_index") not in (None, ""):
+                job["track_index"] = params["track_index"]  # so "Schedule upload" can write the right title
+            made.append(job["id"])
         except Exception as e:
             errors.append(f"{k}: {e}")
     return jsonify({"jobs": made, "errors": errors}), (200 if made or not errors else 400)
@@ -579,7 +711,7 @@ def api_jobs_create():
 def api_jobs():
     with LOCK:
         jobs = sorted(JOBS.values(), key=lambda j: -j["created"])
-    return jsonify([{k: v for k, v in j.items() if k != "cancel"} for j in jobs][:100])
+    return jsonify([{k: v for k, v in j.items() if k not in ("cancel", "trace")} for j in jobs][:100])
 
 
 @app.post("/api/jobs/clear")
@@ -757,7 +889,7 @@ def api_look_preview():
         src, start = _preview_audio(b.get("track"))
         opts = {k: style.get(k) for k in video.STYLE_KEYS if style.get(k) not in (None, "")}
         if opts.get("bump") == "logo" and not (opts.get("logo") and os.path.isfile(opts["logo"])):
-            opts["bump"] = "none"
+            opts["bump"] = "cover"
         d = os.path.join(DATA_DIR, "preview")
         os.makedirs(d, exist_ok=True)
         for f in os.listdir(d):

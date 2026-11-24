@@ -164,13 +164,23 @@ details.more[open]>summary{margin-bottom:4px}
 .sw{display:flex;align-items:center;gap:7px;padding:4px 11px 4px 4px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;font-size:12.5px}
 .sw i{width:24px;height:24px;border-radius:50%;display:block;border:1px solid #0008}
 .sw.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:6px;padding:6px;border:1px dashed transparent;border-radius:8px}
+.assets.over{border-color:var(--accent);background:rgba(57,255,20,.05)}
+.asset{position:relative;border:2px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;background:var(--panel2)}
+.asset .th{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#000;color:var(--muted);font-size:11px}
+.asset .th img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.asset .th.chk{background:repeating-conic-gradient(#2a2a2a 0 25%,#1a1a1a 0 50%) 50%/14px 14px}
+.asset>span{display:block;font-size:11px;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset .x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:0;background:#000b;color:#fff;cursor:pointer;display:none;line-height:20px;padding:0}
+.asset:hover .x{display:block}.asset:hover{border-color:#3a5a33}.asset.on{border-color:var(--accent)}
+.asset.add .th b{font-size:28px;color:var(--accent)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;flex-direction:column;gap:14px;font-size:18px}
 .overlay.on{display:flex}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">RELEASE<span>KIT</span></div>
+  <div class="logo">RELEASE<span>KIT</span> <small id="verTag" title="Your version of Release Kit (Settings → Check now looks for updates)" style="font-size:11px;opacity:.55;font-family:var(--ui,inherit);letter-spacing:0"></small></div>
   <nav id="nav"></nav>
   <div class="proj">
     <label for="projSel">Working on</label><select id="projSel" style="width:180px" title="Switch to another saved release"></select>
@@ -314,7 +324,14 @@ details.more[open]>summary{margin-bottom:4px}
         <div class="ed-pane" data-v="middle">
           <label>What sits in the middle</label>
           <div class="seg wrap" id="edBump"><button data-v="none" class="on">Nothing</button><button data-v="cover">Cover</button><button data-v="disc">Spinning record</button><button data-v="logo">My logo</button><button data-v="text">Title text</button></div>
-          <div class="ed-row" id="edLogoRow" style="display:none"><label>Logo file</label><input class="grow" id="stLogo" placeholder="PNG with a see-through background works best"><button class="b s" onclick="pick({kind:'image'},p=>{stLogo.value=p;setLook({logo:p})})">Browse…</button></div>
+          <div id="edLogoRow" style="display:none;margin-top:12px">
+            <label>Your logos <span class="muted" style="font-weight:400">click one to use it · drop a picture here to add one</span></label>
+            <div class="assets" id="edLogos"></div>
+            <input type="file" id="edLogoFile" accept="image/*,.svg" hidden onchange="uploadAsset('logo',this.files[0]);this.value=''">
+            <input type="hidden" id="stLogo">
+            <div class="muted" style="font-size:12px;margin-top:6px" id="edLogoNote"></div>
+            <div class="row" style="margin-top:6px"><button class="b s" onclick="pick({kind:'image'},p=>addAssetPath('logo',p))">Find it in a folder instead…</button></div>
+          </div>
           <div class="ed-row"><label>Size</label><input type="range" id="edCenter" min="0.5" max="1.8" step="0.1" value="1"><span class="val" id="edCenterV"></span></div>
           <div class="ed-row"><label>Pulse to the beat</label><input type="range" id="edPulse" min="0" max="0.3" step="0.02" value="0.12"><span class="val" id="edPulseV"></span></div>
           <p class="muted" style="font-size:12px">Ring, particle, shape and tunnel visualizers put your cover here when this is "Nothing".</p>
@@ -325,7 +342,10 @@ details.more[open]>summary{margin-bottom:4px}
           <div class="seg wrap" id="edBg"><button data-v="cover" class="on">Cover on blur</button><button data-v="full">Picture fills screen</button><button data-v="blur">Blurred picture</button><button data-v="dark">Dark</button></div>
           <div class="ed-row"><label>Darkness</label><input type="range" id="edDim" min="0" max="0.85" step="0.05" value="0.5"><span class="val" id="edDimV"></span></div>
           <div class="ed-row"><label>Movement</label><select id="edMotion"><option value="still">Still</option><option value="drift">Slow drift</option><option value="zoom">Slow zoom in and out</option><option value="breathe">Breathing light</option><option value="grain">Film grain</option></select></div>
-          <div class="ed-row"><label>Picture</label><input class="grow" id="vidImg" placeholder="the release cover"><button class="b s" onclick="pick({kind:'image'},p=>{vidImg.value=p;edRefresh()})">Browse…</button><button class="b s" onclick="vidImg.value='';edRefresh()">Cover</button></div>
+          <label style="margin-top:14px">Picture <span class="muted" style="font-weight:400">the cover, or one of your pictures · drop a picture here to add one</span></label>
+          <div class="assets" id="edPics"></div>
+          <input type="file" id="edPicFile" accept="image/*,.svg" hidden onchange="uploadAsset('picture',this.files[0]);this.value=''">
+          <input type="hidden" id="vidImg">
           <p class="muted" style="font-size:12px">Movement is used by song videos, Shorts and album videos. 10-hour loops choose their own background.</p>
         </div>
 
@@ -676,7 +696,7 @@ async function init(){
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
   document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
   $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
-  rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();edInit();
+  showVersion();rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();edInit();
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -751,7 +771,7 @@ function genArt(n){for(let i=0;i<n;i++){const seed=$("genSeed").value&&n===1?+$(
 function useCover(p){R.art_path=p;save();renderCover();toast("Cover set");edRefresh()}
 
 // ---------- video
-const vidImage=()=>$("vidImg").value||undefined;
+const vidImage=()=>LOOK.picture||undefined;
 function renderLvTracks(){$("lvTracks").innerHTML=R.tracks.map((t,i)=>`<label class="chk" style="margin-right:12px"><input type="checkbox" class="lvT" value="${i}" ${i===0?"checked":""}>${esc(t.title)}</label>`).join("")||'<span class="muted">Add tracks first.</span>'}
 function renderLong(){const idx=[...document.querySelectorAll(".lvT:checked")].map(x=>+x.value);
   job("long_video",{tracks:idx,hours:$("lvHours").value,visual:$("lvVisual").value,crossfade:$("lvXf").value,resolution:$("lvRes").value,photo_folder:$("lvFolder").value,ambient:$("lvAmb").value,ambient_db:$("lvAmbDb").value,image:vidImage(),video_clip:$("lvClip").value,clip_folder:$("lvClipDir").value,clip_mode:$("lvClipMode").value,clip_fit:$("lvClipFit").value})}
@@ -770,18 +790,66 @@ function genreVis(){const g=(R.genre||"")+" "+(R.subgenre||"");for(const [re,v] 
 function genreTip(){const v=genreVis(),el=$("genreTip");if(!el)return;
   el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc(VIS_NAME(k))}</a>`).join(", "):""}
 
+// ---------- your logos and pictures (remembered in Release Kit, newest first)
+const ASSETS={logo:[],picture:[]};
+const samePath=(a,b)=>!!a&&!!b&&a.replace(/\\/g,"/").toLowerCase()===b.replace(/\\/g,"/").toLowerCase();
+async function loadAssets(kind){try{ASSETS[kind]=(await api("/api/assets/"+kind)).items}catch(e){}
+  // a logo/picture chosen before the library existed: add it so it's remembered too
+  const cur=kind==="logo"?LOOK.logo:LOOK.picture;
+  if(cur&&!ASSETS[kind].some(p=>samePath(p,cur))){try{const j=await api(`/api/assets/${kind}/add`,{path:cur});ASSETS[kind]=j.items;
+    setLook(kind==="logo"?{logo:j.path}:{picture:j.path},true)}catch(e){}}
+  renderAssets(kind)}
+function renderAssets(kind){const box=$(kind==="logo"?"edLogos":"edPics");if(!box)return;const cur=kind==="logo"?LOOK.logo:LOOK.picture;
+  let html=kind==="picture"?`<div class="asset ${!cur?"on":""}" onclick="usePicture('')" title="Use the release cover"><div class="th">${R.art_path?`<img src="${thumb(R.art_path,200)}">`:"<span>no cover yet</span>"}</div><span>The cover</span></div>`:"";
+  html+=ASSETS[kind].map(p=>{const n=p.split(/[\\/]/).pop().replace(/-[0-9a-f]{8}\.(png|jpg)$/,"");
+    return `<div class="asset ${samePath(p,cur)?"on":""}" title="${esc(n)}" onclick="${kind==="logo"?"useLogo":"usePicture"}('${jsq(p)}')"><div class="th ${kind==="logo"?"chk":""}"><img src="${thumb(p,200)}" loading="lazy"></div><span>${esc(n)}</span><button class="x" title="Remove from this list" onclick="event.stopPropagation();forgetAsset('${kind}','${jsq(p)}')">×</button></div>`}).join("");
+  html+=`<div class="asset add" onclick="$('${kind==="logo"?"edLogoFile":"edPicFile"}').click()" title="Choose a file from your computer"><div class="th"><b>＋</b></div><span>Add ${kind}</span></div>`;
+  box.innerHTML=html;
+  if(kind==="logo"){const miss=LOOK.bump==="logo"&&!LOOK.logo;$("edLogoNote").innerHTML=miss?'<b style="color:var(--warn,#ffb020)">No logo chosen yet.</b> Click "＋ Add logo" (or drop a picture here). Until then the cover is used.':'PNG with a see-through background looks best. SVG, WebP, GIF and other pictures are converted for you.'}}
+function useLogo(p){setLook({logo:p,bump:"logo"});renderAssets("logo")}
+function usePicture(p){setLook({picture:p});$("vidImg").value=p;renderAssets("picture")}
+// the browser opens the file (SVG, WebP, AVIF, GIF… anything it can show) and sends a PNG/JPG
+async function toUploadable(file,kind){
+  if(kind==="logo"?file.type==="image/png":/^image\/(png|jpeg)$/.test(file.type))return file;
+  const url=URL.createObjectURL(file);
+  try{const img=new Image();img.src=url;await img.decode();
+    let w=img.naturalWidth||1024,h=img.naturalHeight||1024;
+    if(/svg/.test(file.type)||/\.svg$/i.test(file.name)){const k=2048/Math.max(w,h);w*=k;h*=k}  // vector: draw it big and sharp
+    const max=kind==="logo"?2048:4096,k=Math.min(1,max/Math.max(w,h));w=Math.max(1,Math.round(w*k));h=Math.max(1,Math.round(h*k));
+    const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
+    const type=kind==="logo"?"image/png":"image/jpeg";
+    const blob=await new Promise(r=>c.toBlob(r,type,0.93));
+    return new File([blob],file.name.replace(/\.[^.]+$/,"")+(kind==="logo"?".png":".jpg"),{type})}
+  finally{URL.revokeObjectURL(url)}}
+async function uploadAsset(kind,file){if(!file)return;toast(`Adding ${file.name}…`);
+  let f;try{f=await toUploadable(file,kind)}catch(e){return toast("Your browser can't open that picture. Try a PNG or JPG.",5000)}
+  const fd=new FormData();fd.append("file",f,f.name);
+  let j;try{const r=await fetch("/api/assets/"+kind,{method:"POST",body:fd});j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText)}
+  catch(e){return toast("Couldn't add it: "+e.message,5000)}
+  ASSETS[kind]=j.items;kind==="logo"?useLogo(j.path):usePicture(j.path);toast(kind==="logo"?"Logo added and in use":"Picture added and in use")}
+async function addAssetPath(kind,path){try{const j=await api(`/api/assets/${kind}/add`,{path});ASSETS[kind]=j.items;kind==="logo"?useLogo(j.path):usePicture(j.path)}catch(e){toast(e.message,5000)}}
+async function forgetAsset(kind,p){try{const j=await api(`/api/assets/${kind}/remove`,{path:p});ASSETS[kind]=j.items}catch(e){return toast(e.message)}
+  if(kind==="logo"&&samePath(LOOK.logo,p))setLook({logo:""});if(kind==="picture"&&samePath(LOOK.picture,p))usePicture("");renderAssets(kind)}
+function dropZone(el,kind){
+  el.addEventListener("dragover",e=>{e.preventDefault();e.stopPropagation();el.classList.add("over")});
+  el.addEventListener("dragleave",()=>el.classList.remove("over"));
+  el.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();el.classList.remove("over");$("drop").classList.remove("on");
+    const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("image/")||/\.(svg|png|jpe?g|jfif|webp|gif|avif|bmp|tiff?)$/i.test(f.name));
+    f?uploadAsset(kind,f):toast("Drop a picture file here")})}
+
 // ================= video editor ("the look")
 const VIS_ORDER=["none","bars","mirror","waves","line","spectrum","scope","ring","ringwave","particles","geometric","tunnel","synthwave","maze","pipes","starfield","mystify"];
 const VIS_NAME=k=>{const o=$("stVis").querySelector(`option[value="${k}"]`);return o?o.textContent:k};
 const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan","#28dcff","Cyan"],["pink","#ff46aa","Pink"],["gold","#ffc83c","Gold"],["red","#ff3c3c","Red"],["#a060ff","#a060ff","Purple"],["#ff7a00","#ff7a00","Orange"],["cover","conic-gradient(#f5a,#fa5,#af5,#5af,#f5a)","From the cover"]];
-const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:""};
+const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:""};
 let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
   if(!localStorage.getItem("rk_look")){const o=k=>localStorage.getItem("rk_f_"+k);  // carry over the old Video style settings
     if(o("stVis"))saved.visualizer=o("stVis");if(o("stBump"))saved.bump=o("stBump");if(o("stColor"))saved.vis_color=o("stColor");if(o("stAmt"))saved.bump_amount=+o("stAmt")}
   return Object.assign({},LOOK_DEFAULT,saved)})();
 const ED={shape:"16:9",t:null,ctl:null,n:0,sound:false};
 function getStyle(){return Object.assign({},LOOK)}
-function setLook(ch,quiet){Object.assign(LOOK,ch);try{localStorage.setItem("rk_look",JSON.stringify(LOOK))}catch(e){}edSync();if(!quiet)edRefresh()}
+function setLook(ch,quiet){Object.assign(LOOK,ch);try{localStorage.setItem("rk_look",JSON.stringify(LOOK))}catch(e){}
+  clearTimeout(setLook.t);setLook.t=setTimeout(()=>api("/api/settings",{look:LOOK}).then(s=>S=s).catch(()=>{}),800);edSync();if(!quiet)edRefresh()}
 function seg(id,val,fn){const el=$(id);el.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===String(val)));if(fn)el.onclick=e=>{const b=e.target.closest("button");if(b)fn(b.dataset.v)}}
 const PULSE=v=>v<=0?"None":v<0.08?"Subtle":v<0.16?"Medium":v<0.24?"Strong":"Huge";
 function edSync(){
@@ -792,7 +860,8 @@ function edSync(){
   $("edVisSize").value=LOOK.vis_size;$("edVisSizeV").textContent=Math.round(LOOK.vis_size*100)+"%";seg("edPos",LOOK.vis_pos);
   $("edSwatches").querySelectorAll(".sw").forEach(b=>b.classList.toggle("on",b.dataset.v===LOOK.vis_color));
   if(/^#[0-9a-f]{6}$/i.test(LOOK.vis_color))$("edColor").value=LOOK.vis_color;
-  seg("edBump",LOOK.bump);$("edLogoRow").style.display=LOOK.bump==="logo"?"":"none";$("stLogo").value=LOOK.logo||"";
+  seg("edBump",LOOK.bump);$("edLogoRow").style.display=LOOK.bump==="logo"?"":"none";$("stLogo").value=LOOK.logo||"";$("vidImg").value=LOOK.picture||"";
+  renderAssets("logo");renderAssets("picture");
   $("edCenter").value=LOOK.center_size;$("edCenterV").textContent=Math.round(LOOK.center_size*100)+"%";
   $("edPulse").value=LOOK.bump_amount;$("edPulseV").textContent=PULSE(+LOOK.bump_amount);
   seg("edBg",LOOK.bg);const dim=LOOK.dim===""?0.5:+LOOK.dim;$("edDim").value=dim;$("edDimV").textContent=LOOK.dim===""?"Normal":Math.round(dim*100)+"%";
@@ -813,12 +882,13 @@ function edInit(){
   $("edMotion").onchange=e=>setLook({motion:e.target.value});
   $("edText").onchange=e=>setLook({text_on:e.target.checked});
   $("edTitle").oninput=e=>setLook({text_title:e.target.value});$("edArtist").oninput=e=>setLook({text_artist:e.target.value});
-  $("stLogo").onchange=e=>setLook({logo:e.target.value});
-  seg("edPos",LOOK.vis_pos,v=>setLook({vis_pos:v}));seg("edBump",LOOK.bump,v=>setLook({bump:v}));seg("edBg",LOOK.bg,v=>setLook({bg:v}));
+  seg("edPos",LOOK.vis_pos,v=>setLook({vis_pos:v}));seg("edBump",LOOK.bump,v=>{setLook({bump:v});if(v==="logo"&&!LOOK.logo&&!ASSETS.logo.length)$("edLogoFile").click()});seg("edBg",LOOK.bg,v=>setLook({bg:v}));
   seg("edShape",ED.shape,v=>edShapeSet(v));
   seg("edTabs","style",v=>{seg("edTabs",v);document.querySelectorAll(".ed-pane").forEach(p=>p.classList.toggle("on",p.dataset.v===v))});
   $("edMove").onchange=edRefresh;$("exTrack").addEventListener("change",()=>{edSync();edRefresh()});
-  edSync();renderSaved()}
+  if(S.look)Object.assign(LOOK,S.look);  // the look saved in Release Kit wins over this browser's copy
+  dropZone($("edLogoRow"),"logo");dropZone($("edPics"),"picture");
+  edSync();renderSaved();loadAssets("logo");loadAssets("picture")}
 function edShapeSet(v){ED.shape=v;seg("edShape",v);const [a,b]=v.split(":").map(Number);const sc=$("edScreen");
   sc.style.aspectRatio=a+"/"+b;sc.style.maxWidth=b>a?"300px":a<b*1.2?"420px":"";edRefresh()}
 function edRefresh(){clearTimeout(ED.t);ED.t=setTimeout(edRender,450)}
@@ -897,10 +967,19 @@ function exportPreview(){const v=$("exVis").value;if(v&&v!==LOOK.visualizer)setL
 // ---------- jobs
 function clipRows(){const v=$("lvVisual").value;$("slideRow").style.display=v==="slideshow"?"":"none";$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
 async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];params=Object.assign({vstyle:getStyle(),text:LOOK.text_on!==false},params);
-  try{const r=await api("/api/jobs",{kinds,release:R,params});if(r.errors.length)toast(r.errors.join(" · "),5000);else toast("Queued: "+kinds.join(", "));pollJobs()}
+  try{const r=await api("/api/jobs",{kinds,release:R,params});
+    if(r.errors.length)toast(r.errors.join(" · "),5000);
+    else{const q=LASTJOBS.filter(j=>j.status==="queued").length,run=LASTJOBS.filter(j=>j.status==="running").length;
+      const when=q?` It starts after ${q} waiting job${q>1?"s":""}.`:run>=2?" It starts when a running job finishes.":" Starting now.";
+      toast(`Added: ${kinds.map(k=>JOBNAME[k]||k).join(", ")}.${when} Progress is in Jobs on the right.`,4500);LASTJOBS.push({status:"queued"})}
+    pollJobs()}
   catch(e){toast(e.message,5000)}}
-let seen={};
-async function pollJobs(){clearTimeout(pollJobs.t);let jobs=[];try{jobs=await api("/api/jobs")}catch(e){}
+const JOBNAME={export_video:"Song video",release_video:"YouTube video",long_video:"Loop video",short:"Short",album_video:"Album video",
+  canvas:"Spotify Canvas",vis_samples:"Visualizer samples",cover:"Cover",batch:"Overnight batch",analyze:"Track check",yt_upload:"YouTube upload"};
+let seen={},LASTJOBS=[];
+async function pollJobs(){clearTimeout(pollJobs.t);let jobs=[];try{jobs=await api("/api/jobs")}catch(e){}LASTJOBS=jobs;
+  // place in line for waiting jobs (oldest first)
+  const waiting=jobs.filter(j=>j.status==="queued").sort((a,b)=>a.created-b.created);waiting.forEach((j,i)=>j._ahead=i);
   renderJobs(jobs);
   jobs.forEach(j=>{if(j.status==="done"&&!seen[j.id]){seen[j.id]=1;onDone(j)}else if(j.status==="error"&&!seen[j.id]){seen[j.id]=1;if(!FIRSTPOLL)notifyDone(j)}});FIRSTPOLL=false;
   pollJobs.t=setTimeout(pollJobs,jobs.some(j=>j.status==="running"||j.status==="queued")?1000:4000)}
@@ -928,13 +1007,14 @@ function jobHtml(j){const r=j.result||{},pct=Math.round(j.progress*100);let body
     if(r.chapters)body+=`<div class="muted" style="font-size:12px;margin-top:6px">Chapters copied to Upload tab.</div>`;
     if(r.url)body+=`<div><a href="${r.url}" target="_blank" style="color:var(--accent2)">${r.url}</a></div>`+(r.notes||[]).map(n=>`<div class="warn" style="font-size:12px">${esc(n)}</div>`).join("");
     if(r.tracks)body+=`<div class="muted" style="font-size:12px">See results under Tracks.</div>`;
-    const open=p||(r.files&&r.files[0]);if(open)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(open)}')">Show in folder</button>${/\.(mp4|mov|webm)$/i.test(p)?`<button class="b s" onclick="toUpload('${jsq(p)}','${j.kind}')">Upload this…</button>`:""}</div>`;}
+    const open=p||(r.files&&r.files[0]);if(open)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(open)}')">Show in folder</button>${/\.(mp4|mov|webm)$/i.test(p)?`<button class="b s" onclick="toUpload('${jsq(p)}','${j.kind}',${j.track_index??"null"})">Upload this…</button><button class="b s" onclick="scheduleVideo('${jsq(p)}','${j.kind}',${j.track_index??"null"})" title="Writes the title, description and tags and adds it to the upload schedule">Schedule upload</button>`:""}</div>`;}
   if(j.status==="error"||j.status==="interrupted")body=(j.hint?`<div class="err" style="font-size:13px;margin-top:4px">${esc(j.hint)}</div><details class="raw"><summary>Technical details</summary><pre>${esc(j.error)}</pre></details>`:`<pre>${esc(j.error)}</pre>`);
   if(j.kind==="sl2_import"&&r.project)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="loadProject('${jsq(r.project)}').then(()=>show('release'))">Open release</button></div>`;
   if(r.text_file)body+=`<div class="row" style="margin-top:6px"><button class="b s" onclick="openPath('${jsq(r.text_file)}')">YouTube text file</button></div>`;
-  return `<div class="job"><div class="row"><span class="t grow">${esc(j.label)}</span><span class="pill ${j.status==="done"?"ok":j.status==="error"||j.status==="interrupted"?"err":""}">${j.status}</span>
+  return `<div class="job"><div class="row"><span class="t grow">${esc(j.label)}</span><span class="pill ${j.status==="done"?"ok":j.status==="error"||j.status==="interrupted"?"err":""}">${{queued:"waiting",running:"making",done:"done",error:"failed",cancelled:"stopped",interrupted:"interrupted"}[j.status]||j.status}</span>
     ${j.status==="running"||j.status==="queued"?`<button class="b s" onclick="api('/api/jobs/${j.id}/cancel',{}).then(pollJobs)">Stop</button>`:""}</div>
-    ${j.status==="running"||j.status==="queued"?`<div class="bar"><i style="width:${pct}%"></i></div><div class="muted" style="font-size:11px">${pct}%${eta}</div>`:""}${body}</div>`}
+    ${j.status==="running"?`<div class="bar"><i style="width:${pct}%"></i></div><div class="muted" style="font-size:11px">${pct}%${eta}</div>`:""}
+    ${j.status==="queued"?`<div class="muted" style="font-size:12px;margin-top:4px">Waiting: starts when a running job finishes${j._ahead?` (${j._ahead} more in line before it)`:" (next in line)"}.</div>`:""}${body}</div>`}
 const jsq=s=>String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 const JOBRES={};
 function onDone(j){JOBRES[j.id]=j.result;if(j.kind==="vis_samples"&&(!SAMPLES_AT||j.finished>SAMPLES_AT)){SAMPLES_AT=j.finished;renderSamples(j.result)}
@@ -950,7 +1030,9 @@ function outDir(){return (S.output_dir||"")+(R.artist||R.title?"/"+(R.artist||"A
 // ---------- upload
 function renderYt(){$("ytStatus").innerHTML=INIT.youtube_available&&INIT.has_client_secret?`<div class="card ok">YouTube upload is set up. The first upload opens a Google sign-in window.</div>`:
   `<div class="note"><b>Optional setup for one-click uploads:</b> ${INIT.youtube_available?"":"run <code>pip install -r requirements-youtube.txt</code>, "}create an OAuth "Desktop app" client in Google Cloud (links in Sign-ups → section 7) and save it as <code>${esc(INIT.data_dir)}/client_secret.json</code>. Until then, use "Copy text" and upload in YouTube Studio. New API projects upload as Private until Google audits them.</div>`}
-function toUpload(p,kind){show("up");$("ytVideo").value=p;$("ytKind").value={long_video:"ten_hours",album_video:"full_album",short:"short",release_video:"official_audio"}[kind]||"official_audio";genMeta()}
+function toUpload(p,kind,ti){show("up");$("ytVideo").value=p;$("ytKind").value={long_video:"ten_hours",album_video:"full_album",short:"short",release_video:"official_audio"}[kind]||"official_audio";
+  if(ti!=null&&ti!=="")$("ytTrack").value=String(ti);return genMeta()}
+async function scheduleVideo(p,kind,ti){try{await toUpload(p,kind,ti)}catch(e){return toast(e.message,5000)}await toSchedule()}
 async function genMeta(){const ti=$("ytTrack").value;const r=await api("/api/meta",{release:R,kind:$("ytKind").value,hours:$("ytHours").value,chapters:$("ytKind").value==="full_album"?CHAPTERS:null,track_title:$("ytKind").value==="full_album"?null:(R.tracks[ti]||{}).title});
   $("ytTitle").value=r.title;$("ytDesc").value=r.description;$("ytTags").value=r.tags.join(", ");cnt()}
 function cnt(){$("cT").textContent=$("ytTitle").value.length+"/100";$("cD").textContent=$("ytDesc").value.length+"/5000";$("cG").textContent=$("ytTags").value.length+"/500"}
@@ -975,7 +1057,8 @@ async function sig(k,f,v){S.signups=S.signups||{};S.signups[k]=S.signups[k]||{};
 // ---------- settings
 function applyTheme(t){document.body.classList.toggle('ember',t==='ember');localStorage.setItem('rk_theme',t)}
 applyTheme(localStorage.getItem('rk_theme')||'studio');
-function fillSettings(){$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
+function showVersion(){if($("verTag")&&INIT&&INIT.version)$("verTag").textContent="v"+INIT.version}
+function fillSettings(){showVersion();$("sUpd").checked=S.check_updates!==false;$("verText").textContent="You have version "+INIT.version;$("sTheme").value=localStorage.getItem('rk_theme')||'studio';$("sNotify").checked=!!S.notify;document.querySelectorAll("[data-d]").forEach(el=>el.value=(S.defaults||{})[el.dataset.d]||"");$("sOut").value=S.output_dir||"";$("sAuthor").value=S.stock_author||"";document.querySelectorAll("[data-p]").forEach(el=>el.value=(S.profile||{})[el.dataset.p]||"")}
 async function saveSettings(){const profile={};document.querySelectorAll("[data-p]").forEach(el=>profile[el.dataset.p]=el.value.trim());
   const defaults={};document.querySelectorAll("[data-d]").forEach(el=>defaults[el.dataset.d]=el.value.trim());
   if($("sNotify").checked&&window.Notification&&Notification.permission==="default")Notification.requestPermission();
