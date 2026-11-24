@@ -121,6 +121,20 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 .qt img{width:96px;height:54px;object-fit:cover;border-radius:4px;background:#111}
 .qt input{padding:5px 7px;font-size:13px}
 .st-done{color:var(--ok)} .st-error,.st-needs_signin{color:var(--err)} .st-paused_quota{color:var(--warn)}
+.stepn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--ontext);font-size:12px;font-weight:700;margin-right:8px;vertical-align:1px}
+nav .num{display:inline-block;min-width:16px;font-size:11px;opacity:.7;margin-right:3px}
+nav .sep{flex:none;width:1px;background:var(--line);margin:6px 8px}
+nav button.extra{font-size:12.5px}
+.vtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:16px}
+.vtile{border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;background:var(--panel)}
+.vtile b{display:block;margin-bottom:3px}.vtile span{font-size:12px;color:var(--muted)}
+.vtile:hover{border-color:#3a5a33}.vtile.on{border-color:var(--accent);background:var(--panel2);box-shadow:inset 0 0 0 1px var(--accent)}
+.vpanel{display:none}.vpanel.on{display:block}
+details.more{margin-top:10px}details.more>summary{cursor:pointer;color:var(--muted);font-size:13px}
+details.more[open]>summary{margin-bottom:4px}
+.nextstep{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.job video,.job img{max-height:190px;object-fit:contain}
+.proj label{margin:0;font-size:12px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;flex-direction:column;gap:14px;font-size:18px}
 .overlay.on{display:flex}
 </style>
@@ -130,8 +144,8 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
   <div class="logo">RELEASE<span>KIT</span></div>
   <nav id="nav"></nav>
   <div class="proj">
-    <select id="projSel" style="width:180px" title="Saved releases"></select>
-    <button class="b s" onclick="newProject()">New</button><button class="b s p" onclick="wizOpen()">＋ New release wizard</button>
+    <label for="projSel">Working on</label><select id="projSel" style="width:180px" title="Switch to another saved release"></select>
+    <button class="b s" onclick="newProject()" title="Start an empty release form">Blank</button><button class="b s p" onclick="wizOpen()" title="Step-by-step: music, cover, outputs">＋ New release</button>
   </div>
 </header>
 <div class="upd" id="updBar"><b id="updText"></b><span class="grow"></span>
@@ -146,18 +160,33 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 <!-- RELEASE -->
 <section class="tab" id="t-release">
   <h2>Release</h2>
-  <p class="sub">Everything else (videos, packages, descriptions) is built from this. Saved automatically. Tip: drag audio files or whole folders anywhere onto this window.</p>
+  <p class="sub">Start here: your music and the basics. Videos, packages and YouTube text are all built from this. Saves by itself. Tip: drag audio files or whole folders anywhere onto this window.</p>
   <div id="toolWarn"></div>
-  <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">Ready to release? <span class="muted" id="readyScore"></span></h3><button class="b s" onclick="readiness()">Re-check</button></div>
-    <div class="ready" id="readyList"><span class="muted">Add a title, tracks and a cover to see what's missing.</span></div></div>
-  <div class="card grid g3">
-    <div><label>Release title</label><input data-k="title" placeholder="Night Drive"></div>
+  <div class="card">
+    <h3><span class="stepn">1</span>The basics</h3>
+    <div class="grid g3">
+        <div><label>Release title</label><input data-k="title" placeholder="Night Drive"></div>
     <div><label>Primary artist</label><input data-k="artist"></div>
     <div><label>Featuring (optional)</label><input data-k="featuring"></div>
     <div><label>Genre</label><input data-k="genre" list="genres" placeholder="Lofi Hip Hop"></div>
-    <div><label>Subgenre</label><input data-k="subgenre"></div>
-    <div><label>Mood</label><input data-k="mood" placeholder="Chill, dreamy"></div>
     <div><label>Release date</label><input type="date" data-k="release_date"></div>
+    <div><label class="chk" style="margin-top:22px"><input type="checkbox" data-k="explicit">Explicit</label>
+         <label class="chk"><input type="checkbox" data-k="vocals">Has vocals</label></div>
+    </div>
+  </div>
+  <datalist id="genres"><option>Lofi Hip Hop<option>Ambient<option>Electronic<option>Hip Hop<option>Pop<option>Rock<option>Acoustic<option>Piano<option>Cinematic<option>Corporate<option>Jazz<option>R&B<option>Country<option>Classical<option>Metal<option>House<option>Techno<option>Synthwave</datalist>
+  <div class="card">
+    <div class="row" style="margin-bottom:12px"><h3 class="grow" style="margin:0"><span class="stepn">2</span>Tracks</h3>
+      <button class="b" onclick="pick({kind:'audio',multi:true},addTracks)">+ Add audio files</button>
+      <button class="b" onclick="job('analyze')">Analyze loudness &amp; quality</button></div>
+    <div id="tracks"></div>
+    <div id="analysis"></div>
+  </div>
+  <div class="card">
+    <details class="more" id="relMore"><summary><b>3. More details</b> <span class="muted">label, (P)/(C) lines, UPC, mood, description… (needed for distributors, optional otherwise)</span></summary>
+    <div class="grid g3" style="margin-top:12px">
+        <div><label>Subgenre</label><input data-k="subgenre"></div>
+    <div><label>Mood</label><input data-k="mood" placeholder="Chill, dreamy"></div>
     <div><label>Label / imprint</label><input data-k="label" placeholder="Self-released"></div>
     <div><label>Language</label><input data-k="language" placeholder="English / Instrumental"></div>
     <div><label>(P) line — sound recording owner</label><input data-k="copyright_p" placeholder="2026 Your Name"></div>
@@ -165,18 +194,11 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
     <div><label>UPC / EAN (from distributor)</label><input data-k="upc"></div>
     <div><label>Instruments (stock keywords)</label><input data-k="instruments" placeholder="piano, drums, synth"></div>
     <div><label>Extra tags (comma separated)</label><input data-k="tags"></div>
-    <div><label class="chk" style="margin-top:22px"><input type="checkbox" data-k="explicit">Explicit</label>
-         <label class="chk"><input type="checkbox" data-k="vocals">Has vocals</label></div>
     <div style="grid-column:1/-1"><label>Description / story (used in YouTube, Bandcamp, SoundCloud)</label><textarea data-k="description"></textarea></div>
+    </div></details>
   </div>
-  <datalist id="genres"><option>Lofi Hip Hop<option>Ambient<option>Electronic<option>Hip Hop<option>Pop<option>Rock<option>Acoustic<option>Piano<option>Cinematic<option>Corporate<option>Jazz<option>R&B<option>Country<option>Classical<option>Metal<option>House<option>Techno<option>Synthwave</datalist>
-  <div class="card">
-    <div class="row" style="margin-bottom:12px"><h3 class="grow" style="margin:0">Tracks</h3>
-      <button class="b" onclick="pick({kind:'audio',multi:true},addTracks)">+ Add audio files</button>
-      <button class="b" onclick="job('analyze')">Analyze loudness &amp; quality</button></div>
-    <div id="tracks"></div>
-    <div id="analysis"></div>
-  </div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">Ready to release? <span class="muted" style="font-weight:400;font-size:12px">click a line to fix it</span> <span class="muted" id="readyScore"></span></h3><button class="b s" onclick="readiness()">Re-check</button></div>
+    <div class="ready" id="readyList"><span class="muted">Add a title, tracks and a cover to see what's missing.</span></div></div>
 </section>
 
 <!-- ARTWORK -->
@@ -227,133 +249,152 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 
 <!-- VIDEO -->
 <section class="tab" id="t-video">
-  <h2>YouTube &amp; video</h2>
-  <p class="sub">Every video renders on your computer with ffmpeg. Long loop videos render one short clip and repeat it without re-encoding, so they take minutes, not hours.</p>
+  <h2>Video</h2>
+  <p class="sub">Pick a look once, then choose what to make. Everything renders on your computer and shows up in the Jobs panel.</p>
+  <div id="vidNoTracks"></div>
+
   <div class="card">
-    <h3>Video style <span class="muted" style="font-weight:400;font-size:12px">applies to every video below, including 10-hour loops and Shorts</span></h3>
+    <div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0"><span class="stepn">A</span>The look <span class="muted" style="font-weight:400;font-size:12px">used by every video you make here</span></h3>
+      <button class="b s" onclick="vpanel('samples',true)">Compare all visualizers…</button></div>
     <div class="grid g4">
       <div><label>Visualizer</label><select id="stVis"><option value="none">None</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
       <div><label>Bumping to the beat</label><select id="stBump" onchange="stLogoRow.style.display=this.value==='logo'?'':'none'"><option value="none">Nothing</option><option value="cover">Cover art</option><option value="disc">Spinning disc (cover)</option><option value="logo">My logo (PNG)</option><option value="text">Artist &amp; title text</option></select></div>
       <div><label>Color</label><select id="stColor"><option value="white">White</option><option value="green">Green</option><option value="cyan">Cyan</option><option value="pink">Pink</option><option value="gold">Gold</option><option value="red">Red</option><option value="cover">Match the cover</option></select></div>
       <div><label>Bump strength</label><select id="stAmt"><option value="0.06">Subtle</option><option value="0.12" selected>Medium</option><option value="0.2">Strong</option><option value="0.3">Huge</option></select></div>
     </div>
-    <div class="row" id="stLogoRow" style="margin-top:10px;display:none"><input class="grow" id="stLogo" placeholder="Logo image (PNG with transparent background)"><button class="b s" onclick="pick({kind:'image'},p=>stLogo.value=p)">…</button></div>
-    <div class="row" style="margin-top:10px"><button class="b" onclick="preview('stPrev',{})">Preview</button><span class="muted" style="font-size:12px">Everything reacts to the music: the logo/cover pulses on the kick, rings and particles grow in louder sections. Ring, particle, shape and tunnel styles put your cover in the middle if "Bumping" is Nothing.</span><span class="muted grow" style="font-size:12px;text-align:right" id="genreTip"></span></div>
+    <div class="row" id="stLogoRow" style="margin-top:10px;display:none"><input class="grow" id="stLogo" placeholder="Logo image (PNG with transparent background)"><button class="b s" onclick="pick({kind:'image'},p=>stLogo.value=p)">Browse…</button></div>
+    <div class="row" style="margin-top:10px"><label style="margin:0">Picture</label><input class="grow" id="vidImg" placeholder="The release cover (or choose another image)"><button class="b s" onclick="pick({kind:'image'},p=>vidImg.value=p)">Browse…</button><button class="b s" onclick="vidImg.value=''">Use the cover</button></div>
+    <div class="row" style="margin-top:10px"><button class="b" onclick="preview('stPrev',{})">Preview</button><span class="muted grow" style="font-size:12px" id="genreTip"></span></div>
     <img class="prev" id="stPrev">
+    <p class="muted" style="font-size:12px;margin:8px 0 0">Everything moves with the music: the cover/logo pulses on the kick, rings and particles grow in louder parts. Ring, particle, shape and tunnel styles put your cover in the middle when Bumping is "Nothing".</p>
   </div>
-  <div class="card">
-    <h3>Visualizer samples <span class="muted" style="font-weight:400;font-size:12px">a few seconds of every visualizer with your music, cover and style, side by side</span></h3>
-    <div class="grid g4">
-      <div><label>Track</label><select class="trackSel" id="vsTrack"></select></div>
-      <div><label>Shape</label><select id="vsAspect"><option value="16:9">16:9 landscape</option><option value="9:16">9:16 vertical</option><option value="1:1">1:1 square</option><option value="4:5">4:5 portrait</option></select></div>
-      <div><label>Length of each sample (s)</label><input id="vsSec" type="number" value="6" min="3" max="15"></div>
-      <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="visSamples()">Make samples</button></div>
-    </div>
-    <p class="muted" style="font-size:12px">Makes all 12 styles using the color and bump from Video style above and the most energetic part of the track (about a minute). No tracks yet? You get a demo beat. Press <b>Use this</b> on the one you like.</p>
-    <div id="vsGrid" class="samples"></div>
+
+  <h3 style="margin:22px 0 10px"><span class="stepn">B</span>What do you want to make?</h3>
+  <div class="vtiles" id="vtiles">
+    <div class="vtile" data-p="song"><b>Song video</b><span>One track, any shape: YouTube, vertical, square, 4K, for editing</span></div>
+    <div class="vtile" data-p="loop"><b>10-hour loop</b><span>One or more tracks repeated for hours, seamless</span></div>
+    <div class="vtile" data-p="short"><b>Short / Reel / TikTok</b><span>15–60 s vertical clip of the best part</span></div>
+    <div class="vtile" data-p="album"><b>Full album</b><span>All tracks in one video with chapters</span></div>
+    <div class="vtile" data-p="batch"><b>Overnight batch</b><span>A loop video for every track in a folder</span></div>
+    <div class="vtile" data-p="canvas"><b>Spotify Canvas</b><span>8-second looping clip for Spotify</span></div>
+    <div class="vtile" data-p="samples"><b>Compare visualizers</b><span>All 12 styles side by side with your music</span></div>
   </div>
-  <div class="card">
-    <h3>Export video <span class="muted" style="font-weight:400;font-size:12px">a visualizer (or plain) video of a song with your own format, shape, size and frame rate</span></h3>
-    <div class="grid g4">
+
+  <div class="card vpanel" data-p="song">
+    <h3>Song video</h3>
+    <div class="grid g3">
       <div><label>Track</label><select class="trackSel" id="exTrack"></select></div>
-      <div><label>Visualizer</label><select id="exVis"><option value="">Same as Video style</option><option value="none">None (cover only)</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
+      <div><label>Made for</label><select id="exPreset" onchange="applyPreset()">
+        <option value="yt">YouTube (16:9, 1080p, MP4)</option><option value="yt4k">YouTube 4K (16:9, MP4)</option>
+        <option value="vertical">Shorts / Reels / TikTok (9:16, MP4)</option><option value="square">Instagram square (1:1, MP4)</option>
+        <option value="portrait">Instagram feed (4:5, MP4)</option><option value="edit">Video editing (16:9, ProRes MOV)</option>
+        <option value="web">A website (16:9, WebM)</option><option value="custom">Custom…</option></select></div>
+      <div><label>Visualizer</label><select id="exVis"><option value="">Same as "The look"</option><option value="none">None (cover only)</option><optgroup label="Classic"><option value="bars">Frequency bars</option><option value="mirror">Mirrored bars</option><option value="waves">Waveform</option><option value="line">Line</option><option value="scope">Circle scope</option><option value="spectrum">Scrolling spectrum</option></optgroup><optgroup label="Around your art"><option value="ring">Radial ring (bars in a circle)</option><option value="ringwave">Radial waveform</option><option value="particles">Particles</option><option value="geometric">Geometric shapes</option></optgroup><optgroup label="Scenes"><option value="tunnel">Tunnel</option><option value="synthwave">Synthwave grid</option></optgroup></select></div>
+    </div>
+    <div class="muted" id="exSummary" style="font-size:12px;margin-top:8px"></div>
+    <details class="more" id="exMore"><summary>More settings (format, size, frame rate, part of the song…)</summary>
+    <div class="grid g4" style="margin-top:10px">
       <div><label>Format</label><select id="exFmt"><option value="mp4">MP4 (H.264): plays everywhere</option><option value="mov">MOV (ProRes 422): for editing</option><option value="webm">WebM (VP9): small, for websites</option></select></div>
-      <div><label>Shape</label><select id="exAspect"><option value="16:9">16:9 landscape (YouTube)</option><option value="9:16">9:16 vertical (Shorts, Reels, TikTok)</option><option value="1:1">1:1 square</option><option value="4:5">4:5 portrait (Instagram feed)</option></select></div>
+      <div><label>Shape</label><select id="exAspect"><option value="16:9">16:9 landscape</option><option value="9:16">9:16 vertical</option><option value="1:1">1:1 square</option><option value="4:5">4:5 portrait</option></select></div>
       <div><label>Size</label><select id="exSize"><option value="720">720p</option><option value="1080" selected>1080p</option><option value="1440">1440p</option><option value="2160">4K</option></select></div>
       <div><label>Frame rate</label><select id="exFps"><option>24</option><option>25</option><option selected>30</option><option>50</option><option>60</option></select></div>
-      <div><label>Quality</label><select id="exQ"><option value="draft">Draft (fast, bigger blocks)</option><option value="standard" selected>Standard</option><option value="high">High (slower, best detail)</option></select></div>
-      <div><label>Layout</label><select id="exLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills frame</option></select></div>
+      <div><label>Quality</label><select id="exQ"><option value="draft">Draft (fast)</option><option value="standard" selected>Standard</option><option value="high">High (slower, best detail)</option></select></div>
+      <div><label>Layout (no visualizer in the middle)</label><select id="exLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills the frame</option></select></div>
       <div><label>Start at (s)</label><input id="exStart" type="number" value="0" min="0" step="0.5"></div>
-      <div><label>Length (s, blank = to the end)</label><input id="exLen" type="number" min="1" placeholder="whole song"></div>
-      <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="exText" checked>Show title &amp; artist</label></div>
-      <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="exFade" checked>Fade audio in &amp; out</label></div>
+      <div><label>Length (s)</label><input id="exLen" type="number" min="1" placeholder="whole song"></div>
     </div>
-    <div class="row" style="margin-top:10px"><button class="b" onclick="exportPreview()">Preview frame</button><button class="b p" onclick="exportVideo()">Export</button>
-      <button class="b" onclick="exportVideo(true)">Export every track</button><span class="muted" id="exNote" style="font-size:12px"></span></div>
+    <label class="chk"><input type="checkbox" id="exText" checked>Show title &amp; artist</label>
+    <label class="chk"><input type="checkbox" id="exFade" checked>Fade the audio in &amp; out</label>
+    </details>
+    <div class="row" style="margin-top:12px"><button class="b" onclick="exportPreview()">Preview</button><button class="b p" onclick="exportVideo()">Make video</button>
+      <button class="b" onclick="exportVideo(true)">Make one for every track</button></div>
     <img class="prev" id="exPrev">
-    <p class="muted" style="font-size:12px">Saved in the <b>videos</b> folder of this release. Bump, color and logo come from Video style. MOV files are large (about 1 GB per minute at 1080p) but scrub smoothly in editors; browsers can't preview them here.</p>
+    <p class="muted" style="font-size:12px">Saved in the <b>videos</b> folder of this release. MOV (ProRes) files are big, about 1 GB a minute at 1080p, and can't be previewed in the browser.</p>
   </div>
-  <div class="card">
-    <h3>Release video</h3>
-    <div class="grid g3">
-      <div><label>Track</label><select class="trackSel" id="rvTrack"></select></div>
-      <div><label>Resolution</label><select class="resSel" id="rvRes"></select></div>
-      <div><label>Layout</label><select id="rvLayout"><option value="cover">Cover + blurred background</option><option value="full">Image fills frame</option></select></div>
-    </div>
-    <label class="chk"><input type="checkbox" id="rvText" checked>Show title &amp; artist</label>
-    <div class="row"><button class="b" onclick="preview('rvPrev',{layout:rvLayout.value,text:rvText.checked})">Preview frame</button><button class="b p" onclick="job('release_video',{track_index:rvTrack.value,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()})">Render</button>
-      <button class="b" onclick="R.tracks.forEach((t,i)=>job('release_video',{track_index:i,resolution:rvRes.value,layout:rvLayout.value,text:rvText.checked,image:vidImage()}))">Render one for every track</button></div>
-    <img class="prev" id="rvPrev">
-  </div>
-  <div class="card">
-    <h3>10-hour / extended loop</h3>
+
+  <div class="card vpanel" data-p="loop">
+    <h3>10-hour loop</h3>
     <div class="grid g4">
       <div><label>Length (hours)</label><select id="lvHours"><option>1</option><option>2</option><option>3</option><option>8</option><option selected>10</option><option>12</option></select></div>
-      <div><label>Visual</label><select id="lvVisual" onchange="clipRows()"><option value="static">Still cover</option><option value="zoom">Slow zoom</option><option value="pan">Slow pan</option><option value="grain">Film grain / VHS</option><option value="pulse">Breathing glow</option><option value="slideshow">Photo slideshow</option><option value="clip">My video clip</option><option value="clips">Folder of video clips</option></select></div>
-      <div><label>Loop crossfade (s)</label><input id="lvXf" type="number" value="4" min="0" max="20"></div>
+      <div><label>Background</label><select id="lvVisual" onchange="clipRows()"><option value="static">Still cover</option><option value="zoom">Slow zoom</option><option value="pan">Slow pan</option><option value="grain">Film grain / VHS</option><option value="pulse">Breathing glow</option><option value="slideshow">Photo slideshow</option><option value="clip">My video clip</option><option value="clips">Folder of video clips</option></select></div>
       <div><label>Resolution</label><select class="resSel" id="lvRes"></select></div>
+      <div><label>Loop crossfade (s)</label><input id="lvXf" type="number" value="4" min="0" max="20"></div>
+    </div>
+    <div class="grid g4" id="slideRow" style="margin-top:10px;display:none">
+      <div style="grid-column:span 2"><label>Slideshow photo folder</label><div class="row"><input class="grow" id="lvFolder"><button class="b s" onclick="pick({kind:'dir'},p=>lvFolder.value=p)">Browse…</button></div></div>
     </div>
     <div class="grid g4" id="clipRow" style="margin-top:10px;display:none">
-      <div style="grid-column:span 2" id="clipFileBox"><label>Video clip (MP4, MOV, GIF…)</label><div class="row"><input class="grow" id="lvClip"><button class="b s" onclick="pick({kind:'video'},p=>lvClip.value=p)">…</button></div></div>
-      <div style="grid-column:span 2;display:none" id="clipDirBox"><label>Folder of clips (played in order, dissolving into each other)</label><div class="row"><input class="grow" id="lvClipDir"><button class="b s" onclick="pick({kind:'dir'},p=>lvClipDir.value=p)">…</button></div></div>
+      <div style="grid-column:span 2" id="clipFileBox"><label>Video clip (MP4, MOV, GIF…)</label><div class="row"><input class="grow" id="lvClip"><button class="b s" onclick="pick({kind:'video'},p=>lvClip.value=p)">Browse…</button></div></div>
+      <div style="grid-column:span 2;display:none" id="clipDirBox"><label>Folder of clips (played in order, dissolving into each other)</label><div class="row"><input class="grow" id="lvClipDir"><button class="b s" onclick="pick({kind:'dir'},p=>lvClipDir.value=p)">Browse…</button></div></div>
       <div><label>Make it loop smoothly by</label><select id="lvClipMode"><option value="crossfade">Dissolving the end into the start</option><option value="pingpong">Playing forward then backward</option><option value="loop">Just repeating it</option></select></div>
       <div><label>Fit</label><select id="lvClipFit"><option value="fill">Fill the frame (crop)</option><option value="fit">Whole clip + blurred sides</option></select></div>
     </div>
-    <label style="margin-top:10px">Tracks to loop (one track, or several in order as a playlist)</label>
+    <label style="margin-top:12px">Tracks to loop (one, or several in order like a playlist)</label>
     <div id="lvTracks" class="row"></div>
+    <details class="more"><summary>Ambient sound and text</summary>
     <div class="grid g3" style="margin-top:10px">
-      <div><label>Slideshow photo folder</label><div class="row"><input class="grow" id="lvFolder"><button class="b s" onclick="pick({kind:'dir'},p=>lvFolder.value=p)">…</button></div></div>
-      <div><label>Ambient layer (rain, vinyl crackle…) optional</label><div class="row"><input class="grow" id="lvAmb"><button class="b s" onclick="pick({kind:'audio'},p=>lvAmb.value=p)">…</button></div></div>
+      <div style="grid-column:span 2"><label>Ambient layer under the music (rain, vinyl crackle…)</label><div class="row"><input class="grow" id="lvAmb"><button class="b s" onclick="pick({kind:'audio'},p=>lvAmb.value=p)">Browse…</button></div></div>
       <div><label>Ambient level (dB)</label><input id="lvAmbDb" type="number" value="-18"></div>
     </div>
     <label class="chk"><input type="checkbox" id="lvText" checked>Show title &amp; artist</label>
-    <div class="row"><button class="b" onclick="preview('lvPrev',{text:lvText.checked,visual:lvVisual.value,video_clip:lvClip.value})">Preview frame</button><button class="b p" onclick="renderLong()">Render loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
+    </details>
+    <div class="row" style="margin-top:12px"><button class="b" onclick="preview('lvPrev',{text:lvText.checked,visual:lvVisual.value,video_clip:lvClip.value})">Preview</button><button class="b p" onclick="renderLong()">Make loop video</button><span class="muted" id="lvEst" style="font-size:12px"></span></div>
     <img class="prev" id="lvPrev">
-    <p class="muted" style="font-size:12px">The loop point is crossfaded into itself so there's no click or gap at each repeat. A 10-hour 1080p static video is roughly 1–2 GB.</p>
+    <p class="muted" style="font-size:12px">No click or gap at each repeat. A 10-hour 1080p video with a still background is about 1–2 GB and takes minutes, not hours.</p>
   </div>
-  <div class="card">
-    <h3>Overnight batch: a loop video for every track in a folder</h3>
-    <p class="muted" style="font-size:12px;margin-top:0">Each track gets its own loop video and a "YouTube text" file with the title, description and tags ready to paste. Track titles come from the files' tags or names.</p>
+
+  <div class="card vpanel" data-p="short">
+    <h3>Short / Reel / TikTok</h3>
+    <div class="grid g3">
+      <div><label>Track</label><select class="trackSel" id="shTrack"></select></div>
+      <div><label>Length (s)</label><input id="shSec" type="number" value="30" min="5" max="180"></div>
+      <div><label>Start (s)</label><input id="shStart" type="number" placeholder="auto: the most energetic part"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="b" onclick="preview('shPrev',{vertical:true})">Preview</button><button class="b p" onclick="job('short',{track_index:shTrack.value,seconds:shSec.value,start:shStart.value,image:vidImage()})">Make clip</button>
+      <button class="b" onclick="[15,30,60].forEach(s=>job('short',{track_index:shTrack.value,seconds:s,image:vidImage()}))">Make 15 + 30 + 60 s</button></div>
+    <img class="prev" id="shPrev" style="max-width:220px">
+  </div>
+
+  <div class="card vpanel" data-p="album">
+    <h3>Full album video</h3>
+    <div class="grid g4"><div><label>Gap between tracks (s)</label><input id="avGap" type="number" value="1" step="0.5"></div></div>
+    <p class="muted" style="font-size:12px">All tracks of this release in order. The chapter timestamps are added to the description on the Upload tab, so YouTube shows chapters.</p>
+    <button class="b p" onclick="job('album_video',{gap:avGap.value,image:vidImage()})">Make album video</button>
+  </div>
+
+  <div class="card vpanel" data-p="batch">
+    <h3>Overnight batch</h3>
+    <p class="muted" style="font-size:12px;margin-top:0">Every track in a folder gets its own loop video, a thumbnail, and a text file with the YouTube title, description and tags. Add the folder to the Schedule tab afterwards to upload them all.</p>
     <div class="grid g4">
-      <div style="grid-column:span 2"><label>Folder of tracks</label><div class="row"><input class="grow" id="btFolder"><button class="b s" onclick="pick({kind:'dir'},p=>btFolder.value=p)">…</button></div></div>
+      <div style="grid-column:span 2"><label>Folder of tracks</label><div class="row"><input class="grow" id="btFolder"><button class="b s" onclick="pick({kind:'dir'},p=>btFolder.value=p)">Browse…</button></div></div>
       <div><label>Hours each</label><select id="btHours"><option>1</option><option>3</option><option>8</option><option selected>10</option></select></div>
-      <div><label>Visual</label><select id="btVisual"><option value="static">Still</option><option value="zoom">Slow zoom</option><option value="pan">Slow pan</option><option value="grain">Film grain / VHS</option><option value="pulse">Breathing glow</option><option value="clip">Video clip (from the loop card)</option><option value="clips">Clip folder (from the loop card)</option></select></div>
-      <div><label>Picture</label><select id="btCover"><option value="generate">Generate unique art per track</option><option value="cover">Use this release's cover</option><option value="image">Use the "image for videos" below</option></select></div>
+      <div><label>Background</label><select id="btVisual"><option value="static">Still</option><option value="zoom">Slow zoom</option><option value="pan">Slow pan</option><option value="grain">Film grain / VHS</option><option value="pulse">Breathing glow</option><option value="clip">Video clip (set in 10-hour loop)</option><option value="clips">Clip folder (set in 10-hour loop)</option></select></div>
+      <div><label>Picture</label><select id="btCover"><option value="generate">Generate unique art per track</option><option value="cover">This release's cover</option><option value="image">The picture chosen in "The look"</option></select></div>
       <div><label>Art style</label><select id="btStyle"><option>aurora</option><option>gradient</option><option>grain</option><option>geometric</option><option>sunset</option><option>mono</option></select></div>
       <div><label>Title style</label><select id="btKind"><option value="ten_hours">Title - 10 Hours | Mood Genre Loop</option><option value="study">10 Hours of Mood Genre for Study, Sleep…</option><option value="ten_hours_plain">Artist - Title [10 Hour Version]</option></select></div>
       <div><label>Resolution</label><select class="resSel" id="btRes"></select></div>
     </div>
-    <div class="row" style="margin-top:10px"><button class="b p" onclick="batch()">Queue batch</button><span class="muted" id="btEst" style="font-size:12px"></span></div>
+    <div class="row" style="margin-top:12px"><button class="b p" onclick="batch()">Queue batch</button><span class="muted" id="btEst" style="font-size:12px"></span></div>
   </div>
-  <div class="grid g2">
-    <div class="card">
-      <h3>Full album video with chapters</h3>
-      <div class="grid g2">
-        <div><label>Gap between tracks (s)</label><input id="avGap" type="number" value="1" step="0.5"></div>
-      </div>
-      <p class="muted" style="font-size:12px">Timestamps go into the description automatically so YouTube shows chapters.</p>
-      <button class="b p" onclick="job('album_video',{gap:avGap.value,image:vidImage()})">Render album video</button>
-    </div>
-    <div class="card">
-      <h3>Shorts / Reels / TikTok (9:16)</h3>
-      <div class="grid g3">
-        <div><label>Track</label><select class="trackSel" id="shTrack"></select></div>
-        <div><label>Length (s)</label><input id="shSec" type="number" value="30" min="5" max="180"></div>
-        <div><label>Start (s, blank = auto)</label><input id="shStart" type="number" placeholder="auto"></div>
-      </div>
-      <p class="muted" style="font-size:12px">Auto picks the most energetic section.</p>
-      <div class="row"><button class="b p" onclick="job('short',{track_index:shTrack.value,seconds:shSec.value,start:shStart.value,image:vidImage()})">Render clip</button>
-      <button class="b" onclick="[15,30,60].forEach(s=>job('short',{track_index:shTrack.value,seconds:s,image:vidImage()}))">15 + 30 + 60 s set</button><button class="b" onclick="preview('shPrev',{vertical:true})">Preview</button></div>
-      <img class="prev" id="shPrev" style="max-width:200px">
-    </div>
-  </div>
-  <div class="card">
+
+  <div class="card vpanel" data-p="canvas">
     <h3>Spotify Canvas</h3>
-    <p class="muted" style="font-size:12px;margin-top:0">7.5-second vertical 1080×1920 loop with a slow zoom, no audio. Upload it in Spotify for Artists.</p>
-    <div class="row"><input class="grow" id="cvImg" placeholder="Image (blank = cover)"><button class="b" onclick="pick({kind:'image'},p=>cvImg.value=p)">…</button>
-      <button class="b p" onclick="job('canvas',{image:cvImg.value||undefined,track_index:rvTrack.value})">Render Canvas</button></div>
+    <p class="muted" style="font-size:12px;margin-top:0">A 7.5-second vertical loop with a slow zoom and no sound. Upload it in Spotify for Artists.</p>
+    <div class="row"><input class="grow" id="cvImg" placeholder="Image (blank = the cover)"><button class="b s" onclick="pick({kind:'image'},p=>cvImg.value=p)">Browse…</button>
+      <button class="b p" onclick="job('canvas',{image:cvImg.value||undefined,track_index:exTrack.value})">Make Canvas</button></div>
   </div>
-  <div class="card"><label>Image for videos (blank = the cover)</label><div class="row"><input class="grow" id="vidImg"><button class="b" onclick="pick({kind:'image'},p=>vidImg.value=p)">…</button></div></div>
+
+  <div class="card vpanel" data-p="samples">
+    <h3>Compare visualizers</h3>
+    <div class="grid g4">
+      <div><label>Track</label><select class="trackSel" id="vsTrack"></select></div>
+      <div><label>Shape</label><select id="vsAspect"><option value="16:9">16:9 landscape</option><option value="9:16">9:16 vertical</option><option value="1:1">1:1 square</option><option value="4:5">4:5 portrait</option></select></div>
+      <div><label>Seconds each</label><input id="vsSec" type="number" value="6" min="3" max="15"></div>
+      <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="visSamples()">Make samples</button></div>
+    </div>
+    <p class="muted" style="font-size:12px">A few seconds of all 12 styles with the color and bump from "The look", from the most energetic part of the track (about a minute). No tracks yet? You get a demo beat. Press <b>Use this</b> on the one you like.</p>
+    <div id="vsGrid" class="samples"></div>
+  </div>
 </section>
 
 <!-- PACKAGES -->
@@ -376,7 +417,7 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
       <button class="b p" onclick="job('pkg_stock',{cutdowns:sCut.checked})">Build</button></div>
     <div class="card"><h3>Stock photo pack</h3>
       <p class="muted" style="font-size:13px">Re-saved JPGs (location data stripped), small images skipped, and a CSV in Shutterstock's bulk-upload columns.</p>
-      <div class="row"><input class="grow" id="psFolder" placeholder="Photo folder"><button class="b s" onclick="pick({kind:'dir'},p=>psFolder.value=p)">…</button></div>
+      <div class="row"><input class="grow" id="psFolder" placeholder="Photo folder"><button class="b s" onclick="pick({kind:'dir'},p=>psFolder.value=p)">Browse…</button></div>
       <div class="grid g2" style="margin-top:8px"><div><label>Keywords for all</label><input id="psKw" placeholder="landscape, sunset"></div><div><label>Min megapixels</label><input id="psMp" type="number" value="4"></div></div><br>
       <button class="b p" onclick="job('pkg_photos',{folder:psFolder.value,keywords:psKw.value,min_mp:psMp.value})">Build</button></div>
   </div>
@@ -387,26 +428,35 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 <!-- UPLOAD -->
 <section class="tab" id="t-up">
   <h2>Upload to YouTube</h2>
-  <p class="sub">Writes the title, description and tags for you, then uploads with the official YouTube API (optional setup).</p>
+  <p class="sub">Choose a video, let Release Kit write the title, description and tags, then upload now or add it to the schedule. No YouTube setup? Use "Copy text" and paste it into YouTube Studio.</p>
   <div id="ytStatus"></div>
   <div class="card">
-    <div class="grid g3">
-      <div><label>Video kind</label><select id="ytKind"></select></div>
-      <div><label>Track (for single-track videos)</label><select class="trackSel" id="ytTrack"></select></div>
-      <div><label>Hours (for loop videos)</label><input id="ytHours" type="number" value="10"></div>
+    <h3><span class="stepn">1</span>Which video?</h3>
+    <div class="grid g2">
+      <div><label>Video file</label><div class="row"><input class="grow" id="ytVideo" placeholder="Tip: press &quot;Upload this…&quot; on a finished video in the Jobs panel"><button class="b s" onclick="pick({kind:'video',start:outDir()},p=>ytVideo.value=p)">Browse…</button></div></div>
+      <div><label>Thumbnail (optional)</label><div class="row"><input class="grow" id="ytThumb"><button class="b s" onclick="pick({kind:'image',start:outDir()},p=>ytThumb.value=p)">Browse…</button></div></div>
     </div>
-    <div class="row" style="margin-top:10px"><button class="b" onclick="genMeta()">Write title, description &amp; tags</button></div>
+  </div>
+  <div class="card">
+    <h3><span class="stepn">2</span>Title, description &amp; tags</h3>
+    <div class="grid g4">
+      <div><label>Kind of video</label><select id="ytKind"></select></div>
+      <div><label>Track (single-track videos)</label><select class="trackSel" id="ytTrack"></select></div>
+      <div><label>Hours (loop videos)</label><input id="ytHours" type="number" value="10"></div>
+      <div><label>&nbsp;</label><button class="b p" style="width:100%" onclick="genMeta()">Write them for me</button></div>
+    </div>
     <div style="margin-top:12px"><label>Title</label><input id="ytTitle" oninput="cnt()"><div class="counter" id="cT"></div></div>
-    <div><label>Description</label><textarea id="ytDesc" style="min-height:220px" oninput="cnt()"></textarea><div class="counter" id="cD"></div></div>
+    <div><label>Description</label><textarea id="ytDesc" style="min-height:200px" oninput="cnt()"></textarea><div class="counter" id="cD"></div></div>
     <div><label>Tags (comma separated)</label><input id="ytTags" oninput="cnt()"><div class="counter" id="cG"></div></div>
-    <div class="grid g3" style="margin-top:8px">
-      <div><label>Video file</label><div class="row"><input class="grow" id="ytVideo"><button class="b s" onclick="pick({kind:'video',start:outDir()},p=>ytVideo.value=p)">…</button></div></div>
-      <div><label>Thumbnail (optional)</label><div class="row"><input class="grow" id="ytThumb"><button class="b s" onclick="pick({kind:'image',start:outDir()},p=>ytThumb.value=p)">…</button></div></div>
-      <div><label>Playlist ID (optional)</label><input id="ytPl" placeholder="PL..."></div>
+  </div>
+  <div class="card">
+    <h3><span class="stepn">3</span>Publish</h3>
+    <div class="grid g3">
       <div><label>Privacy</label><select id="ytPriv"><option>private</option><option>unlisted</option><option>public</option></select></div>
-      <div><label>Schedule publish (optional, your local time)</label><input id="ytWhen" type="datetime-local"></div>
-      <div><label>&nbsp;</label><div class="row"><button class="b" onclick="copyMeta()">Copy text</button><button class="b" onclick="toSchedule()">Add to schedule</button><button class="b p" onclick="ytUpload()">Upload now</button></div></div>
+      <div><label>Publish at (optional, your time)</label><input id="ytWhen" type="datetime-local"></div>
+      <div><label>Playlist ID (optional)</label><input id="ytPl" placeholder="PL..."></div>
     </div>
+    <div class="row" style="margin-top:12px"><button class="b p" onclick="ytUpload()">Upload now</button><button class="b" onclick="toSchedule()">Add to schedule</button><button class="b" onclick="copyMeta()">Copy text</button></div>
   </div>
 </section>
 
@@ -466,7 +516,7 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
   <p class="sub">Turn songs made in SL2 into releases. Genre, BPM and key come across automatically; only the newest version of each song is shown.</p>
   <div class="card">
     <div class="grid g2">
-      <div><label>SL2 songs folder (the <code>songs</code> folder inside SL2)</label><div class="row"><input class="grow" id="sl2Home"><button class="b s" onclick="pick({kind:'dir'},p=>{sl2Home.value=p;sl2Save();sl2List()})">…</button></div></div>
+      <div><label>SL2 songs folder (the <code>songs</code> folder inside SL2)</label><div class="row"><input class="grow" id="sl2Home"><button class="b s" onclick="pick({kind:'dir'},p=>{sl2Home.value=p;sl2Save();sl2List()})">Browse…</button></div></div>
       <div><label>Auto-import</label>
         <label class="chk"><input type="checkbox" id="sl2Watch" onchange="sl2Save()">Watch the folder and make a release for each new song</label>
         <label class="chk"><input type="checkbox" id="sl2Star" checked onchange="sl2Save()">Only songs I star in SL2</label></div>
@@ -487,7 +537,7 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 <section class="tab" id="t-set">
   <h2>Settings</h2>
   <div class="card grid g2">
-    <div><label>Output folder</label><div class="row"><input class="grow" id="sOut"><button class="b s" onclick="pick({kind:'dir'},p=>sOut.value=p)">…</button></div></div>
+    <div><label>Output folder</label><div class="row"><input class="grow" id="sOut"><button class="b s" onclick="pick({kind:'dir'},p=>sOut.value=p)">Browse…</button></div></div>
     <div><label>Stock author name (used in stock file names)</label><input id="sAuthor"></div>
   </div>
   <div class="card"><h3>Defaults for new releases</h3><div class="grid g3" id="defFields"></div></div>
@@ -502,7 +552,7 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 </div>
 
 <aside>
-  <div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0">Jobs</h3><button class="b s" onclick="openPath(outDir())">Open output folder</button></div>
+  <div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0">Jobs</h3><button class="b s" onclick="clearJobs()" title="Remove finished jobs from this list (files are kept)">Clear finished</button><button class="b s" onclick="openPath(outDir())">Open folder</button></div>
   <div id="jobs"><p class="muted">Nothing running. Renders and packages show up here.</p></div>
 </aside>
 </main>
@@ -523,7 +573,8 @@ body.ember .upd{background:#211d14;border-color:#4a3d1d}
 </div></div>
 
 <script>
-const TABS=[["release","Release"],["art","Artwork"],["video","YouTube & video"],["pkg","Packages"],["up","Upload"],["sched","Schedule"],["plan","Plan"],["sl2","SL2 songs"],["links","Sign-ups"],["set","Settings"]];
+const TABS=[["release","Release"],["art","Artwork"],["video","Video"],["pkg","Packages"],["up","Upload"],["sched","Schedule"],["plan","Plan"],["sl2","SL2 songs"],["links","Sign-ups"],["set","Settings"]];
+const STEPS=6;  // the first six tabs are the steps of a release, in order
 const PROFILE=[["smart_link","Smart link / pre-save"],["spotify","Spotify"],["apple","Apple Music"],["bandcamp","Bandcamp"],["soundcloud","SoundCloud"],["instagram","Instagram"],["tiktok","TikTok"],["website","Website"]];
 let INIT={},S={},R=blank(),PROJ="",selPhotos=[],PLAN=null;
 const $=id=>document.getElementById(id);
@@ -535,11 +586,15 @@ async function api(url,body){const o=body===undefined?{}:{method:"POST",headers:
 function toast(m,ms=2600){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",ms)}
 
 // ---------- tabs
-$("nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join("");
-$("nav").onclick=e=>{const k=e.target.dataset.t;if(k)show(k)};
+$("nav").innerHTML=TABS.map(([k,l],i)=>(i===STEPS?'<span class="sep"></span>':"")+(i<STEPS?`<button data-t="${k}" title="Step ${i+1}"><span class="num">${i+1}</span>${l}</button>`:`<button class="extra" data-t="${k}">${l}</button>`)).join("");
+// "Next: …" buttons at the bottom of each step
+TABS.slice(0,STEPS-1).forEach(([k],i)=>{const sec=$("t-"+k);if(!sec)return;const d=document.createElement("div");d.className="nextstep";
+  d.innerHTML=`<button class="b" onclick="show('${TABS[i+1][0]}')">Next: ${TABS[i+1][1]} →</button>`;sec.appendChild(d)});
+$("nav").onclick=e=>{const b=e.target.closest("button");if(b&&b.dataset.t)show(b.dataset.t)};
+addEventListener("hashchange",()=>{const k=location.hash.slice(1);if(k&&$("t-"+k)&&!$("t-"+k).classList.contains("on"))show(k)});
 function show(k){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===k));
   document.querySelectorAll("section.tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+k));location.hash=k;scrollTo(0,0);syncForm();
-  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate();genreTip()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
+  if(k==="art"){renderCover();coverHist()}if(k==="video"){renderLvTracks();estimate();genreTip();vidNoTracks();vpanel()}if(k==="release")readiness();if(k==="sl2")sl2List();if(k==="sched")loadSched();}
 
 // ---------- init / projects
 async function init(){
@@ -548,7 +603,7 @@ async function init(){
   $("dataDir").textContent="Data folder: "+INIT.data_dir;
   document.querySelectorAll(".resSel").forEach(el=>el.innerHTML=["1080p","1440p","4k","720p"].map(x=>`<option>${x}</option>`).join(""));
   $("defFields").innerHTML=DEFS.map(([k,l])=>`<div><label>${l}</label><input data-d="${k}"></div>`).join("");
-  rememberInputs();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();$("stLogoRow").style.display=$("stBump").value==="logo"?"":"none";
+  rememberInputs();exSummary();setupDrop();sl2Init();setTimeout(()=>checkUpdate(false),4000);clipRows();$("stLogoRow").style.display=$("stBump").value==="logo"?"":"none";
   const KL={official_audio:"Official audio",visualizer:"Visualizer",lyric:"Lyric video",full_album:"Full album (with chapters)",ten_hours:"10-hour loop",ten_hours_plain:"Extended version (plain title)",study:"Study / sleep / focus loop",short:"Short"};
   $("ytKind").innerHTML=Object.keys(INIT.title_kinds).map(k=>`<option value="${k}">${KL[k]||k}</option>`).join("");
   $("profileFields").innerHTML=PROFILE.map(([k,l])=>`<div><label>${l}</label><input data-p="${k}" placeholder="https://"></div>`).join("");
@@ -642,16 +697,46 @@ function genreVis(){const g=(R.genre||"")+" "+(R.subgenre||"");for(const [re,v] 
 function genreTip(){const v=genreVis(),el=$("genreTip");if(!el)return;
   el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc($("stVis").querySelector(`option[value="${k}"]`).textContent)}</a>`).join(", "):""}
 
+// ---------- video tab: one form at a time
+function vpanel(k,scroll){k=k||localStorage.getItem("rk_vpanel")||"song";localStorage.setItem("rk_vpanel",k);
+  document.querySelectorAll(".vtile").forEach(t=>t.classList.toggle("on",t.dataset.p===k));
+  document.querySelectorAll(".vpanel").forEach(p=>p.classList.toggle("on",p.dataset.p===k));
+  if(scroll)document.querySelector(`.vpanel[data-p="${k}"]`).scrollIntoView({behavior:"smooth",block:"start"})}
+$("vtiles").onclick=e=>{const t=e.target.closest(".vtile");if(t)vpanel(t.dataset.p)};
+function vidNoTracks(){$("vidNoTracks").innerHTML=R.tracks.length?"":`<div class="note row"><span class="grow">Add a track on the Release tab first (or drop audio files anywhere on this window). You can still try the visualizers with a demo beat.</span><button class="b s" onclick="show('release')">Go to Release</button></div>`}
+const PRESETS={yt:["mp4","16:9",1080,30],yt4k:["mp4","16:9",2160,30],vertical:["mp4","9:16",1080,30],square:["mp4","1:1",1080,30],
+  portrait:["mp4","4:5",1080,30],edit:["mov","16:9",1080,30],web:["webm","16:9",1080,30]};
+function applyPreset(){const p=PRESETS[$("exPreset").value];
+  if(p){[["exFmt",p[0]],["exAspect",p[1]],["exSize",p[2]],["exFps",p[3]]].forEach(([id,v])=>{$(id).value=String(v);localStorage.setItem("rk_f_"+id,String(v))})}
+  else $("exMore").open=true;exSummary()}
+function exSummary(){const sz={720:"720p",1080:"1080p",1440:"1440p",2160:"4K"}[$("exSize").value];
+  const len=$("exLen").value?`${$("exLen").value} s from ${$("exStart").value||0} s`:(+$("exStart").value?`from ${$("exStart").value} s to the end`:"whole song");
+  $("exSummary").textContent=`${$("exFmt").value.toUpperCase()} · ${$("exAspect").value} · ${sz} · ${$("exFps").value} fps · ${$("exQ").value} quality · ${len}`}
+["exFmt","exAspect","exSize","exFps"].forEach(id=>$(id).addEventListener("change",()=>{const p=PRESETS[$("exPreset").value];
+  if(p&&[$("exFmt").value,$("exAspect").value,+$("exSize").value,+$("exFps").value].join()!==p.join()){$("exPreset").value="custom";localStorage.setItem("rk_f_exPreset","custom")}exSummary()}));
+["exQ","exStart","exLen"].forEach(id=>$(id).addEventListener("input",exSummary));
+async function clearJobs(){try{await api("/api/jobs/clear",{})}catch(e){return toast(e.message)}
+  $("jobs").innerHTML="";Object.keys(JOBHTML).forEach(k=>delete JOBHTML[k]);pollJobs()}
+
 // ---------- visualizer samples & export
 let SAMPLES_AT=0;
 function visSamples(){job("vis_samples",{track_index:R.tracks.length?$("vsTrack").value:undefined,aspect:$("vsAspect").value,seconds:$("vsSec").value,image:vidImage()})}
 function renderSamples(res,scroll){if(!res||!res.samples)return;const cur=$("stVis").value,bust=Date.now();
   $("vsGrid").innerHTML=res.samples.map(s=>`<div class="sample ${s.visualizer===cur?"on":""}" data-vis="${esc(s.visualizer)}"><video src="/api/file?path=${encodeURIComponent(s.path)}&v=${bust}" muted loop autoplay playsinline controls preload="auto"></video>
-    <div class="row"><b class="grow">${esc(s.label)}</b>${(genreVis()||[]).includes(s.visualizer)?'<span class="pill ok" title="Fits your genre">suits genre</span>':""}<button class="b s" onclick="useVis('${jsq(s.visualizer)}')">Use this</button></div></div>`).join("")+
-    (res.demo?'<p class="muted" style="font-size:12px;grid-column:1/-1">Made with a demo beat. Add a track to see them with your own music. Unmute a sample to hear it.</p>':"");
+    <div class="row" style="margin-bottom:6px"><b class="grow">${esc(s.label)}</b>${(genreVis()||[]).includes(s.visualizer)?'<span class="pill ok" title="Fits your genre">suits genre</span>':""}</div>
+    ${res.demo?`<button class="b s" style="width:100%" onclick="useVis('${jsq(s.visualizer)}')">Use this style</button>`
+      :`<button class="b s p" style="width:100%" onclick="fullFromSample('${jsq(s.visualizer)}')">Make full video</button>`}</div>`).join("")+
+    (res.demo?'<p class="muted" style="font-size:12px;grid-column:1/-1">Made with a demo beat. Add a track to see them with your own music and make full videos from them.</p>'
+      :`<p class="muted" style="font-size:12px;grid-column:1/-1">"Make full video" renders the whole track in that style (${esc(res.aspect||"16:9")}, with the format, size and frame rate from Song video: ${esc($("exSummary").textContent.split(" · ").filter((x,i)=>i!==1).slice(0,3).join(" · "))}). It also becomes your look.</p>`);
+  SAMPLES_RES=res;
   if(scroll)$("vsGrid").scrollIntoView({behavior:"smooth",block:"center"})}
+let SAMPLES_RES=null;
+function fullFromSample(k){const res=SAMPLES_RES||{};let i=R.tracks.findIndex(t=>t.path===res.track);
+  if(i<0){if(!R.tracks.length)return toast("Add a track first");i=+$("vsTrack").value||0}
+  useVis(k);const pr=exportParams(i);pr.visualizer=k;if(res.aspect)pr.export.aspect=res.aspect;
+  job("export_video",pr).then(()=>toast(`Making the full video of "${R.tracks[i].title}" in ${$("stVis").options[$("stVis").selectedIndex].text}. Watch the Jobs panel.`,5000))}
 function useVis(k){const el=$("stVis");el.value=k;el.dispatchEvent(new Event("change"));$("exVis").value="";
-  document.querySelectorAll(".sample").forEach(x=>x.classList.toggle("on",x.dataset.vis===k));toast("Video style visualizer: "+el.options[el.selectedIndex].text)}
+  document.querySelectorAll(".sample").forEach(x=>x.classList.toggle("on",x.dataset.vis===k));toast("Look: "+el.options[el.selectedIndex].text)}
 function exportParams(i){return {track_index:i??$("exTrack").value,visualizer:$("exVis").value||undefined,text:$("exText").checked,image:vidImage(),
   export:{format:$("exFmt").value,aspect:$("exAspect").value,size:$("exSize").value,fps:$("exFps").value,quality:$("exQ").value,layout:$("exLayout").value,start:$("exStart").value,length:$("exLen").value,fade:$("exFade").checked}}}
 function exportVideo(all){if(!R.tracks.length)return toast("Add a track first");if(all)R.tracks.forEach((t,i)=>job("export_video",exportParams(i)));else job("export_video",exportParams())}
@@ -660,7 +745,7 @@ function exportPreview(){const v=$("exVis").value,st=getStyle();if(v)st.visualiz
 
 // ---------- jobs
 function getStyle(){return {visualizer:$("stVis").value,bump:$("stBump").value,vis_color:$("stColor").value,bump_amount:$("stAmt").value,logo:$("stLogo").value}}
-function clipRows(){const v=$("lvVisual").value;$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
+function clipRows(){const v=$("lvVisual").value;$("slideRow").style.display=v==="slideshow"?"":"none";$("clipRow").style.display=v==="clip"||v==="clips"?"":"none";$("clipFileBox").style.display=v==="clip"?"":"none";$("clipDirBox").style.display=v==="clips"?"":"none"}
 async function job(kind,params={}){const kinds=Array.isArray(kind)?kind:[kind];params=Object.assign({vstyle:getStyle()},params);
   try{const r=await api("/api/jobs",{kinds,release:R,params});if(r.errors.length)toast(r.errors.join(" · "),5000);else toast("Queued: "+kinds.join(", "));pollJobs()}
   catch(e){toast(e.message,5000)}}
@@ -687,7 +772,7 @@ function jobHtml(j){const r=j.result||{},pct=Math.round(j.progress*100);let body
     if(/\.(jpe?g|png)$/i.test(p))body+=`<img src="${thumb(p,500)}">${j.kind==="cover"?`<div class="row" style="margin-top:6px"><button class="b s p" onclick="useCover('${jsq(p)}')">Use as cover</button></div>`:""}`;
     if(/\.(mp4|webm)$/i.test(p))body+=`<video src="/api/file?path=${encodeURIComponent(p)}" controls preload="metadata"></video>`;
     if(/\.mov$/i.test(p))body+=`<div class="muted" style="font-size:12px;margin-top:6px">ProRes MOV ${esc(r.size||"")}: open it in your editor.</div>`;
-    if(j.kind==="vis_samples")body+=`<div class="row" style="margin-top:6px"><button class="b s p" onclick="show('video');renderSamples(JOBRES['${j.id}'],true)">See the samples</button></div>`;
+    if(j.kind==="vis_samples")body+=`<div class="row" style="margin-top:6px"><button class="b s p" onclick="show('video');vpanel('samples');renderSamples(JOBRES['${j.id}'],true)">See the samples</button></div>`;
     if(r.warnings&&r.warnings.length)body+=r.warnings.map(w=>`<div class="warn" style="font-size:12px">• ${esc(w)}</div>`).join("");
     if(r.cover_issues&&r.cover_issues.length)body+=r.cover_issues.map(w=>`<div class="warn" style="font-size:12px">• ${esc(w)}</div>`).join("");
     if(r.chapters)body+=`<div class="muted" style="font-size:12px;margin-top:6px">Chapters copied to Upload tab.</div>`;
@@ -812,7 +897,7 @@ async function coverHist(){if(!R.title&&!R.artist)return;let r;try{r=await api("
 
 // ---------- instant preview
 async function preview(id,o){const img=vidImage()||R.art_path;if(!img)return toast("Set a cover first");
-  const r=await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({image:img,title:(R.tracks[$("rvTrack").value]||{}).title||R.title,artist:R.artist,vstyle:getStyle()},o))});
+  const r=await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({image:img,title:(R.tracks[$("exTrack").value]||{}).title||R.title,artist:R.artist,vstyle:getStyle()},o))});
   if(!r.ok)return toast((await r.json()).error);const el=$(id);el.src=URL.createObjectURL(await r.blob());el.style.display="block"}
 
 // ---------- size estimate

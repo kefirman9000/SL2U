@@ -635,7 +635,8 @@ def visualizer_samples(audio_path, image, out_dir, title="", artist="", seconds=
         samples.append({"visualizer": kind, "label": VISUALIZERS.get(kind, kind), "path": path})
     if progress:
         progress(1.0)
-    return {"samples": samples, "files": [s["path"] for s in samples], "start": start, "demo": demo}
+    return {"samples": samples, "files": [s["path"] for s in samples], "start": start, "demo": demo,
+            "aspect": aspect, "track": None if demo else audio_path}
 
 
 # ---------------------------------------------------------------- Shorts / Reels / TikTok

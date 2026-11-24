@@ -579,6 +579,16 @@ def api_jobs():
     return jsonify([{k: v for k, v in j.items() if k != "cancel"} for j in jobs][:100])
 
 
+@app.post("/api/jobs/clear")
+def api_jobs_clear():
+    """Forget finished jobs (the files they made stay where they are)."""
+    with LOCK:
+        for jid in [k for k, j in JOBS.items() if j["status"] not in ("queued", "running")]:
+            del JOBS[jid]
+    persist_jobs()
+    return jsonify({"ok": True})
+
+
 @app.post("/api/jobs/<jid>/cancel")
 def api_job_cancel(jid):
     if jid in JOBS:
@@ -1061,6 +1071,11 @@ def main():
     # after the update that adds the session key, the old tab can't get in: open the private link once
     if not os.environ.get("RELEASEKIT_NO_BROWSER") or (GUARD.new_key and HAD_SETTINGS):
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    if not os.environ.get("RELEASEKIT_VERBOSE"):
+        # keep the window readable: no line per request (errors still show). RELEASEKIT_VERBOSE=1 brings them back.
+        import logging
+        logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    print("Leave this window open while you work. Close it to quit.")
     # only ever listen on this computer, never on the network
     app.run(host="127.0.0.1", port=p, debug=False, threaded=True)
 

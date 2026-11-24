@@ -4,6 +4,14 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.4.1
+- **Clearer layout:** the tabs are numbered steps (Release → Artwork → Video → Packages → Upload → Schedule) with a **Next** button at the bottom of each. Plan, SL2 songs, Sign-ups and Settings sit apart on the right.
+- **Video tab:** set **the look** once (visualizer, bump, color, picture), then pick what to make. Only that form shows. **Song video** replaces Release video and Export video, with one-click presets: YouTube, 4K, Shorts/Reels, Instagram square or 4:5, video editing, web.
+- **Make full video** on every visualizer sample renders the whole track in that style.
+- **Release tab:** basics and tracks first; label, (P)/(C), UPC and other distributor details are folded away. **Upload tab:** three steps: video, text, publish.
+- "Browse…" buttons, smaller previews and a **Clear finished** button in the Jobs panel.
+- The black window no longer prints a line for every request; it shows the private link and any errors.
+
 ### New in 1.4
 - **6 new visualizers:** Radial ring (spectrum bars in a circle around your cover, disc or logo), Radial waveform, Particles that burst on the kick, Geometric shapes, a 3D-style Tunnel, and a Synthwave grid with a neon sun. They react to the beat and get bigger in louder sections like the chorus.
 - **Visualizer samples:** a few seconds of all 12 visualizers with your track, cover and colors, side by side. Press **Use this** on the one you like. With no track yet, a demo beat is used. Suggestions for your genre are marked.
