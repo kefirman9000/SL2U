@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.5.3
+- **3D Pipes grow at a steady speed** instead of in little start-stop pulses, and the reset when the screen fills is a slower, softer fade.
+
 ### New in 1.5.2
 - **Smoother 3D Pipes:** pipes now grow continuously out of each joint instead of jumping a section at a time, speed changes ease in with the music, and each straight stretch is one seamless pipe (no more dashed look).
 

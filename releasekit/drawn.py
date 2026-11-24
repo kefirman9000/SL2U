@@ -471,7 +471,7 @@ class Pipes(Style):
     def draw(self, i, t, spec, bass, energy, onset, wave):
         if self.fade:
             self.fade += 1
-            if self.fade > self.fps * 0.8:
+            if self.fade > self.fps * 1.6:
                 self.reset()
         else:
             # speed follows the music, but eases into changes instead of jerking
@@ -482,9 +482,9 @@ class Pipes(Style):
             while self.acc >= 1:
                 self.acc -= 1
                 self._step()
-        grow = 1.0 if self.fade else min(1.0, self.acc)
-        ease = grow * grow * (3 - 2 * grow)  # smoothstep: no sudden starts or stops
-        alpha = 1.0 if not self.fade else max(0.0, 1 - self.fade / (self.fps * 0.8))
+        # steady growth: each new piece slides out at the pipe's current speed (no stop-start between pieces)
+        ease = 1.0 if self.fade else min(1.0, self.acc)
+        alpha = 1.0 if not self.fade else max(0.0, 1 - self.fade / (self.fps * 1.6))
         items = []
         # one piece per straight stretch of a pipe: no seams, the shine runs the whole length
         runs, last = [], {}
