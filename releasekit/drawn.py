@@ -674,16 +674,25 @@ def make_style(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, vertical,
     return STYLES[kind](lw, lh, fps, rgb, vertical, data, size)
 
 
-def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period=12.0):
-    """Returns (layer_w, layer_h, feed) where feed(write) writes n_frames RGBA frames for ffmpeg."""
-    style = make_style(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, vertical, opts.get("vis_size") or 1.0)
+def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period=12.0, rgb2=None):
+    """Returns (layer_w, layer_h, feed) where feed(write) writes n_frames RGBA frames for ffmpeg.
+    kind: one style, or a list (first drawn first, i.e. behind; rgb2 colours the one behind)."""
+    kinds = list(kind) if isinstance(kind, (list, tuple)) else [kind]
+    lw, lh = layer_size(w, h)
+    data = analyse(audio_path, fps, start, dur, n_frames)  # analysed once, shared by both styles
+    styles = [STYLES[k](lw, lh, fps, rgb2 if (rgb2 and j < len(kinds) - 1) else rgb, vertical, data,
+                        opts.get("vis_size") or 1.0) for j, k in enumerate(kinds)]
+    style = styles[-1]
     el = _element(opts, style.w, style.h, vertical)
     if el:
-        style.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))  # rings stop growing past 180%
+        for st in styles:
+            st.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))  # rings stop growing past 180%
 
     def feed(write):
         for i in range(n_frames):
-            fr = style.frame(i)
+            fr = styles[0].frame(i)
+            for st in styles[1:]:
+                fr.alpha_composite(st.frame(i))
             if el:
                 bump, canvas, tiles = el
                 tile = tiles[int(round(float(style.data["bass"][i]) * (len(tiles) - 1)))]

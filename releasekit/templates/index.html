@@ -360,6 +360,12 @@ details.more[open]>summary{margin-bottom:4px}
             <div class="seg wrap" id="edProg"><button data-v="bar">Bar</button><button data-v="bar_time">Bar and time</button></div>
             <p class="muted" style="font-size:12px">A slim bar along the bottom that fills up as the song plays, in the visualizer's color. In playlist videos it runs over the whole video.</p>
           </div>
+          <div class="insp" data-l="ovl">
+            <h4>Effects on top</h4>
+            <div class="seg wrap" id="edOvl"><button data-v="rain">🌧 Rain</button><button data-v="snow">❄ Snow</button><button data-v="dust">✨ Floating dust</button><button data-v="leaks">🌅 Light leaks</button><button data-v="flare">☀ Lens flare</button><button data-v="vhs">📼 VHS tape</button></div>
+            <p class="muted" style="font-size:12px">Click to add or remove. You can mix them, like snow with light leaks.</p>
+            <div class="ed-row"><label>Strength</label><input type="range" id="edOvlAmt" min="0.1" max="1" step="0.05" value="0.7"><span class="val" id="edOvlAmtV"></span></div>
+          </div>
           <div class="insp" data-l="center">
             <h4>Center</h4>
             <div class="seg wrap" id="edBump"><button data-v="logo">My logo</button><button data-v="cover">Cover</button><button data-v="disc">Spinning record</button><button data-v="text">Title text</button></div>
@@ -382,7 +388,19 @@ details.more[open]>summary{margin-bottom:4px}
             <div class="ed-row"><label>Any color</label><input type="color" id="edColor" value="#39ff14" style="width:60px;height:34px;padding:2px"><span class="muted" style="font-size:12px">click to pick your own</span></div>
             <div class="ed-row"><label>Size</label><input type="range" id="edVisSize" min="0.6" max="1.6" step="0.1" value="1"><span class="val" id="edVisSizeV"></span></div>
             <div class="ed-row" id="edPosRow"><label>Where</label><div class="seg" id="edPos"><button data-v="bottom" class="on">Bottom</button><button data-v="middle">Middle</button><button data-v="top">Top</button></div></div>
+            <div class="ed-row" style="margin-top:12px"><label>Second visualizer</label><select id="edVis2"></select></div>
+            <div class="ed-row" id="edVis2ColRow"><label>Its color</label><select id="edVis2Col"></select></div>
+            <p class="muted" style="font-size:12px">A second one plays behind the first, like a ring with bars underneath.</p>
             <p class="muted" style="font-size:12px">See them all moving with your song: <a href="#" onclick="vpanel('samples',true);return false" style="color:var(--accent2)">Compare visualizers</a>.</p>
+          </div>
+          <div class="insp" data-l="beat">
+            <h4>Beat effects</h4>
+            <p class="muted" style="font-size:12px;margin-top:0">These hit on every beat of your song and move the background (the title stays still).</p>
+            <div class="ed-row"><label>Zoom punch</label><input type="range" id="edFxZoom" min="0" max="0.25" step="0.01" value="0"><span class="val" id="edFxZoomV"></span></div>
+            <div class="ed-row"><label>Camera shake</label><input type="range" id="edFxShake" min="0" max="1" step="0.05" value="0"><span class="val" id="edFxShakeV"></span></div>
+            <div class="ed-row"><label>Flash</label><input type="range" id="edFxFlash" min="0" max="1" step="0.05" value="0"><span class="val" id="edFxFlashV"></span></div>
+            <label class="chk"><input type="checkbox" id="edFxColor">Change colors with each part of the song (verse, drop…)</label>
+            <div class="row" style="margin-top:8px"><button class="b s" onclick="setLook({fx_zoom:0.08,fx_shake:0,fx_flash:0.3,fx_color:false})">Gentle</button><button class="b s" onclick="setLook({fx_zoom:0.15,fx_shake:0.4,fx_flash:0.5,fx_color:true})">Club</button><button class="b s" onclick="setLook({fx_zoom:0.22,fx_shake:0.9,fx_flash:0.8,fx_color:true})">Hard</button></div>
           </div>
           <div class="insp" data-l="bg">
             <h4>Background</h4>
@@ -948,13 +966,14 @@ const VIS_ORDER=["bars","mirror","waves","line","spectrum","scope","ring","ringw
 const VIS_NAME=k=>{const o=$("stVis").querySelector(`option[value="${k}"]`);return o?o.textContent.replace(" (bars in a circle)",""):k};
 const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan","#28dcff","Cyan"],["pink","#ff46aa","Pink"],["gold","#ffc83c","Gold"],["red","#ff3c3c","Red"],["#a060ff","#a060ff","Purple"],["#ff7a00","#ff7a00","Orange"],["cover","conic-gradient(#f5a,#fa5,#af5,#5af,#f5a)","From the cover"]];
 const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
-  clips:[],clip_switch:"beat",clip_bars:4,clip_fit:"fill",progress:"off",prog_last:"bar_time",now_playing:true};
+  clips:[],clip_switch:"beat",clip_bars:4,clip_fit:"fill",progress:"off",prog_last:"bar_time",now_playing:true,
+  fx_zoom:0,fx_shake:0,fx_flash:0,fx_color:false,fx_last:null,overlays:[],ovl_last:["dust"],overlay_amount:0.7,vis2:"none",vis2_color:""};
 let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
   if(!localStorage.getItem("rk_look")){const o=k=>localStorage.getItem("rk_f_"+k);  // carry over the old Video style settings
     if(o("stVis"))saved.visualizer=o("stVis");if(o("stBump"))saved.bump=o("stBump");if(o("stColor"))saved.vis_color=o("stColor");if(o("stAmt"))saved.bump_amount=+o("stAmt")}
   return Object.assign({},LOOK_DEFAULT,saved)})();
 const ED={shape:"16:9",t:null,ctl:null,n:0,sound:false,layer:localStorage.getItem("rk_layer")||"vis"};
-function getStyle(){return Object.assign({},LOOK)}
+function getStyle(){const o=Object.assign({},LOOK);if(o.visualizer==="none")o.vis2="none";delete o.fx_last;delete o.ovl_last;return o}
 function setLook(ch,quiet){Object.assign(LOOK,ch);
   if(LOOK.visualizer!=="none")LOOK.vis_last=LOOK.visualizer;if(LOOK.bump!=="none")LOOK.bump_last=LOOK.bump;if(LOOK.progress!=="off")LOOK.prog_last=LOOK.progress;
   try{localStorage.setItem("rk_look",JSON.stringify(LOOK))}catch(e){}  // other Release Kit tabs pick this up
@@ -967,6 +986,8 @@ const BGNAME={cover:"Cover on blur",full:"Picture fills screen",blur:"Blurred pi
 const MOVENAME={still:"still",drift:"slow drift",zoom:"slow zoom",breathe:"breathing light",grain:"film grain"};
 const CENTERNAME={logo:"My logo",cover:"Cover",disc:"Spinning record",text:"Title text"};
 const fileName=p=>(p||"").split(/[\\/]/).pop().replace(/-[0-9a-f]{8}\.(png|jpg)$/,"");
+const OVLNAME={rain:"Rain",snow:"Snow",dust:"Floating dust",leaks:"Light leaks",flare:"Lens flare",vhs:"VHS tape"};
+const fxOn=L=>!!(+L.fx_zoom||+L.fx_shake||+L.fx_flash||L.fx_color);
 const CENTERED_VIS=["ring","ringwave","particles","geometric","tunnel","starfield"];
 function layerInfo(){const L=LOOK,tr=vpl()[+$("exTrack").value||0]||{};
   const centerSum=L.bump==="none"?(CENTERED_VIS.includes(L.visualizer)?"Off (this visualizer shows the cover here)":"Off")
@@ -975,8 +996,10 @@ function layerInfo(){const L=LOOK,tr=vpl()[+$("exTrack").value||0]||{};
   return [
     {k:"prog",name:"Progress bar",on:L.progress!=="off",sum:L.progress==="off"?"Off":L.progress==="bar"?"Bar":"Bar and time"},
     {k:"text",name:"Title and artist",on:L.text_on!==false,sum:L.text_on!==false?`${L.text_title||tr.title||R.title||"Title"} · ${L.text_artist||R.artist||"Artist"}`:"Off"},
+    {k:"ovl",name:"Effects on top",on:(L.overlays||[]).length>0,sum:(L.overlays||[]).length?L.overlays.map(o=>OVLNAME[o]).join(" + ")+` · ${Math.round(L.overlay_amount*100)}%`:"Off"},
     {k:"center",name:"Center",on:L.bump!=="none",sum:centerSum,warn:L.bump==="logo"&&!L.logo},
-    {k:"vis",name:"Visualizer",on:L.visualizer!=="none",sum:L.visualizer==="none"?"Off":`${VIS_NAME(L.visualizer)} · ${COLORNAME(L.vis_color)} · ${Math.round(L.vis_size*100)}%`},
+    {k:"vis",name:"Visualizer",on:L.visualizer!=="none",sum:L.visualizer==="none"?"Off":`${VIS_NAME(L.visualizer)}${L.vis2&&L.vis2!=="none"?" + "+VIS_NAME(L.vis2):""} · ${COLORNAME(L.vis_color)} · ${Math.round(L.vis_size*100)}%`},
+    {k:"beat",name:"Beat effects",on:fxOn(L),sum:fxOn(L)?[+L.fx_zoom&&"zoom punch",+L.fx_shake&&"shake",+L.fx_flash&&"flash",L.fx_color&&"colors change"].filter(Boolean).join(" · "):"Off"},
     {k:"bg",name:"Background",on:null,warn:L.bg==="clips"&&!(L.clips||[]).length,sum:L.bg==="clips"?((L.clips||[]).length?`${L.clips.length} video clip${L.clips.length>1?"s":""} · ${L.clip_switch==="full"?"each played through":"changing every "+L.clip_bars+" bar"+(L.clip_bars>1?"s":"")}`:"Video clips: none chosen yet"):`${BGNAME[L.bg]||L.bg} · ${MOVENAME[L.motion]||L.motion}`+(L.picture?` · ${fileName(L.picture)}`:"")}]}
 function renderLayers(){$("edLayers").innerHTML=layerInfo().map(l=>`<div class="layer ${ED.layer===l.k?"sel":""} ${l.on===false?"off":""}" data-l="${l.k}">
     ${l.on===null?'<span class="sw0"></span>':`<button class="tog ${l.on?"on":""}" data-tog="${l.k}" title="${l.on?"Turn off":"Turn on"}"><i></i></button>`}
@@ -987,6 +1010,8 @@ function toggleLayer(k){const L=LOOK;
   if(k==="text")setLook({text_on:L.text_on===false});
   if(k==="prog")setLook({progress:L.progress==="off"?(L.prog_last||"bar_time"):"off"});
   if(k==="vis")setLook({visualizer:L.visualizer==="none"?(L.vis_last||"bars"):"none"});
+  if(k==="ovl")setLook((L.overlays||[]).length?{ovl_last:L.overlays,overlays:[]}:{overlays:(L.ovl_last&&L.ovl_last.length)?L.ovl_last:["dust"]});
+  if(k==="beat")setLook(fxOn(L)?{fx_last:{fx_zoom:L.fx_zoom,fx_shake:L.fx_shake,fx_flash:L.fx_flash,fx_color:L.fx_color},fx_zoom:0,fx_shake:0,fx_flash:0,fx_color:false}:Object.assign({fx_zoom:0.08,fx_shake:0,fx_flash:0.3,fx_color:false},L.fx_last||{}));
   if(k==="center")setLook({bump:L.bump==="none"?(L.bump_last||(L.logo?"logo":"cover")):"none"});
   selectLayer(k)}
 function edSync(){const L=LOOK;
@@ -1005,6 +1030,12 @@ function edSync(){const L=LOOK;
   $("edClipSwitch").value=L.clip_switch==="full"?"full":String(L.clip_bars||4);seg("edClipFit",L.clip_fit||"fill");renderClips();
   if(document.activeElement!==$("edTitle"))$("edTitle").value=L.text_title||"";if(document.activeElement!==$("edArtist"))$("edArtist").value=L.text_artist||"";
   $("edTitle").placeholder=(vpl()[+$("exTrack").value||0]||{}).title||"the track's title";$("edArtist").placeholder=R.artist||"the release artist";
+  const ov=L.overlays||[];$("edOvl").querySelectorAll("button").forEach(b=>b.classList.toggle("on",ov.includes(b.dataset.v)));
+  $("edOvlAmt").value=L.overlay_amount;$("edOvlAmtV").textContent=Math.round(L.overlay_amount*100)+"%";
+  const pc=v=>v<=0?"off":Math.round(v*100)+"%";
+  $("edFxZoom").value=L.fx_zoom;$("edFxZoomV").textContent=pc(+L.fx_zoom/0.25);$("edFxShake").value=L.fx_shake;$("edFxShakeV").textContent=pc(+L.fx_shake);
+  $("edFxFlash").value=L.fx_flash;$("edFxFlashV").textContent=pc(+L.fx_flash);$("edFxColor").checked=!!L.fx_color;
+  $("edVis2").value=L.vis2||"none";$("edVis2Col").value=L.vis2_color||"";$("edVis2ColRow").style.display=L.vis2&&L.vis2!=="none"?"":"none";
   renderAssets("logo");renderAssets("picture");genreTip()}
 function edInit(){
   $("edVisGrid").innerHTML=VIS_ORDER.map(k=>`<div class="vt" data-v="${k}" title="${esc(VIS_NAME(k))}"><img src="/static/vis/${k}.jpg" alt="" loading="lazy"><span>${esc(VIS_NAME(k))}</span></div>`).join("");
@@ -1024,6 +1055,13 @@ function edInit(){
   $("edClipSwitch").onchange=e=>setLook(e.target.value==="full"?{clip_switch:"full"}:{clip_switch:"beat",clip_bars:+e.target.value});
   seg("edBump",LOOK.bump,v=>{setLook({bump:v});if(v==="logo"&&!LOOK.logo&&!ASSETS.logo.length)$("edLogoFile").click()});
   seg("edShape",ED.shape,v=>edShapeSet(v));
+  $("edOvl").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ov=(LOOK.overlays||[]).slice(),i=ov.indexOf(b.dataset.v);if(i<0)ov.push(b.dataset.v);else ov.splice(i,1);setLook({overlays:ov})};
+  $("edOvlAmt").oninput=e=>setLook({overlay_amount:+e.target.value});
+  $("edFxZoom").oninput=e=>setLook({fx_zoom:+e.target.value});$("edFxShake").oninput=e=>setLook({fx_shake:+e.target.value});
+  $("edFxFlash").oninput=e=>setLook({fx_flash:+e.target.value});$("edFxColor").onchange=e=>setLook({fx_color:e.target.checked});
+  $("edVis2").innerHTML='<option value="none">None</option>'+VIS_ORDER.filter(k=>k!=="none").map(k=>`<option value="${k}">${esc(VIS_NAME(k))}</option>`).join("");
+  $("edVis2Col").innerHTML='<option value="">Same as the first</option>'+SWATCHES.map(([v,c,n])=>`<option value="${v}">${esc(n)}</option>`).join("");
+  $("edVis2").onchange=e=>setLook({vis2:e.target.value});$("edVis2Col").onchange=e=>setLook({vis2_color:e.target.value});
   $("edLayers").onclick=e=>{const t=e.target.closest("[data-tog]");if(t){toggleLayer(t.dataset.tog);return}
     const l=e.target.closest(".layer");if(l)selectLayer(l.dataset.l)};
   $("edMove").onchange=edRefresh;$("exTrack").addEventListener("change",()=>{edSync();edRefresh()});

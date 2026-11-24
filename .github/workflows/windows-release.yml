@@ -142,6 +142,10 @@ jobs:
           $pl = Run-Job @{ kinds = @("album_video"); release = $rel2; params = @{ playlist = $true; gap = 0.5; export = @{ format = "mp4"; aspect = "16:9"; size = 720; fps = 30; quality = "draft" }; vstyle = @{ progress = "bar"; now_playing = $true } } }
           if (-not $pl.result.chapters) { throw "Playlist video has no chapters" }
           Write-Host "Playlist video OK"
+          # 1.7: beat effects, overlays and two visualizers at once
+          $fxv = Run-Job @{ kinds = @("export_video"); release = $rel; params = @{ export = @{ format = "mp4"; aspect = "16:9"; size = 720; fps = 30; quality = "draft"; length = 4 }; vstyle = @{ visualizer = "ring"; vis2 = "bars"; vis2_color = "gold"; bump = "cover"; fx_zoom = 0.15; fx_shake = 0.4; fx_flash = 0.5; fx_color = $true; overlays = @("snow", "leaks", "vhs"); overlay_amount = 0.7 } } }
+          if (-not (Test-Path $fxv.result.path)) { throw "Effects video missing" }
+          Write-Host "Effects video OK: $($fxv.result.path)"
           $g = Invoke-RestMethod http://127.0.0.1:5577/api/gpu
           Write-Host "Graphics card status: $($g | ConvertTo-Json -Compress)"
           $smp = Run-Job @{ kinds = @("vis_samples"); release = $rel; params = @{ seconds = 3 } }

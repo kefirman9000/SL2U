@@ -6,7 +6,7 @@ import tempfile
 
 from PIL import Image, ImageOps
 
-from . import art, audio, drawn, ff, overlay, reactive
+from . import art, audio, drawn, ff, fx, overlay, reactive
 
 RES = {"1080p": (1920, 1080), "1440p": (2560, 1440), "4k": (3840, 2160), "720p": (1280, 720)}
 VIS_COLORS = "white@0.85"
@@ -172,7 +172,8 @@ def _vis_filter(kind, w, h, fps, vertical=False):
 
 # settings from the editor ("the look") that every video uses
 STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos", "bg", "dim", "motion", "center_size",
-              "clips", "clip_switch", "clip_bars", "clip_fit", "progress", "now_playing")
+              "clips", "clip_switch", "clip_bars", "clip_fit", "progress", "now_playing",
+              "fx_zoom", "fx_shake", "fx_flash", "fx_color", "overlays", "overlay_amount", "vis2", "vis2_color")
 
 MOTIONS = {"still": "Still", "drift": "Slow drift", "zoom": "Slow zoom in and out", "breathe": "Breathing light",
            "grain": "Film grain"}
@@ -201,29 +202,49 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     motion: movement for a still background (see MOTIONS). text_png: title overlay kept still on top."""
     vis, bump = opts.get("visualizer", "none"), opts.get("bump", "none")
     rgb = reactive.pick_color(opts.get("vis_color", "white"), opts.get("image"))
+    vis2 = opts.get("vis2") or "none"
+    rgb2 = reactive.pick_color(opts.get("vis2_color") or opts.get("vis_color", "white"), opts.get("image"))
     n_frames = n_frames or int(round(dur * fps))
     args = list(bg_args) + (["-ss", str(start)] if start else []) + ["-t", str(dur), "-i", audio_path]
     darken = ""
     if bg_dim:  # your clips, made darker so the visualizer and text stand out
         k = max(0.1, 1 - float(bg_dim))
         darken = f",colorchannelmixer=rr={k:.3f}:gg={k:.3f}:bb={k:.3f}"
-    fc = [f"[0:v]fps={fps},scale={w}:{h}{_motion_filter(motion, w, h, fps)}{darken},setsar=1,format=yuv420p[bg]",
+    env = None
+    beat = ""
+    if fx.active(opts):  # zoom punch, shake, flash, colour by section: on the background only
+        env = reactive.bass_envelope(audio_path, fps, start, dur, n_frames)
+        grid = reactive.beat_grid(audio_path, start, dur) if (opts.get("fx_zoom") or opts.get("fx_shake")) else (120.0, 0.0)
+        beat = fx.beat_filter(opts, env, w, h, fps, tempfile.mkdtemp(prefix="rk_fx_"), grid)
+    fc = [f"[0:v]fps={fps},scale={w}:{h}{_motion_filter(motion, w, h, fps)}{darken},setsar=1,format=yuv420p{beat}[bg]",
           f"[1:a]{afade + ',' if afade else ''}asplit=2[aout][av]" if with_audio else "[1:a]anull[av]"]
     cur = "bg"
     feed = None
-    if vis in drawn.DRAWN:
+    # up to two visualizers: drawn ones go in one streamed layer, ffmpeg ones are filters on the audio
+    kinds = [k for k in dict.fromkeys([vis2, vis]) if k and k != "none"]  # second one sits behind
+    drawn_k = [k for k in kinds if k in drawn.DRAWN]
+    classic_k = [k for k in kinds if k not in drawn.DRAWN]
+    if drawn_k:
         # drawn in Python (with the bump element in the middle) and streamed in as one transparent layer
-        lw, lh, feed = drawn.feeder(vis, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period)
+        lw, lh, feed = drawn.feeder(drawn_k, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical,
+                                    spin_period, rgb2=rgb2 if vis2 in drawn_k and len(drawn_k) > 1 else None)
         args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", str(fps), "-i", "pipe:0"]
         scale = "" if (lw, lh) == (w, h) else f"scale={w}:{h}:flags=bicubic,"
-        fc += ["[av]anullsink", f"[2:v]{scale}format=rgba[lay]", f"[{cur}][lay]overlay=0:0:format=auto[v1]"]
+        fc += [f"[2:v]{scale}format=rgba[lay]", f"[{cur}][lay]overlay=0:0:format=auto[v1]"]
         cur = "v1"
         bump = "none"  # already in the layer
-    elif vis != "none":
-        chain, pos = reactive.vis_chain(vis, w, h, fps, vertical, rgb, opts.get("vis_size") or 1.0,
-                                        opts.get("vis_pos") or "bottom")
-        fc += [f"[av]{chain}[vis]", f"[{cur}][vis]overlay={pos}:shortest=1[v1]"]
-        cur = "v1"
+    if classic_k:
+        srcs = ["av"] if len(classic_k) == 1 else ["av1", "av2"]
+        if len(classic_k) == 2:
+            fc.append("[av]asplit=2[av1][av2]")
+        pos_main = opts.get("vis_pos") or "bottom"
+        for j, (k, a) in enumerate(zip(classic_k, srcs)):
+            is_main = k == vis
+            pos_k = pos_main if is_main else (opts.get("vis2_pos") or pos_main)  # layered behind the main one
+            chain, pos = reactive.vis_chain(k, w, h, fps, vertical, rgb if is_main else rgb2,
+                                            opts.get("vis_size") or 1.0, pos_k)
+            fc += [f"[{a}]{chain}[vis{j}]", f"[{cur}][vis{j}]overlay={pos}:shortest=1[vc{j}]"]
+            cur = f"vc{j}"
     else:
         fc.append("[av]anullsink")
     if bump != "none":
@@ -243,6 +264,9 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
         y = f"(H-h)/2-H*{lift + (0.06 if vertical else 0):.2f}"
         fc.append(f"[{cur}]{b}overlay=(W-w)/2:{y}[v2]")
         cur = "v2"
+    if opts.get("overlays"):  # rain, snow, dust, light leaks, lens flare, VHS
+        lines, cur = fx.overlay_filters(opts, cur, w, h, fps, cancel)
+        fc += lines
     if text_png:  # title that stays put while the background moves
         fc += [f"movie='{ff.esc_path(text_png)}',format=rgba[txt]", f"[{cur}][txt]overlay=0:0[vt]"]
         cur = "vt"
@@ -267,14 +291,15 @@ def style_defaults(opts):
     """Fill in what a visualizer needs: drawn ring/particle styles are built around the cover,
     so they get it in the middle when no bump was chosen. Returns the layout to use."""
     vis, bump = opts.get("visualizer", "none"), opts.get("bump", "none")
-    if vis in drawn.CENTERED and bump == "none" and opts.get("image"):
+    if (vis in drawn.CENTERED or opts.get("vis2") in drawn.CENTERED) and bump == "none" and opts.get("image"):
         opts["bump"] = bump = "cover"
         opts["bump_amount"] = min(float(opts.get("bump_amount") or 0.06), 0.06)
-    return "blur" if bump != "none" or vis == "scope" or vis in drawn.DRAWN else None
+    return "blur" if bump != "none" or vis == "scope" or vis in drawn.DRAWN or opts.get("vis2") in drawn.DRAWN else None
 
 
 def _reactive_on(opts):
-    return bool(opts) and (opts.get("visualizer", "none") != "none" or opts.get("bump", "none") != "none")
+    return bool(opts) and (opts.get("visualizer", "none") != "none" or opts.get("bump", "none") != "none"
+                           or (opts.get("vis2") or "none") != "none" or fx.active(opts) or bool(opts.get("overlays")))
 
 
 # ---------------------------------------------------------------- standard release video
@@ -308,19 +333,21 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
         w, h = (1080, 1920) if vertical else RES[resolution]
     fps = fps or (30 if _reactive_on(opts) or vertical else 12)
     tmp = tempfile.mkdtemp(prefix="rk_")
-    vis_room = (bool(enc) or layout == "full") and visualizer in reactive.BOTTOM and \
-        (opts.get("vis_pos") or "bottom") == "bottom"
+    vis_room = (bool(enc) or layout == "full") and (visualizer in reactive.BOTTOM or opts.get("vis2") in reactive.BOTTOM) \
+        and (opts.get("vis_pos") or "bottom") == "bottom"
     clips = [c for c in (opts.get("clips") or []) if c and os.path.isfile(c)] if bg == "clips" else []
     prog_bar = opts.get("progress") if opts.get("progress") in ("bar", "bar_time") else "off"
     bottom_taken = prog_bar != "off" or bool(chapters)  # progress bar / "now playing" live at the bottom
     # the title must not slide around with the picture, or vanish behind a full-screen scene / your clips
-    moving = motion in ("drift", "zoom") or visualizer in drawn.OPAQUE or bool(clips)
+    moving = motion in ("drift", "zoom") or visualizer in drawn.OPAQUE or bool(clips) \
+        or bool(float(opts.get("fx_zoom") or 0) or float(opts.get("fx_shake") or 0))
     frame = make_frame(image, os.path.join(tmp, "frame.png"), w, h, title, artist, layout, text and not moving,
                        vis_room=vis_room, dim=dim, text_top=bottom_taken)
     text_png = None
     if moving and text and (title or artist):
         text_png = _text_png(os.path.join(tmp, "text.png"), w, h, title, artist,
-                             "top" if centre_taken or visualizer in reactive.BOTTOM or bottom_taken else "bottom")
+                             "top" if centre_taken or visualizer in reactive.BOTTOM or opts.get("vis2") in reactive.BOTTOM
+                             or bottom_taken else "bottom")
     dur = ff.duration(audio_path) - start
     if length:
         dur = min(dur, length)

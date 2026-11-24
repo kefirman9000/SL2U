@@ -15,7 +15,7 @@ import zlib
 from flask import Flask, abort, jsonify, request, send_file
 from PIL import Image
 
-from . import __version__, art, audio, drawn, ff, links, meta, packages, reactive, schedule, security, sl2link, update, video, youtube
+from . import __version__, art, audio, drawn, ff, fx, links, meta, packages, reactive, schedule, security, sl2link, update, video, youtube
 
 DATA_DIR = os.environ.get("RELEASEKIT_HOME", os.path.join(os.path.expanduser("~"), "ReleaseKit"))
 PROJECTS = os.path.join(DATA_DIR, "projects")
@@ -36,7 +36,7 @@ def port():
 
 
 GUARD = security.Guard(app, DATA_DIR, port)
-video.CACHE_DIR = os.path.join(DATA_DIR, "cache")  # resized clips and video thumbnails
+video.CACHE_DIR = fx.CACHE_DIR = os.path.join(DATA_DIR, "cache")  # resized clips, effect loops, thumbnails
 
 
 # ---------------------------------------------------------------- settings / projects

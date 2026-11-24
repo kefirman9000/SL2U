@@ -4,6 +4,11 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.7.0
+- **Beat effects:** a new layer that hits on every beat of your song: **zoom punch**, **camera shake**, **flash**, and **colors that change with each part of the song**. Start from Gentle, Club or Hard and adjust. The title stays still while the background moves.
+- **Effects on top:** rain, snow, floating dust, light leaks, lens flare and VHS tape, alone or mixed, with a strength slider.
+- **Two visualizers at once:** in the Visualizer layer pick a second one (and its own color) to play behind the first, like a ring with bars underneath.
+
 ### New in 1.6.0
 - **Music for these videos:** at the top of the Video tab, drop music files (or press ＋ Add music) to build the list of songs your videos use, and drag ⋮⋮ to change the order. It starts as your release's tracks; changing it doesn't change the release.
 - **Playlist video:** every song in that list in one video, in order, with YouTube chapters and a **"Now playing"** title as each song starts. Choose YouTube, 4K, square, vertical, editing or web.
