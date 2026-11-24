@@ -299,6 +299,8 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     motion = opts.get("motion") if opts.get("motion") in MOTIONS else "still"
     dim = opts.get("dim")
     dim = None if dim in (None, "") else float(dim)
+    if enc and enc.get("fps"):
+        fps = int(enc["fps"])  # the export's frame rate decides, or the length comes out wrong
     if size:
         w, h = size
         vertical = h > w
@@ -707,14 +709,14 @@ def encoder(fmt="mp4", quality="standard", fps=30):
     if fmt == "mov":
         video = ["-c:v", "prores_ks", "-profile:v", ("0", "2", "3")[q], "-vendor", "apl0", "-r", str(fps)]
         return {"video": video, "audio": ["-c:a", "pcm_s16le", "-ar", "48000"], "pix_fmt": "yuv422p10le",
-                "ext": ".mov", "faststart": True, "format": fmt}
+                "ext": ".mov", "faststart": True, "format": fmt, "fps": fps}
     if fmt == "webm":
         video = (["-c:v", "libvpx-vp9", "-crf", ("40", "32", "24")[q], "-b:v", "0", "-row-mt", "1",
                   "-deadline", ("realtime", "good", "good")[q], "-cpu-used", ("8", "4", "2")[q]] + gop)
         return {"video": video, "audio": ["-c:a", "libopus", "-b:a", "256k", "-ar", "48000"],
-                "pix_fmt": "yuv420p", "ext": ".webm", "faststart": False, "format": fmt}
+                "pix_fmt": "yuv420p", "ext": ".webm", "faststart": False, "format": fmt, "fps": fps}
     video = ff.h264(fps, q)  # graphics card when available
-    return {"video": video, "audio": AAC, "pix_fmt": "yuv420p", "ext": ".mp4", "faststart": True, "format": fmt}
+    return {"video": video, "audio": AAC, "pix_fmt": "yuv420p", "ext": ".mp4", "faststart": True, "format": fmt, "fps": fps}
 
 
 def export_bytes(fmt, w, h, fps, seconds, quality="standard"):
