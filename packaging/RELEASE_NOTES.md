@@ -4,6 +4,13 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.5.0
+- **A new video editor built on layers.** Your video is four layers: **Title and artist**, **Center** (your logo, the cover, a spinning record or title text), **Visualizer** and **Background**. Each layer always shows what it's set to, has an on/off switch, and opens its settings when you click it. Nothing disappears or changes when you switch between them.
+- Turning a layer off and back on brings back what you had (your logo, your visualizer).
+- **One place to choose the look:** the Song video form no longer has its own visualizer dropdown that could quietly override the editor.
+- **Several Release Kit tabs open?** They now stay in sync instead of overwriting each other's settings.
+- Saved looks moved to the top of the editor (pick one from the list, or "Save look…").
+
 ### New in 1.4.4
 - **The video editor no longer hides things behind tabs.** Visualizer, Color, **Your logo**, Background, Text and Saved looks are all on screen at once. Use the "Jump to" links at the top or just scroll.
 - **Your logo** has its own section with **＋ Add logo** always visible. Clicking any of your logos puts it in the middle. There's also a **＋ Logo** button next to the preview.
