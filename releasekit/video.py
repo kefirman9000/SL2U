@@ -12,6 +12,58 @@ RES = {"1080p": (1920, 1080), "1440p": (2560, 1440), "4k": (3840, 2160), "720p":
 VIS_COLORS = "white@0.85"
 
 
+# ---------------------------------------------------------------- temporary files
+# Every working folder made while a video is rendered is removed when that video is finished (or fails),
+# so clip pieces, audio cycles and frames don't pile up on the disk.
+import functools
+import shutil
+import threading
+
+_TMP = threading.local()
+TMP_PREFIX = "rk_"
+
+
+def _mkdtemp(prefix=TMP_PREFIX):
+    d = tempfile.mkdtemp(prefix=prefix)
+    stack = getattr(_TMP, "dirs", None)
+    if stack is not None:
+        stack.append(d)
+    return d
+
+
+def cleans_temp(fn):
+    @functools.wraps(fn)
+    def wrapper(*a, **k):
+        outer = getattr(_TMP, "dirs", None) is None
+        if outer:
+            _TMP.dirs = []
+        try:
+            return fn(*a, **k)
+        finally:
+            if outer:
+                for d in _TMP.dirs:
+                    shutil.rmtree(d, ignore_errors=True)
+                _TMP.dirs = None
+    return wrapper
+
+
+def clean_old_temp(max_age_hours=12):
+    """Remove working folders left behind by older versions (or a crash). Returns how many."""
+    import time
+    root, n = tempfile.gettempdir(), 0
+    for name in os.listdir(root):
+        if not name.startswith(TMP_PREFIX) or name.startswith("rk_update_"):
+            continue
+        path = os.path.join(root, name)
+        try:
+            if os.path.isdir(path) and time.time() - os.path.getmtime(path) > max_age_hours * 3600:
+                shutil.rmtree(path, ignore_errors=True)
+                n += 1
+        except OSError:
+            pass
+    return n
+
+
 def _stage(progress, a, b):
     """Map a sub-task's 0..1 progress into the a..b slice of the overall bar."""
     if not progress:
@@ -52,11 +104,15 @@ def _prep_media(src, w, h, fps, fit="fill", cancel=None):
     return out, ff.duration(out)
 
 
+MIN_PIECE = 3.0   # seconds: shortest piece cut from one clip
+MAX_PIECES = 160  # different pieces made at most; after that they repeat
+
+
 def clips_background(clips, w, h, fps, dur, audio_path=None, start=0.0, switch="beat", bars=4, fit="fill",
                      tmp=None, progress=None, cancel=None):
     """One background video at least `dur` long from your clips and photos.
     switch: beat = cut to the next clip every `bars` bars, on the beat; full = play each clip through."""
-    tmp = tmp or tempfile.mkdtemp(prefix="rk_bg_")
+    tmp = tmp or _mkdtemp(prefix="rk_bg_")
     clips = [c for c in clips if c and os.path.isfile(c)]
     if not clips:
         raise ValueError("None of the chosen clips could be found.")
@@ -75,10 +131,28 @@ def clips_background(clips, w, h, fps, dur, audio_path=None, start=0.0, switch="
         lengths = []
         i = 0
         while sum(lengths) < dur + 0.5:
-            lengths.append(preps[i % len(preps)][1])
+            # a very short clip (a GIF, a one-frame video) is looped for a few seconds, not cut 12 times a second
+            plen = preps[i % len(preps)][1]
+            lengths.append(plen if plen >= MIN_PIECE else plen * math.ceil(MIN_PIECE / max(plen, 0.04)))
             i += 1
     if len(preps) == 1 and switch != "beat" and preps[0][1] >= dur:
         return preps[0][0]
+    # Make each different piece once. When every clip has been used up (or after MAX_PIECES) the order
+    # just repeats, so the rest of the video re-uses the same pieces instead of making thousands more.
+    total_material = sum(p[1] for p in preps)
+    made, used = 0, 0.0
+    for length in lengths:
+        made += 1
+        used += length
+        at_turn = made % len(preps) == 1 % len(preps)  # the next piece would start the clip order again
+        if at_turn and (made >= MAX_PIECES or (made > len(preps) and used >= total_material)):
+            break
+    order = list(range(made))
+    while sum(lengths[j] for j in order) < dur + 0.5:  # repeat (skipping the first, off-beat piece)
+        order += list(range(1 if made > 1 else 0, made))
+        if len(order) > 200000:
+            break
+    lengths = lengths[:made]
     pieces, offsets = [], [0.0] * len(preps)
     enc = ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "17", "-pix_fmt", "yuv420p", "-r", str(fps), "-g", str(fps)]
     for i, length in enumerate(lengths):
@@ -96,7 +170,7 @@ def clips_background(clips, w, h, fps, dur, audio_path=None, start=0.0, switch="
         return pieces[0]
     lst = os.path.join(tmp, "pieces.txt")
     with open(lst, "w", encoding="utf-8") as f:
-        f.writelines(f"file '{p.replace(chr(92), '/')}'\n" for p in pieces)
+        f.writelines(f"file '{pieces[j].replace(chr(92), '/')}'\n" for j in order)
     out = os.path.join(tmp, "background.mp4")
     ff.run(["-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out], cancel=cancel)
     return out
@@ -227,7 +301,7 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     if fx.active(opts):  # zoom punch, shake, flash, colour by section: on the background only
         env = reactive.bass_envelope(audio_path, fps, start, dur, n_frames)
         grid = reactive.beat_grid(audio_path, start, dur) if (opts.get("fx_zoom") or opts.get("fx_shake")) else (120.0, 0.0)
-        beat = fx.beat_filter(opts, env, w, h, fps, tempfile.mkdtemp(prefix="rk_fx_"), grid)
+        beat = fx.beat_filter(opts, env, w, h, fps, _mkdtemp(prefix="rk_fx_"), grid)
     head = f"[0:v]fps={fps},scale={w}:{h}"
     bg_args, still = _still_once(bg_args)
     if still:  # a picture: decode and scale it once, then repeat that frame (not once per frame)
@@ -320,6 +394,7 @@ def _reactive_on(opts):
 
 # ---------------------------------------------------------------- standard release video
 
+@cleans_temp
 def release_video(audio_path, image, out, title="", artist="", resolution="1080p", visualizer="none",
                   layout="cover", text=True, fps=None, start=0.0, length=None, fade=True,
                   vertical=False, progress=None, cancel=None, opts=None, size=None, enc=None, chapters=None):
@@ -348,7 +423,7 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     else:
         w, h = (1080, 1920) if vertical else RES[resolution]
     fps = fps or (30 if _reactive_on(opts) or vertical else 12)
-    tmp = tempfile.mkdtemp(prefix="rk_")
+    tmp = _mkdtemp(prefix="rk_")
     vis_room = (bool(enc) or layout == "full") and (visualizer in reactive.BOTTOM or opts.get("vis2") in reactive.BOTTOM) \
         and (opts.get("vis_pos") or "bottom") == "bottom"
     clips = [c for c in (opts.get("clips") or []) if c and os.path.isfile(c)] if bg == "clips" else []
@@ -420,11 +495,12 @@ def fmt_ts(sec):
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
+@cleans_temp
 def album_video(tracks, image, out, titles=None, album_title="", artist="", resolution="1080p",
                 visualizer="none", gap=1.0, progress=None, cancel=None, opts=None, size=None, enc=None):
     """All tracks back to back in one video, with chapters, and "now playing" titles if the look has them on."""
     titles = titles or [os.path.splitext(os.path.basename(t))[0] for t in tracks]
-    tmp = tempfile.mkdtemp(prefix="rk_")
+    tmp = _mkdtemp(prefix="rk_")
     joined = os.path.join(tmp, "album.wav")
     audio.build_cycle(tracks, joined, crossfade=0, gap=gap, progress=_stage(progress, 0, 0.15), cancel=cancel)
     chapters, t = [], 0.0
@@ -650,6 +726,7 @@ def make_loop_clip(visual, clip, w, h, image=None, images=None, title="", artist
 
 # ---------------------------------------------------------------- long / 10-hour videos
 
+@cleans_temp
 def long_video(tracks, out, hours=10.0, visual="static", image=None, images=None, title="", artist="",
                text=True, resolution="1080p", crossfade=4.0, ambient=None, ambient_db=-18.0,
                fade_in=3.0, fade_out=8.0, slide_seconds=8.0, visualizer="none", video_clip=None,
@@ -672,7 +749,7 @@ def long_video(tracks, out, hours=10.0, visual="static", image=None, images=None
         text = False
     w, h = RES[resolution]
     target = float(hours) * 3600
-    tmp = tempfile.mkdtemp(prefix="rk_long_")
+    tmp = _mkdtemp(prefix="rk_long_")
     cyc = os.path.join(tmp, "cycle.wav")
     audio.build_cycle(tracks, cyc, crossfade=crossfade, ambient=ambient, ambient_db=ambient_db,
                       progress=_stage(progress, 0, 0.05), cancel=cancel)
@@ -770,6 +847,7 @@ def export_bytes(fmt, w, h, fps, seconds, quality="standard"):
     return int(seconds * (mbps.get(fmt, 8) * 1e6 * scale + audio_kbps * 1000) / 8)
 
 
+@cleans_temp
 def export_video(audio_path, image, out, title="", artist="", visualizer="none", layout="cover", text=True,
                  fmt="mp4", aspect="16:9", size=1080, fps=30, quality="standard", start=0.0, length=None,
                  fade=True, progress=None, cancel=None, opts=None):
@@ -819,12 +897,13 @@ SAMPLE_KINDS = ("bars", "mirror", "waves", "line", "scope", "spectrum",
                 "starfield", "mystify", "pipes", "maze")
 
 
+@cleans_temp
 def visualizer_samples(audio_path, image, out_dir, title="", artist="", seconds=6.0, start=None, opts=None,
                        kinds=SAMPLE_KINDS, aspect="16:9", progress=None, cancel=None):
     """Short low-res clips of every visualizer with your music, cover and style, to compare side by side.
     With no track (or no cover) a demo beat (or generated art) stands in."""
     os.makedirs(out_dir, exist_ok=True)
-    tmp = tempfile.mkdtemp(prefix="rk_samples_")
+    tmp = _mkdtemp(prefix="rk_samples_")
     demo = not audio_path
     if demo:
         audio_path = demo_beat(os.path.join(tmp, "demo.wav"), seconds=max(8, seconds + 2))
@@ -855,6 +934,7 @@ def visualizer_samples(audio_path, image, out_dir, title="", artist="", seconds=
 
 # ---------------------------------------------------------------- Shorts / Reels / TikTok
 
+@cleans_temp
 def short_clip(audio_path, image, out, title="", artist="", seconds=30, start=None, visualizer="waves",
                progress=None, cancel=None, opts=None):
     if start is None:
@@ -867,6 +947,7 @@ def short_clip(audio_path, image, out, title="", artist="", seconds=30, start=No
 
 # ---------------------------------------------------------------- Spotify Canvas
 
+@cleans_temp
 def canvas(image, out, seconds=7.5, progress=None, cancel=None):
     """3-8 s vertical 1080x1920 seamless loop, no audio (upload in Spotify for Artists).
     Kept just under 8 s because uploads that are even slightly long get rejected."""

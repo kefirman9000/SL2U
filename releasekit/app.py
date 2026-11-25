@@ -37,6 +37,7 @@ def port():
 
 GUARD = security.Guard(app, DATA_DIR, port)
 video.CACHE_DIR = fx.CACHE_DIR = os.path.join(DATA_DIR, "cache")  # resized clips, effect loops, thumbnails
+threading.Thread(target=video.clean_old_temp, daemon=True).start()  # working folders left by older versions
 
 
 # ---------------------------------------------------------------- settings / projects
