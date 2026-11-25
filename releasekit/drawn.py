@@ -11,7 +11,7 @@ import math
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from . import audio, reactive
+from . import audio, fireworks, reactive
 
 DRAWN = {"ring": "Radial ring (bars around the art)", "ringwave": "Radial waveform", "particles": "Particles",
          "geometric": "Geometric shapes", "tunnel": "Tunnel", "synthwave": "Synthwave grid",
@@ -639,7 +639,8 @@ class Maze(Style):
 
 
 STYLES = {"ring": Ring, "ringwave": RingWave, "particles": Particles, "geometric": Geometric, "tunnel": Tunnel,
-          "synthwave": Synthwave, "starfield": Starfield, "mystify": Mystify, "pipes": Pipes, "maze": Maze}
+          "synthwave": Synthwave, "starfield": Starfield, "mystify": Mystify, "pipes": Pipes, "maze": Maze,
+          "fireworks": fireworks.Show}  # its own layer in the editor, not a visualizer choice
 
 
 # ---------------------------------------------------------------- the layer ffmpeg reads
@@ -674,33 +675,57 @@ def make_style(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, vertical,
     return STYLES[kind](lw, lh, fps, rgb, vertical, data, size)
 
 
-def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period=12.0, rgb2=None):
+def foreground_for(opts, lw, lh):
+    """The foreground image at layer size, or None."""
+    kind = opts.get("fg") or "none"
+    if kind == "custom":
+        kind = opts.get("fg_image") or "none"
+    return fireworks.make_foreground(kind, lw, lh) if kind != "none" else None
+
+
+def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period=12.0, rgb2=None,
+           with_fg=True):
     """Returns (layer_w, layer_h, feed) where feed(write) writes n_frames RGBA frames for ffmpeg.
-    kind: one style, or a list (first drawn first, i.e. behind; rgb2 colours the one behind)."""
+    kind: one style, or a list (first drawn first, i.e. behind; rgb2 colours the one behind).
+    "fireworks" in the list is the fireworks show; with_fg puts the foreground in front (lit by the flashes)."""
     kinds = list(kind) if isinstance(kind, (list, tuple)) else [kind]
     lw, lh = layer_size(w, h)
-    data = analyse(audio_path, fps, start, dur, n_frames)  # analysed once, shared by both styles
-    styles = [STYLES[k](lw, lh, fps, rgb2 if (rgb2 and j < len(kinds) - 1) else rgb, vertical, data,
-                        opts.get("vis_size") or 1.0) for j, k in enumerate(kinds)]
-    style = styles[-1]
-    el = _element(opts, style.w, style.h, vertical)
+    data = analyse(audio_path, fps, start, dur, n_frames)  # analysed once, shared by all styles
+    vis = [k for k in kinds if k != "fireworks"]
+    styles = [STYLES[k](lw, lh, fps, rgb2 if (rgb2 and j < len(vis) - 1) else rgb, vertical, data,
+                        opts.get("vis_size") or 1.0) for j, k in enumerate(vis)]
+    show = None
+    if "fireworks" in kinds:
+        show = fireworks.Show(lw, lh, fps, rgb, vertical, data)
+        show.setup(opts, audio_path, start, dur, n_frames)
+    front = show is not None and opts.get("fw_order") == "front"
+    fg = foreground_for(opts, lw, lh) if with_fg else None
+    light = opts.get("fg_light", True) is not False
+    style = styles[-1] if styles else show
+    el = _element(opts, lw, lh, vertical)
     if el:
         for st in styles:
             st.center = max(0.5, min(1.8, float(opts.get("center_size") or 1)))  # rings stop growing past 180%
+    cx, cy = (style.cx, style.cy) if styles else (lw / 2, lh / 2 - (lh * 0.06 if vertical else 0))
 
     def feed(write):
         for i in range(n_frames):
-            fr = styles[0].frame(i)
-            for st in styles[1:]:
+            fw = show.frame(i) if show else None
+            fr = fw if (fw is not None and not front) else Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
+            for st in styles:
                 fr.alpha_composite(st.frame(i))
+            if fg is not None:  # in front of the sky and the drawn scenes, behind the cover/logo
+                fr.alpha_composite(fireworks.lit_foreground(fg, show.light) if (show and light) else fg)
+            if front:
+                fr.alpha_composite(fw)
             if el:
                 bump, canvas, tiles = el
-                tile = tiles[int(round(float(style.data["bass"][i]) * (len(tiles) - 1)))]
+                tile = tiles[int(round(float(data["bass"][i]) * (len(tiles) - 1)))]
                 if bump == "disc":
                     tile = tile.rotate(-360.0 * (i / fps) / spin_period, resample=Image.BILINEAR)
-                paste(fr, tile, style.cx - canvas[0] / 2, style.cy - canvas[1] / 2)
+                paste(fr, tile, cx - canvas[0] / 2, cy - canvas[1] / 2)
             write(fr.tobytes())
-    return style.w, style.h, feed
+    return lw, lh, feed
 
 
 def still(kind, w, h, rgb, opts, vertical, seconds=1.2, fps=30):

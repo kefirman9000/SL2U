@@ -6,7 +6,7 @@ import tempfile
 
 from PIL import Image, ImageOps
 
-from . import art, audio, drawn, ff, fx, overlay, reactive
+from . import art, audio, drawn, ff, fireworks, fx, overlay, reactive
 
 RES = {"1080p": (1920, 1080), "1440p": (2560, 1440), "4k": (3840, 2160), "720p": (1280, 720)}
 VIS_COLORS = "white@0.85"
@@ -247,7 +247,11 @@ def _vis_filter(kind, w, h, fps, vertical=False):
 # settings from the editor ("the look") that every video uses
 STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos", "bg", "dim", "motion", "center_size",
               "clips", "clip_switch", "clip_bars", "clip_fit", "progress", "now_playing",
-              "fx_zoom", "fx_shake", "fx_flash", "fx_color", "overlays", "overlay_amount", "vis2", "vis2_color")
+              "fx_zoom", "fx_shake", "fx_flash", "fx_color", "overlays", "overlay_amount", "vis2", "vis2_color",
+              # fireworks show and foreground (1.8)
+              "fireworks", "fw_effect", "fw_palette", "fw_colors", "fw_mix", "fw_shape", "fw_exact", "fw_snow", "fw_size",
+              "fw_trail", "fw_every", "fw_rockets", "fw_order", "fw_tl", "fw_parts", "fw_finale", "fw_finale_len",
+              "fw_build", "fw_blend", "fg", "fg_image", "fg_light")
 
 MOTIONS = {"still": "Still", "drift": "Slow drift", "zoom": "Slow zoom in and out", "breathe": "Breathing light",
            "grain": "Film grain"}
@@ -314,15 +318,27 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     kinds = [k for k in dict.fromkeys([vis2, vis]) if k and k != "none"]  # second one sits behind
     drawn_k = [k for k in kinds if k in drawn.DRAWN]
     classic_k = [k for k in kinds if k not in drawn.DRAWN]
+    if opts.get("fireworks"):
+        drawn_k = ["fireworks"] + drawn_k  # in the sky, behind the visualizers
+    fg_kind = _fg_kind(opts)
+    fg_in_layer = bool(drawn_k)  # in front of fireworks and drawn scenes; bars and waves stay in front of it
     if drawn_k:
         # drawn in Python (with the bump element in the middle) and streamed in as one transparent layer
         lw, lh, feed = drawn.feeder(drawn_k, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical,
-                                    spin_period, rgb2=rgb2 if vis2 in drawn_k and len(drawn_k) > 1 else None)
+                                    spin_period, rgb2=rgb2 if vis2 in drawn_k and len([k for k in drawn_k if k != "fireworks"]) > 1 else None,
+                                    with_fg=fg_in_layer)
         args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", str(fps), "-i", "pipe:0"]
         scale = "" if (lw, lh) == (w, h) else f"scale={w}:{h}:flags=bicubic,"
         fc += [f"[2:v]{scale}format=yuva420p[lay]", f"[{cur}][lay]overlay=0:0:format=yuv420[v1]"]  # no RGB round trip
         cur = "v1"
         bump = "none"  # already in the layer
+    if fg_kind != "none" and not fg_in_layer:  # foreground over the background, under bars and waves
+        fg = fireworks.make_foreground(fg_kind, w, h)
+        if fg is not None:
+            fg_png = os.path.join(_mkdtemp(prefix="rk_fg_"), "foreground.png")
+            fg.save(fg_png)
+            fc += [f"movie='{ff.esc_path(fg_png)}',format=rgba[fgI]", f"[{cur}][fgI]overlay=0:0[vfg]"]
+            cur = "vfg"
     if classic_k:
         srcs = ["av"] if len(classic_k) == 1 else ["av1", "av2"]
         if len(classic_k) == 2:
@@ -389,7 +405,17 @@ def style_defaults(opts):
 
 def _reactive_on(opts):
     return bool(opts) and (opts.get("visualizer", "none") != "none" or opts.get("bump", "none") != "none"
-                           or (opts.get("vis2") or "none") != "none" or fx.active(opts) or bool(opts.get("overlays")))
+                           or (opts.get("vis2") or "none") != "none" or fx.active(opts) or bool(opts.get("overlays"))
+                           or bool(opts.get("fireworks")) or _fg_kind(opts) != "none")
+
+
+def _fg_kind(opts):
+    k = (opts or {}).get("fg") or "none"
+    if k == "custom":
+        k = opts.get("fg_image") or "none"
+        if k != "none" and not os.path.isfile(k):
+            k = "none"
+    return k
 
 
 # ---------------------------------------------------------------- standard release video

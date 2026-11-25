@@ -191,6 +191,13 @@ details.more[open]>summary{margin-bottom:4px}
 .tog.on{background:var(--accent);border-color:var(--accent)}.tog.on i{left:18px;background:#fff}
 .sw0{width:38px;flex:none}
 .inspector{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel)}
+.fwtl{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.tlbar{display:flex;height:30px;border-radius:7px;overflow:hidden;border:1px solid var(--line);margin:8px 0;background:var(--panel2)}
+.tlbar span{display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;border-right:1px solid #0005}
+.fwrow{display:grid;grid-template-columns:72px minmax(0,1fr) minmax(0,.9fr) 28px;gap:6px;align-items:center;margin-top:6px}
+.fwrow input[type=range]{accent-color:var(--accent);padding:0;border:0;background:none}
+.fwrow button{padding:4px 0}
+.fwc{width:46px;height:32px;padding:2px}
 .insp{display:none}.insp.on{display:block}.insp h4{margin:0 0 10px;font-size:14px}
 .vpl{display:flex;flex-direction:column;gap:4px;min-height:44px;border:1px dashed transparent;border-radius:8px;padding:4px}
 .vpl.over{border-color:var(--accent);background:rgba(57,255,20,.05)}
@@ -379,6 +386,49 @@ details.more[open]>summary{margin-bottom:4px}
             </div>
             <div class="ed-row"><label>Size</label><input type="range" id="edCenter" min="0.5" max="3" step="0.1" value="1"><span class="val" id="edCenterV"></span></div>
             <div class="ed-row"><label>Pulse to the beat</label><input type="range" id="edPulse" min="0" max="0.3" step="0.02" value="0.12"><span class="val" id="edPulseV"></span></div>
+          </div>
+          <div class="insp" data-l="fg">
+            <h4>Foreground</h4>
+            <p class="muted" style="font-size:12px;margin-top:0">Something in front of the sky: fireworks and drawn scenes go behind it. Bars and waveforms stay in front.</p>
+            <div class="seg wrap" id="edFg"><button data-v="none">None</button><button data-v="skyline">City skyline</button><button data-v="crowd">Crowd</button><button data-v="mountains">Mountains and trees</button><button data-v="custom">My picture</button></div>
+            <div id="edFgBox" style="margin-top:12px">
+              <label>Your foregrounds <span class="muted" style="font-weight:400">a PNG with a see-through sky works best · drop one here or press ＋</span></label>
+              <div class="assets" id="edFgs"></div>
+              <input type="file" id="edFgFile" accept="image/png,image/webp,image/*" hidden onchange="uploadAsset('foreground',this.files[0]);this.value=''">
+            </div>
+            <label class="chk"><input type="checkbox" id="edFgLight">Fireworks light it up when they burst</label>
+          </div>
+          <div class="insp" data-l="fw">
+            <h4>Fireworks</h4>
+            <p class="muted" style="font-size:12px;margin-top:0">They go off on the beats of your song. Rockets go up early so they burst right on the beat.</p>
+            <div class="row" style="margin-bottom:10px"><span class="muted" style="font-size:12px">Quick start:</span><button class="b s" onclick="fwPreset('newyear')">New Year's show</button><button class="b s" onclick="fwPreset('xmas')">Christmas show</button><button class="b s" onclick="fwPreset('party')">Party confetti</button></div>
+            <p class="muted" id="edFwTlNote" style="font-size:12px;display:none">The timeline below decides what goes off. The choice here is used when it's turned off.</p>
+            <div class="seg wrap" id="edFwEffect"></div>
+            <div id="edFwShapes" style="margin-top:12px"><label>Christmas shapes <span class="muted" style="font-weight:400">(they keep their own colours)</span></label>
+              <div class="seg wrap" id="edFwShape"></div>
+              <div class="ed-row"><label>How exact</label><input type="range" id="edFwExact" min="0" max="1" step="0.05"><span class="val" id="edFwExactV"></span></div>
+              <label class="chk"><input type="checkbox" id="edFwSnow">Snow falling</label></div>
+            <div id="edFwMixBox" style="margin-top:12px"><label>How often each type comes up <span class="muted" style="font-weight:400">(Mixed show and Finale)</span></label><div id="edFwMix"></div></div>
+            <label style="margin-top:12px">Colours</label>
+            <div class="seg wrap" id="edFwPal"><button data-v="multi">Every colour</button><button data-v="gold">Gold and white</button><button data-v="pink">Pink and purple</button><button data-v="ice">Blue and white</button><button data-v="fire">Red and orange</button><button data-v="xmas">Christmas</button><button data-v="custom">My colours</button></div>
+            <div class="ed-row" id="edFwColRow"><label>My colours</label><input type="color" class="fwc" data-i="0"><input type="color" class="fwc" data-i="1"><input type="color" class="fwc" data-i="2"></div>
+            <div class="ed-row"><label>Size</label><input type="range" id="edFwSize" min="0.4" max="1.6" step="0.05"><span class="val" id="edFwSizeV"></span></div>
+            <div class="ed-row"><label>Trails</label><input type="range" id="edFwTrail" min="0" max="1" step="0.05"><span class="val" id="edFwTrailV"></span></div>
+            <div class="ed-row"><label>Go off</label><select id="edFwEvery"><option value="1">On every beat</option><option value="2">Every 2 beats</option><option value="4">Every bar (4 beats)</option></select></div>
+            <div class="ed-row"><label>Layer</label><div class="seg" id="edFwOrder"><button data-v="behind">Behind the foreground</button><button data-v="front">In front of it</button></div></div>
+            <label class="chk"><input type="checkbox" id="edFwRockets">Show rockets going up</label>
+            <div class="fwtl">
+              <label class="chk" style="font-weight:600"><input type="checkbox" id="edFwTl">Plan a show with a timeline</label>
+              <div id="edFwTlBox">
+                <div class="tlbar" id="edFwBar"></div>
+                <div id="edFwRows"></div>
+                <div class="row"><button class="b s" id="edFwAdd">＋ Add a part</button></div>
+                <div class="ed-row"><label>Finale at</label><input id="edFwFin" placeholder="e.g. 2:45 (blank = none)" style="flex:1"><label style="min-width:0">for</label><input id="edFwFinLen" type="number" min="3" max="120" style="width:70px"><span class="muted" style="font-size:12px">s</span></div>
+                <label class="chk"><input type="checkbox" id="edFwBuild">Build up to the finale over the 20 seconds before</label>
+                <div class="ed-row"><label>Blend parts over</label><input type="range" id="edFwBlend" min="0" max="12" step="1"><span class="val" id="edFwBlendV"></span></div>
+                <p class="muted" style="font-size:12px">Times are in the song (minutes:seconds). Near each change the old type gets rarer as the new one takes over.</p>
+              </div>
+            </div>
           </div>
           <div class="insp" data-l="vis">
             <h4>Visualizer</h4>
@@ -863,20 +913,22 @@ function genreTip(){const v=genreVis(),el=$("genreTip");if(!el)return;
   el.innerHTML=v?`Good for ${esc(R.genre)}: `+v.map(k=>`<a href="#" onclick="useVis('${k}');return false" style="color:var(--accent2)">${esc(VIS_NAME(k))}</a>`).join(", "):""}
 
 // ---------- your logos and pictures (remembered in Release Kit, newest first)
-const ASSETS={logo:[],picture:[],clip:[]};
+const ASSETS={logo:[],picture:[],clip:[],foreground:[]};
 const samePath=(a,b)=>!!a&&!!b&&a.replace(/\\/g,"/").toLowerCase()===b.replace(/\\/g,"/").toLowerCase();
 async function loadAssets(kind){try{ASSETS[kind]=(await api("/api/assets/"+kind)).items}catch(e){}
   if(kind==="clip"){setLook({clips:(LOOK.clips||[]).filter(c=>ASSETS.clip.some(p=>samePath(p,c)))},true);return renderClips()}
+  if(kind==="foreground")return renderAssets(kind);
   // a logo/picture chosen before the library existed: add it so it's remembered too
   const cur=kind==="logo"?LOOK.logo:LOOK.picture;
   if(cur&&!ASSETS[kind].some(p=>samePath(p,cur))){try{const j=await api(`/api/assets/${kind}/add`,{path:cur});ASSETS[kind]=j.items;
     setLook(kind==="logo"?{logo:j.path}:{picture:j.path},true)}catch(e){}}
   renderAssets(kind)}
-function renderAssets(kind){if(kind==="clip")return renderClips();const box=$(kind==="logo"?"edLogos":"edPics");if(!box)return;const cur=kind==="logo"?LOOK.logo:LOOK.picture;
+function renderAssets(kind){if(kind==="clip")return renderClips();const box=$({logo:"edLogos",picture:"edPics",foreground:"edFgs"}[kind]);if(!box)return;
+  const cur=kind==="logo"?LOOK.logo:kind==="foreground"?(LOOK.fg==="custom"?LOOK.fg_image:""):LOOK.picture,see=kind!=="picture",use={logo:"useLogo",picture:"usePicture",foreground:"useFg"}[kind];
   let html=kind==="picture"?`<div class="asset ${!cur?"on":""}" onclick="usePicture('')" title="Use the release cover"><div class="th">${R.art_path?`<img src="${thumb(R.art_path,200)}">`:"<span>no cover yet</span>"}</div><span>The cover</span></div>`:"";
   html+=ASSETS[kind].map(p=>{const n=p.split(/[\\/]/).pop().replace(/-[0-9a-f]{8}\.(png|jpg)$/,"");
-    return `<div class="asset ${samePath(p,cur)?"on":""}" title="${esc(n)}" onclick="${kind==="logo"?"useLogo":"usePicture"}('${jsq(p)}')"><div class="th ${kind==="logo"?"chk":""}"><img src="${thumb(p,200)}" loading="lazy"></div><span>${esc(n)}</span><button class="x" title="Remove from this list" onclick="event.stopPropagation();forgetAsset('${kind}','${jsq(p)}')">×</button></div>`}).join("");
-  html+=`<div class="asset add" onclick="$('${kind==="logo"?"edLogoFile":"edPicFile"}').click()" title="Choose a file from your computer"><div class="th"><b>＋</b></div><span>Add ${kind}</span></div>`;
+    return `<div class="asset ${samePath(p,cur)?"on":""}" title="${esc(n)}" onclick="${use}('${jsq(p)}')"><div class="th ${see?"chk":""}"><img src="${thumb(p,200)}" loading="lazy"></div><span>${esc(n)}</span><button class="x" title="Remove from this list" onclick="event.stopPropagation();forgetAsset('${kind}','${jsq(p)}')">×</button></div>`}).join("");
+  html+=`<div class="asset add" onclick="$('${{logo:"edLogoFile",picture:"edPicFile",foreground:"edFgFile"}[kind]}').click()" title="Choose a file from your computer"><div class="th"><b>＋</b></div><span>Add ${kind}</span></div>`;
   box.innerHTML=html;
   if(kind==="logo"){const miss=LOOK.bump==="logo"&&!LOOK.logo;$("edLogoNote").innerHTML=miss?'<b style="color:var(--warn,#ffb020)">No logo chosen yet.</b> Click "＋ Add logo" (or drop a picture here). Until then the cover is used.':'PNG with a see-through background looks best. SVG, WebP, GIF and other pictures are converted for you.'}}
 function useLogo(p){setLook({logo:p,bump:"logo"});renderAssets("logo")}
@@ -884,16 +936,17 @@ function usePicture(p){setLook({picture:p});$("vidImg").value=p;renderAssets("pi
 // the browser opens the file (SVG, WebP, AVIF, GIF… anything it can show) and sends a PNG/JPG
 async function toUploadable(file,kind){
   if(kind==="clip")return file;  // videos go as they are
-  if(kind==="logo"?file.type==="image/png":/^image\/(png|jpeg)$/.test(file.type))return file;
+  const keepsAlpha=kind==="logo"||kind==="foreground";
+  if(keepsAlpha?file.type==="image/png":/^image\/(png|jpeg)$/.test(file.type))return file;
   const url=URL.createObjectURL(file);
   try{const img=new Image();img.src=url;await img.decode();
     let w=img.naturalWidth||1024,h=img.naturalHeight||1024;
     if(/svg/.test(file.type)||/\.svg$/i.test(file.name)){const k=2048/Math.max(w,h);w*=k;h*=k}  // vector: draw it big and sharp
     const max=kind==="logo"?2048:4096,k=Math.min(1,max/Math.max(w,h));w=Math.max(1,Math.round(w*k));h=Math.max(1,Math.round(h*k));
     const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
-    const type=kind==="logo"?"image/png":"image/jpeg";
+    const type=keepsAlpha?"image/png":"image/jpeg";
     const blob=await new Promise(r=>c.toBlob(r,type,0.93));
-    return new File([blob],file.name.replace(/\.[^.]+$/,"")+(kind==="logo"?".png":".jpg"),{type})}
+    return new File([blob],file.name.replace(/\.[^.]+$/,"")+(keepsAlpha?".png":".jpg"),{type})}
   finally{URL.revokeObjectURL(url)}}
 async function uploadAsset(kind,file){if(!file)return;toast(`Adding ${file.name}…`);
   let f;try{f=await toUploadable(file,kind)}catch(e){return toast("Your browser can't open that picture. Try a PNG or JPG.",5000)}
@@ -902,12 +955,13 @@ async function uploadAsset(kind,file){if(!file)return;toast(`Adding ${file.name}
   catch(e){return toast("Couldn't add it: "+e.message,5000)}
   ASSETS[kind]=j.items;
   if(kind==="clip"){setLook({clips:[...(LOOK.clips||[]),j.path],bg:"clips"});return toast("Clip added and playing in the background")}
+  if(kind==="foreground"){useFg(j.path);return toast("Foreground added and in use")}
   kind==="logo"?useLogo(j.path):usePicture(j.path);toast(kind==="logo"?"Logo added and in use":"Picture added and in use")}
 async function addAssetPath(kind,path){try{const j=await api(`/api/assets/${kind}/add`,{path});ASSETS[kind]=j.items;
-  if(kind==="clip")return setLook({clips:[...(LOOK.clips||[]),j.path],bg:"clips"});kind==="logo"?useLogo(j.path):usePicture(j.path)}catch(e){toast(e.message,5000)}}
+  if(kind==="clip")return setLook({clips:[...(LOOK.clips||[]),j.path],bg:"clips"});if(kind==="foreground")return useFg(j.path);kind==="logo"?useLogo(j.path):usePicture(j.path)}catch(e){toast(e.message,5000)}}
 async function forgetAsset(kind,p){try{const j=await api(`/api/assets/${kind}/remove`,{path:p});ASSETS[kind]=j.items}catch(e){return toast(e.message)}
   if(kind==="clip")setLook({clips:(LOOK.clips||[]).filter(c=>!samePath(c,p))});
-  if(kind==="logo"&&samePath(LOOK.logo,p))setLook({logo:""});if(kind==="picture"&&samePath(LOOK.picture,p))usePicture("");renderAssets(kind)}
+  if(kind==="logo"&&samePath(LOOK.logo,p))setLook({logo:""});if(kind==="foreground"&&samePath(LOOK.fg_image,p))setLook({fg_image:"",fg:"none"});if(kind==="picture"&&samePath(LOOK.picture,p))usePicture("");renderAssets(kind)}
 function dropZone(el,kind){
   el.addEventListener("dragover",e=>{e.preventDefault();e.stopPropagation();el.classList.add("over")});
   el.addEventListener("dragleave",()=>el.classList.remove("over"));
@@ -965,7 +1019,10 @@ function toggleClip(p){const sel=[...(LOOK.clips||[])];const k=sel.findIndex(c=>
 const VIS_ORDER=["bars","mirror","waves","line","spectrum","scope","ring","ringwave","particles","geometric","tunnel","synthwave","maze","pipes","starfield","mystify"];
 const VIS_NAME=k=>{const o=$("stVis").querySelector(`option[value="${k}"]`);return o?o.textContent.replace(" (bars in a circle)",""):k};
 const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan","#28dcff","Cyan"],["pink","#ff46aa","Pink"],["gold","#ffc83c","Gold"],["red","#ff3c3c","Red"],["#a060ff","#a060ff","Purple"],["#ff7a00","#ff7a00","Orange"],["cover","conic-gradient(#f5a,#fa5,#af5,#5af,#f5a)","From the cover"]];
-const LOOK_DEFAULT={visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
+const FW_PARTS0=[{t:"0:00",e:"peony",a:0.5},{t:"0:30",e:"willow",a:1},{t:"1:00",e:"mixed",a:1.5}];
+const LOOK_DEFAULT={fireworks:false,fw_effect:"mixed",fw_palette:"multi",fw_colors:["#ff2d3a","#21c45a","#ffd84a"],fw_mix:{peony:40,willow:20,ring:12,crackle:15,heart:5,xmas:0},
+  fw_shape:"all",fw_exact:0.7,fw_snow:true,fw_size:1,fw_trail:0.55,fw_every:1,fw_rockets:true,fw_order:"behind",fw_tl:false,fw_parts:FW_PARTS0,fw_finale:"",fw_finale_len:20,
+  fw_build:true,fw_blend:6,fg:"none",fg_image:"",fg_light:true,fg_last:"skyline",visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
   clips:[],clip_switch:"beat",clip_bars:4,clip_fit:"fill",progress:"off",prog_last:"bar_time",now_playing:true,
   fx_zoom:0,fx_shake:0,fx_flash:0,fx_color:false,fx_last:null,overlays:[],ovl_last:["dust"],overlay_amount:0.7,vis2:"none",vis2_color:""};
 let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
@@ -973,7 +1030,7 @@ let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")
     if(o("stVis"))saved.visualizer=o("stVis");if(o("stBump"))saved.bump=o("stBump");if(o("stColor"))saved.vis_color=o("stColor");if(o("stAmt"))saved.bump_amount=+o("stAmt")}
   return Object.assign({},LOOK_DEFAULT,saved)})();
 const ED={shape:"16:9",t:null,ctl:null,n:0,sound:false,layer:localStorage.getItem("rk_layer")||"vis"};
-function getStyle(){const o=Object.assign({},LOOK);if(o.visualizer==="none")o.vis2="none";delete o.fx_last;delete o.ovl_last;return o}
+function getStyle(){const o=Object.assign({},LOOK);if(o.visualizer==="none")o.vis2="none";delete o.fx_last;delete o.ovl_last;delete o.fg_last;if(o.fg==="custom"&&!o.fg_image)o.fg="none";return o}
 function setLook(ch,quiet){Object.assign(LOOK,ch);
   if(LOOK.visualizer!=="none")LOOK.vis_last=LOOK.visualizer;if(LOOK.bump!=="none")LOOK.bump_last=LOOK.bump;if(LOOK.progress!=="off")LOOK.prog_last=LOOK.progress;
   try{localStorage.setItem("rk_look",JSON.stringify(LOOK))}catch(e){}  // other Release Kit tabs pick this up
@@ -998,7 +1055,9 @@ function layerInfo(){const L=LOOK,tr=vpl()[+$("exTrack").value||0]||{};
     {k:"text",name:"Title and artist",on:L.text_on!==false,sum:L.text_on!==false?`${L.text_title||tr.title||R.title||"Title"} · ${L.text_artist||R.artist||"Artist"}`:"Off"},
     {k:"ovl",name:"Effects on top",on:(L.overlays||[]).length>0,sum:(L.overlays||[]).length?L.overlays.map(o=>OVLNAME[o]).join(" + ")+` · ${Math.round(L.overlay_amount*100)}%`:"Off"},
     {k:"center",name:"Center",on:L.bump!=="none",sum:centerSum,warn:L.bump==="logo"&&!L.logo},
+    {k:"fg",name:"Foreground",on:L.fg!=="none",warn:L.fg==="custom"&&!L.fg_image,sum:L.fg==="none"?"Off":L.fg==="custom"?(L.fg_image?fileName(L.fg_image):"My picture: none chosen yet"):FG_NAME[L.fg]},
     {k:"vis",name:"Visualizer",on:L.visualizer!=="none",sum:L.visualizer==="none"?"Off":`${VIS_NAME(L.visualizer)}${L.vis2&&L.vis2!=="none"?" + "+VIS_NAME(L.vis2):""} · ${COLORNAME(L.vis_color)} · ${Math.round(L.vis_size*100)}%`},
+    {k:"fw",name:"Fireworks",on:!!L.fireworks,sum:!L.fireworks?"Off":(L.fw_tl?`Show: ${(L.fw_parts||[]).length} part${(L.fw_parts||[]).length===1?"":"s"}${L.fw_finale?", finale at "+L.fw_finale:""}`:FW_NAME[L.fw_effect])+` · ${L.fw_palette==="custom"?"my colours":{multi:"every colour",gold:"gold",pink:"pink and purple",ice:"blue and white",fire:"red and orange",xmas:"Christmas colours"}[L.fw_palette]}`},
     {k:"beat",name:"Beat effects",on:fxOn(L),sum:fxOn(L)?[+L.fx_zoom&&"zoom punch",+L.fx_shake&&"shake",+L.fx_flash&&"flash",L.fx_color&&"colors change"].filter(Boolean).join(" · "):"Off"},
     {k:"bg",name:"Background",on:null,warn:L.bg==="clips"&&!(L.clips||[]).length,sum:L.bg==="clips"?((L.clips||[]).length?`${L.clips.length} video clip${L.clips.length>1?"s":""} · ${L.clip_switch==="full"?"each played through":"changing every "+L.clip_bars+" bar"+(L.clip_bars>1?"s":"")}`:"Video clips: none chosen yet"):`${BGNAME[L.bg]||L.bg} · ${MOVENAME[L.motion]||L.motion}`+(L.picture?` · ${fileName(L.picture)}`:"")}]}
 function renderLayers(){$("edLayers").innerHTML=layerInfo().map(l=>`<div class="layer ${ED.layer===l.k?"sel":""} ${l.on===false?"off":""}" data-l="${l.k}">
@@ -1012,6 +1071,8 @@ function toggleLayer(k){const L=LOOK;
   if(k==="vis")setLook({visualizer:L.visualizer==="none"?(L.vis_last||"bars"):"none"});
   if(k==="ovl")setLook((L.overlays||[]).length?{ovl_last:L.overlays,overlays:[]}:{overlays:(L.ovl_last&&L.ovl_last.length)?L.ovl_last:["dust"]});
   if(k==="beat")setLook(fxOn(L)?{fx_last:{fx_zoom:L.fx_zoom,fx_shake:L.fx_shake,fx_flash:L.fx_flash,fx_color:L.fx_color},fx_zoom:0,fx_shake:0,fx_flash:0,fx_color:false}:Object.assign({fx_zoom:0.08,fx_shake:0,fx_flash:0.3,fx_color:false},L.fx_last||{}));
+  if(k==="fw")setLook({fireworks:!L.fireworks});
+  if(k==="fg")setLook(L.fg!=="none"?{fg_last:L.fg,fg:"none"}:{fg:L.fg_last&&(L.fg_last!=="custom"||L.fg_image)?L.fg_last:"skyline"});
   if(k==="center")setLook({bump:L.bump==="none"?(L.bump_last||(L.logo?"logo":"cover")):"none"});
   selectLayer(k)}
 function edSync(){const L=LOOK;
@@ -1036,6 +1097,8 @@ function edSync(){const L=LOOK;
   $("edFxZoom").value=L.fx_zoom;$("edFxZoomV").textContent=pc(+L.fx_zoom/0.25);$("edFxShake").value=L.fx_shake;$("edFxShakeV").textContent=pc(+L.fx_shake);
   $("edFxFlash").value=L.fx_flash;$("edFxFlashV").textContent=pc(+L.fx_flash);$("edFxColor").checked=!!L.fx_color;
   $("edVis2").value=L.vis2||"none";$("edVis2Col").value=L.vis2_color||"";$("edVis2ColRow").style.display=L.vis2&&L.vis2!=="none"?"":"none";
+  seg("edFg",L.fg);$("edFgLight").checked=L.fg_light!==false;$("edFgBox").style.display=L.fg==="custom"||!["skyline","crowd","mountains"].includes(L.fg)?"":"none";
+  fwRender();renderAssets("foreground");
   renderAssets("logo");renderAssets("picture");genreTip()}
 function edInit(){
   $("edVisGrid").innerHTML=VIS_ORDER.map(k=>`<div class="vt" data-v="${k}" title="${esc(VIS_NAME(k))}"><img src="/static/vis/${k}.jpg" alt="" loading="lazy"><span>${esc(VIS_NAME(k))}</span></div>`).join("");
@@ -1067,7 +1130,73 @@ function edInit(){
   $("edMove").onchange=edRefresh;$("exTrack").addEventListener("change",()=>{edSync();edRefresh()});
   if(S.look)Object.assign(LOOK,S.look);  // the look saved in Release Kit wins over this browser's copy
   dropZone($("edLogoRow"),"logo");dropZone($("edPics"),"picture");dropZone($("edClipBox"),"clip");vplDnD();
-  selectLayer(ED.layer);edSync();renderSaved();loadAssets("logo");loadAssets("picture");loadAssets("clip");vplRender()}
+  fwInit();selectLayer(ED.layer);edSync();renderSaved();loadAssets("logo");loadAssets("picture");loadAssets("clip");vplRender()}
+
+// ---------- fireworks and foreground
+const FW_EFFECTS=[["mixed","Mixed show"],["peony","Classic burst"],["willow","Gold willow"],["ring","Rings"],["crackle","Crackle"],["heart","Hearts"],["xmas","Christmas shapes"],["finale","Finale"],["embers","Rising embers"],["lightning","Lightning"],["confetti","Confetti cannons"]];
+const FW_NAME=Object.fromEntries(FW_EFFECTS);
+const FW_SHAPES=[["all","Mix of all"],["snowflake","Snowflake"],["tree","Tree"],["present","Present"],["santa","Santa"],["cane","Candy cane"],["star","Star"],["bell","Bell"],["text","Merry Christmas"]];
+const FW_MIXT=[["peony","Classic burst"],["willow","Gold willow"],["ring","Rings"],["crackle","Crackle"],["heart","Hearts"],["xmas","Christmas shapes"]];
+const FW_COL={mixed:"#ffc94d",peony:"#ff7a7a",willow:"#f2b15a",ring:"#7ab8ff",crackle:"#e8e0c8",heart:"#ff86c8",xmas:"#5fd38a",finale:"#ff5a3c",embers:"#ff9a4a",lightning:"#b9c8ff",confetti:"#c89bff"};
+const FG_NAME={none:"None",skyline:"City skyline",crowd:"Crowd",mountains:"Mountains and trees",custom:"My picture"};
+const secs=v=>{v=String(v??"").trim();const m=v.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/);return m?+m[1]*60+ +m[2]:(parseFloat(v)||0)};
+const mmss=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
+function fwPreset(k){
+  if(k==="newyear")setLook({fireworks:true,fw_effect:"mixed",fw_palette:"multi",fw_tl:true,fw_parts:[{t:"0:00",e:"peony",a:0.5},{t:"0:40",e:"mixed",a:1},{t:"1:20",e:"ring",a:1}],fw_finale:"2:30",fw_finale_len:20,fw_build:true,fg:LOOK.fg==="none"?"skyline":LOOK.fg});
+  if(k==="xmas")setLook({fireworks:true,fw_effect:"xmas",fw_palette:"xmas",fw_shape:"all",fw_snow:true,fw_tl:true,fw_mix:{peony:30,willow:15,ring:10,crackle:10,heart:0,xmas:35},
+    fw_parts:[{t:"0:00",e:"xmas",a:0.5},{t:"0:40",e:"mixed",a:1},{t:"1:20",e:"xmas",a:1}],fw_finale:"2:30",fw_finale_len:20,fw_build:true,fg:LOOK.fg==="none"?"mountains":LOOK.fg});
+  if(k==="party")setLook({fireworks:true,fw_effect:"confetti",fw_palette:"multi",fw_tl:false,fw_every:2,fg:LOOK.fg==="none"?"crowd":LOOK.fg});
+  toast("Fireworks set up. Change anything you like.")}
+function fwParts(){return (LOOK.fw_parts||[]).map(p=>Object.assign({},p))}
+function fwRender(){const L=LOOK;
+  seg("edFwEffect",L.fw_effect);seg("edFwShape",L.fw_shape);seg("edFwPal",L.fw_palette);seg("edFwOrder",L.fw_order);
+  const usesTl=!!L.fw_tl,parts=L.fw_parts||[];
+  const has=e=>L.fw_effect===e||(usesTl&&parts.some(p=>p.e===e));
+  $("edFwShapes").style.display=has("xmas")||(+L.fw_mix?.xmas>0&&(has("mixed")||has("finale")))?"":"none";
+  $("edFwMixBox").style.display=has("mixed")||has("finale")||(usesTl&&L.fw_finale)?"":"none";
+  $("edFwColRow").style.display=L.fw_palette==="custom"?"":"none";
+  document.querySelectorAll(".fwc").forEach(c=>c.value=(L.fw_colors||[])[+c.dataset.i]||"#ffffff");
+  $("edFwExact").value=L.fw_exact;$("edFwExactV").textContent=L.fw_exact<.35?"loose":L.fw_exact<.7?"medium":"sharp";$("edFwSnow").checked=L.fw_snow!==false;
+  $("edFwSize").value=L.fw_size;$("edFwSizeV").textContent=Math.round(L.fw_size*100)+"%";$("edFwTrail").value=L.fw_trail;$("edFwTrailV").textContent=Math.round(L.fw_trail*100)+"%";
+  $("edFwEvery").value=String(L.fw_every||1);$("edFwRockets").checked=L.fw_rockets!==false;
+  const tot=FW_MIXT.reduce((a,[k])=>a+(+(L.fw_mix||{})[k]||0),0);
+  if(!$("edFwMix").children.length)$("edFwMix").innerHTML=FW_MIXT.map(([k,n])=>`<div class="ed-row"><label>${n}</label><input type="range" min="0" max="100" step="5" data-mix="${k}"><span class="val" id="fwMix_${k}"></span></div>`).join("");
+  FW_MIXT.forEach(([k])=>{const v=+(L.fw_mix||{})[k]||0,el=$("edFwMix").querySelector(`[data-mix=${k}]`);if(document.activeElement!==el)el.value=v;$("fwMix_"+k).textContent=v?Math.round(v/(tot||1)*100)+"%":"never"});
+  $("edFwTl").checked=usesTl;$("edFwTlBox").style.display=usesTl?"":"none";$("edFwTlNote").style.display=usesTl?"":"none";$("edFwEffect").style.opacity=usesTl?.55:1;
+  if(document.activeElement!==$("edFwFin"))$("edFwFin").value=L.fw_finale||"";$("edFwFinLen").value=L.fw_finale_len||20;$("edFwBuild").checked=L.fw_build!==false;
+  $("edFwBlend").value=L.fw_blend;$("edFwBlendV").textContent=+L.fw_blend?L.fw_blend+" s":"off";
+  if(!document.activeElement||!document.activeElement.closest||!document.activeElement.closest("#edFwRows"))
+    $("edFwRows").innerHTML='<div class="fwrow muted" style="font-size:12px"><span>Starts at</span><span>Effect</span><span>How many</span><span></span></div>'+parts.map((p,i)=>`<div class="fwrow">
+      <input data-i="${i}" data-k="t" value="${esc(String(p.t))}" aria-label="Start time"><select data-i="${i}" data-k="e">${FW_EFFECTS.map(([v,n])=>`<option value="${v}"${v===p.e?" selected":""}>${n}</option>`).join("")}</select>
+      <input type="range" data-i="${i}" data-k="a" min="0.25" max="3" step="0.25" value="${+p.a||1}" title="${+p.a||1}× per beat"><button class="b s" data-del="${i}" title="Remove this part">×</button></div>`).join("");
+  // the bar: parts, build-up and finale over the song
+  const len=Math.max(30,...(vpl().map(t=>t.duration||0)),secs(L.fw_finale||0)+(+L.fw_finale_len||20)+5,...parts.map(p=>secs(p.t)+20));
+  const cues=parts.map(p=>({t:secs(p.t),e:p.e})).sort((a,b)=>a.t-b.t),fin=L.fw_finale?secs(L.fw_finale):null;
+  let segs=cues.filter(c=>fin===null||c.t<fin);if(fin!==null){if(L.fw_build!==false&&segs.length)segs.push({t:Math.max(segs[segs.length-1].t+1,fin-20),e:segs[segs.length-1].e,build:1});segs.push({t:fin,e:"finale",end:fin+(+L.fw_finale_len||20)})}
+  $("edFwBar").innerHTML=segs.map((c,i)=>{const end=i+1<segs.length?segs[i+1].t:(c.end||len);const nm=c.build?"build-up":FW_NAME[c.e];
+    return `<span style="width:${Math.max(0,(end-c.t)/len*100)}%;background:${FW_COL[c.e]||"#888"};${c.build?"background-image:repeating-linear-gradient(45deg,#0002 0 6px,#0000 6px 12px)":""}" title="${mmss(c.t)} ${nm}">${nm}</span>`}).join("")}
+function fwInit(){
+  $("edFwEffect").innerHTML=FW_EFFECTS.map(([v,n])=>`<button data-v="${v}">${n}</button>`).join("");
+  $("edFwShape").innerHTML=FW_SHAPES.map(([v,n])=>`<button data-v="${v}">${n}</button>`).join("");
+  seg("edFwEffect",LOOK.fw_effect,v=>setLook({fw_effect:v,fireworks:true}));seg("edFwShape",LOOK.fw_shape,v=>setLook({fw_shape:v}));
+  seg("edFwPal",LOOK.fw_palette,v=>setLook({fw_palette:v}));seg("edFwOrder",LOOK.fw_order,v=>setLook({fw_order:v}));
+  seg("edFg",LOOK.fg,v=>{if(v==="custom"&&!LOOK.fg_image){if(ASSETS.foreground.length)return useFg(ASSETS.foreground[0]);return $("edFgFile").click()}setLook({fg:v})});
+  $("edFgLight").onchange=e=>setLook({fg_light:e.target.checked});
+  document.querySelectorAll(".fwc").forEach(c=>c.oninput=()=>{const cs=(LOOK.fw_colors||[]).slice();cs[+c.dataset.i]=c.value;setLook({fw_colors:cs})});
+  $("edFwExact").oninput=e=>setLook({fw_exact:+e.target.value});$("edFwSnow").onchange=e=>setLook({fw_snow:e.target.checked});
+  $("edFwSize").oninput=e=>setLook({fw_size:+e.target.value});$("edFwTrail").oninput=e=>setLook({fw_trail:+e.target.value});
+  $("edFwEvery").onchange=e=>setLook({fw_every:+e.target.value});$("edFwRockets").onchange=e=>setLook({fw_rockets:e.target.checked});
+  $("edFwMix").oninput=e=>{const k=e.target.dataset.mix;if(k)setLook({fw_mix:Object.assign({},LOOK.fw_mix,{[k]:+e.target.value})})};
+  $("edFwTl").onchange=e=>setLook({fw_tl:e.target.checked,fireworks:true});
+  $("edFwFin").onchange=e=>{const v=e.target.value.trim();setLook({fw_finale:v?mmss(secs(v)):""})};
+  $("edFwFinLen").onchange=e=>setLook({fw_finale_len:Math.max(3,Math.min(120,+e.target.value||20))});
+  $("edFwBuild").onchange=e=>setLook({fw_build:e.target.checked});$("edFwBlend").oninput=e=>setLook({fw_blend:+e.target.value});
+  $("edFwRows").addEventListener("change",e=>{const el=e.target,i=+el.dataset.i,k=el.dataset.k;if(!k)return;const ps=fwParts();
+    ps[i][k]=k==="t"?mmss(secs(el.value)):k==="a"?+el.value:el.value;if(k==="t")ps.sort((a,b)=>secs(a.t)-secs(b.t));el.blur();setLook({fw_parts:ps})});
+  $("edFwRows").addEventListener("click",e=>{const d=e.target.dataset.del;if(d===undefined)return;const ps=fwParts();ps.splice(+d,1);setLook({fw_parts:ps})});
+  $("edFwAdd").onclick=()=>{const ps=fwParts(),last=ps.length?secs(ps[ps.length-1].t):-30;ps.push({t:mmss(last+30),e:"mixed",a:1});setLook({fw_parts:ps})};
+  dropZone($("edFgBox"),"foreground");loadAssets("foreground")}
+function useFg(p){setLook({fg:"custom",fg_image:p});renderAssets("foreground")}
 // several Release Kit tabs open: keep them all showing the same look
 addEventListener("storage",e=>{if(e.key!=="rk_look"||!e.newValue)return;try{const v=JSON.parse(e.newValue);if(JSON.stringify(v)!==JSON.stringify(LOOK)){LOOK=Object.assign({},LOOK_DEFAULT,v);edSync();edRefresh()}}catch(_){}});
 document.addEventListener("visibilitychange",()=>{if(document.hidden)return;try{const v=JSON.parse(localStorage.getItem("rk_look")||"null");

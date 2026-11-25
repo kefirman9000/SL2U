@@ -4,6 +4,14 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.0
+- **Fireworks** (a new layer in the video editor): classic bursts, gold willow, rings, crackle, hearts, a finale, rising embers, lightning and confetti cannons, going off on the beats of your song. Rockets go up early so they burst right on the beat.
+- **Christmas shapes:** snowflakes, trees, presents, Santa, candy canes, stars, bells and "Merry Christmas", with a "How exact" slider (sharp picture or loose like a real show) and falling snow.
+- **Colours:** every colour, gold, pink and purple, blue and white, red and orange, Christmas, or up to three of your own. Choose how often each type comes up in a mixed show.
+- **Plan a show with a timeline:** parts that start at times in your song, each with its own effect and amount, blended into each other, a build-up and a finale at the time you type in.
+- **Quick starts:** New Year's show, Christmas show, party confetti.
+- **Foreground** (a new layer): a city skyline, a crowd, mountains and trees, or your own PNG with a see-through sky. Fireworks and drawn scenes go behind it and the bursts light it up; bars and waveforms stay in front.
+
 ### New in 1.7.4
 - **Choose the text on playlist videos:** a new "Text on the video" choice in the Playlist video form: title and "Now playing", only "Now playing", only the title, or **no text at all** (the progress bar then shows without the time). YouTube chapters are still added to the file.
 - Playlist videos now follow the Title and artist layer's on/off switch.

@@ -470,7 +470,7 @@ def api_init():
 # ---------------------------------------------------------------- your logos and pictures
 # Every logo or picture you use is copied into the data folder and remembered (newest first),
 # so it's one click next time, even if the original file moves.
-ASSET_KINDS = {"logo": "logos", "picture": "pictures", "clip": "clips"}
+ASSET_KINDS = {"logo": "logos", "picture": "pictures", "clip": "clips", "foreground": "foregrounds"}
 ASSET_KEEP = 24
 
 
@@ -503,9 +503,9 @@ def _store_asset(kind, data, name):
         raise ValueError("That file isn't a picture Release Kit can read. Try a PNG or JPG.")
     stem = packages.safe(os.path.splitext(os.path.basename(name or kind))[0])[:60] or kind
     tag = hashlib.sha1(data).hexdigest()[:8]
-    if kind == "logo":
+    if kind in ("logo", "foreground"):  # keep the see-through parts
         im = im.convert("RGBA")
-        im.thumbnail((2048, 2048))
+        im.thumbnail((2048, 2048) if kind == "logo" else (4096, 4096))
         path = os.path.join(_asset_dir(kind), f"{stem}-{tag}.png")
         if not os.path.exists(path):
             im.save(path, "PNG")
