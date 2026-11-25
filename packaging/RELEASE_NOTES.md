@@ -4,6 +4,10 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.3
+- **Rough paint** in the foreground maker: scribble over what you want gone (sky, mountains, stars). You don't have to be careful at the edges: when you let go, the real edge is found from the colours and blended softly. It won't cross a clear edge like a roof line, and dark spots inside a tree stay. **Rough paint: keep** brings parts back the same way.
+- The magnetic line's tips now say you can trace whatever should stay in front, for example only the rooftops and the tree, so the mountains go too.
+
 ### New in 1.8.2
 - **Make a foreground from any photo:** in the Foreground layer, press "Make one from a photo…" to make the sky see-through.
   - **Magnetic line:** click a few points along the top of the buildings, hills or trees. The line sticks to the edges between your clicks. Then remove everything above it, or close it into a shape and remove or keep the inside.

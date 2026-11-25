@@ -791,14 +791,15 @@ details.more[open]>summary{margin-bottom:4px}
     <div class="fge-stage"><canvas id="fgeCv"></canvas><div class="muted fge-empty" id="fgeEmpty">Choose a photo to start</div></div>
     <div class="fge-side">
       <button class="b p" style="width:100%" onclick="fgeAutoSky()">✨ Remove the sky</button>
-      <p class="muted" style="font-size:12px;margin:6px 0 10px">Quick try for clear skies. For clouds, sunsets or stars, the magnetic line below is the easy way.</p>
+      <p class="muted" style="font-size:12px;margin:6px 0 10px">A quick try for plain skies. To choose exactly what stays (for example, only the village, without the mountains), use the magnetic line below.</p>
       <label>Tool</label>
-      <div class="seg wrap" id="fgeTool"><button data-v="lasso">🧲 Magnetic line</button><button data-v="wand_rm">Wand: remove</button><button data-v="wand_keep">Wand: keep</button><button data-v="erase">Eraser</button><button data-v="restore">Restore brush</button><button data-v="smooth">Soften edge</button></div>
+      <div class="seg wrap" id="fgeTool"><button data-v="lasso">🧲 Magnetic line</button><button data-v="rough_rm">🖌 Rough paint: remove</button><button data-v="rough_keep">🖌 Rough paint: keep</button><button data-v="wand_rm">Wand: remove</button><button data-v="wand_keep">Wand: keep</button><button data-v="erase">Eraser</button><button data-v="restore">Restore brush</button><button data-v="smooth">Soften edge</button></div>
       <div id="fgeLassoBox" class="note" style="margin:8px 0 0;font-size:12px">
-        <span id="fgeLassoHint">Click along the top of the buildings, hills or tree. The line sticks to the edges between your clicks. Click the first point again to close a shape.</span>
+        <span id="fgeLassoHint">Click along the top of whatever should stay in front, like the rooftops and the tree. Anything above the line goes, mountains included. The line sticks to the edges between your clicks. Click the first point again to close a shape.</span>
         <div class="row" style="margin-top:6px;gap:6px"><button class="b s p" id="fgeAbove" onclick="fgeLassoApply('above')">Remove everything above the line</button>
           <button class="b s" id="fgeInRm" onclick="fgeLassoApply('in_rm')">Remove inside the shape</button><button class="b s" id="fgeInKeep" onclick="fgeLassoApply('in_keep')">Keep only inside the shape</button>
           <button class="b s" onclick="fgeLassoBack()">Undo last point</button><button class="b s" onclick="fgeLassoClear()">Clear the line</button></div></div>
+      <p class="note" id="fgeRoughNote" style="margin:8px 0 0;font-size:12px;display:none">Paint roughly over what you want gone (or, with "keep", what you want back). You don't have to be careful at the edges. When you let go, the edge is found from the colours and blended softly.</p>
       <div class="ed-row"><label>Similar colours</label><input type="range" id="fgeTol" min="2" max="60" step="1" value="16"><span class="val" id="fgeTolV"></span></div>
       <div class="ed-row"><label>Brush size</label><input type="range" id="fgeBrush" min="4" max="160" step="2" value="40"><span class="val" id="fgeBrushV"></span></div>
       <div class="ed-row"><label>Brush softness</label><input type="range" id="fgeHard" min="0" max="1" step="0.05" value="0.5"><span class="val" id="fgeHardV"></span></div>
@@ -1320,6 +1321,59 @@ function fgeBrush(x,y){const k=FGE.w/Math.max(1,$("fgeCv").getBoundingClientRect
   for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const d=Math.hypot(xx-x,yy-y)/r;if(d>1)continue;
     const f=soft?Math.min(1,(1-d)/soft):1,p=yy*w+xx;  // soft: fades out towards the brush edge
     m[p]=erase?Math.min(m[p],255*(1-f)):Math.max(m[p],255*f)}}
+
+// ---- rough paint: scribble over an area; on release the real edge near the strokes is worked out from the colours
+function fgeRoughStart(){const {w,h}=FGE;FGE.stroke=new Uint8Array(w*h);FGE.sbox=[w,h,0,0];
+  if(!FGE.strokeC){FGE.strokeC=document.createElement("canvas")}FGE.strokeC.width=w;FGE.strokeC.height=h}
+function fgeRoughDab(x,y){const k=FGE.w/Math.max(1,$("fgeCv").getBoundingClientRect().width),r=+$("fgeBrush").value/2*k,{w,h}=FGE,S=FGE.stroke,b=FGE.sbox;
+  const x0=Math.max(0,x-r|0),x1=Math.min(w-1,x+r|0),y0=Math.max(0,y-r|0),y1=Math.min(h-1,y+r|0);
+  for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++)if((xx-x)**2+(yy-y)**2<=r*r)S[yy*w+xx]=1;
+  b[0]=Math.min(b[0],x0);b[1]=Math.min(b[1],y0);b[2]=Math.max(b[2],x1);b[3]=Math.max(b[3],y1);FGE.lastR=r;
+  const c=FGE.strokeC.getContext("2d");c.fillStyle=FGE.tool==="rough_rm"?"rgba(255,60,140,.45)":"rgba(60,255,140,.45)";c.beginPath();c.arc(x,y,r,0,7);c.fill()}
+function fgeRoughApply(){const {w,h}=FGE,S=FGE.stroke,m=FGE.mask,R=FGE.rgb,remove=FGE.tool==="rough_rm";
+  const B=Math.max(4,Math.round(FGE.lastR)),pad=B*3+2;  // the real edge can be up to a brush width from the paint's edge
+  let [bx0,by0,bx1,by1]=FGE.sbox;if(bx1<bx0)return;
+  bx0=Math.max(0,bx0-pad);by0=Math.max(0,by0-pad);bx1=Math.min(w-1,bx1+pad);by1=Math.min(h-1,by1+pad);const bw=bx1-bx0+1,bh=by1-by0+1,N=bw*bh;
+  // distance (in pixels, roughly) to the edge of the painted area, inside and outside it
+  const din=new Float32Array(N),dout=new Float32Array(N),BIG=1e6;
+  for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){const i=y*bw+x,p=S[(y+by0)*w+x+bx0];din[i]=p?BIG:0;dout[i]=p?0:BIG}
+  const chamfer=d=>{for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){const i=y*bw+x;let v=d[i];if(!v)continue;
+      if(x>0)v=Math.min(v,d[i-1]+1);if(y>0){v=Math.min(v,d[i-bw]+1);if(x>0)v=Math.min(v,d[i-bw-1]+1.41);if(x<bw-1)v=Math.min(v,d[i-bw+1]+1.41)}d[i]=v}
+    for(let y=bh-1;y>=0;y--)for(let x=bw-1;x>=0;x--){const i=y*bw+x;let v=d[i];if(!v)continue;
+      if(x<bw-1)v=Math.min(v,d[i+1]+1);if(y<bh-1){v=Math.min(v,d[i+bw]+1);if(x<bw-1)v=Math.min(v,d[i+bw+1]+1.41);if(x>0)v=Math.min(v,d[i+bw-1]+1.41)}d[i]=v}};
+  chamfer(din);chamfer(dout);
+  // two kinds of colour: what is being removed (deep inside the paint, or already see-through) and what stays
+  // (just outside the paint and still showing). For keep, the other way round.
+  const cls=new Int8Array(N);  // 1 = "goes", 2 = "stays", 0 = undecided
+  for(let i=0;i<N;i++){const x=i%bw,y=(i/bw)|0,g=(y+by0)*w+x+bx0,painted=S[g],shown=m[g]>127;
+    if(painted&&din[i]>B)cls[i]=remove?1:2;
+    else if(!painted&&dout[i]>B&&dout[i]<=3*B)cls[i]=remove?(shown?2:1):(shown?0:1)}
+  if(!remove)for(let i=0;i<N;i++){const x=i%bw,y=(i/bw)|0,g=(y+by0)*w+x+bx0;if(!S[g]&&dout[i]>B&&dout[i]<=3*B&&m[g]>127)cls[i]=2}
+  // window averages of both kinds, from running sums
+  const W1=bw+1,sums=[0,1,2,3,4,5,6,7].map(()=>new Float64Array(W1*(bh+1)));
+  for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){const i=y*bw+x,g=(y+by0)*w+x+bx0,c=cls[i],j=(y+1)*W1+x+1;
+    for(let k=0;k<8;k++)sums[k][j]=sums[k][j-1]+sums[k][j-W1]-sums[k][j-W1-1];
+    if(c){const o=c===1?0:4;sums[o][j]+=R[g*3];sums[o+1][j]+=R[g*3+1];sums[o+2][j]+=R[g*3+2];sums[o+3][j]+=1}}
+  const box=(k,x0,y0,x1,y1)=>sums[k][(y1+1)*W1+x1+1]-sums[k][y0*W1+x1+1]-sums[k][(y1+1)*W1+x0]+sums[k][y0*W1+x0];
+  const wr=B*2;const dec=new Int16Array(N).fill(-1);  // -1 untouched, 0 = core (as painted), 1..255 = decided from colour
+  for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){const i=y*bw+x,g=(y+by0)*w+x+bx0,painted=S[g];
+    const inBand=painted?din[i]<=B:dout[i]<=B;
+    if(!inBand){if(painted){m[g]=remove?0:255;dec[i]=0}continue}
+    const x0=Math.max(0,x-wr),y0=Math.max(0,y-wr),x1=Math.min(bw-1,x+wr),y1=Math.min(bh-1,y+wr);
+    const nr=box(3,x0,y0,x1,y1),nk=box(7,x0,y0,x1,y1);
+    if(!nr||!nk){if(painted){m[g]=remove?0:255;dec[i]=0}continue}  // nothing to compare with: do as painted
+    const dist=o=>{const n=box(o+3,x0,y0,x1,y1);const dr=R[g*3]-box(o,x0,y0,x1,y1)/n,dg=R[g*3+1]-box(o+1,x0,y0,x1,y1)/n,db=R[g*3+2]-box(o+2,x0,y0,x1,y1)/n;return Math.sqrt(dr*dr*.3+dg*dg*.59+db*db*.11)};
+    const dg=dist(0),dk=dist(4),t=dg/(dg+dk+1e-3);  // 0 = looks like what goes, 1 = like what stays
+    dec[i]=1+Math.round(Math.max(0,Math.min(1,(t-.35)/.3))*254)}
+  // only what is joined to the painted middle changes (so dark bits inside a tree that look like night sky stay)
+  const st=[];for(let i=0;i<N;i++)if(dec[i]===0&&S[(((i/bw)|0)+by0)*w+i%bw+bx0])st.push(i);
+  const reach=new Uint8Array(N);for(const i of st)reach[i]=1;const E=FGE.edge,edgeT=Math.max(6,+$("fgeTol").value*1.4);
+  while(st.length){const i=st.pop(),x=i%bw,y=(i/bw)|0;for(const j of [x>0?i-1:-1,x<bw-1?i+1:-1,y>0?i-bw:-1,y<bh-1?i+bw:-1]){
+      if(j<0||reach[j])continue;const d=dec[j];if(d===0){reach[j]=1;st.push(j);continue}
+      if(d>0&&(remove?d<128:d>=128)&&E[(((j/bw)|0)+by0)*w+j%bw+bx0]<=edgeT){reach[j]=1;st.push(j)}}}  // doesn't cross a clear edge (a roof line)
+  for(let i=0;i<N;i++){const d=dec[i];if(d<=0||!reach[i])continue;const g=(((i/bw)|0)+by0)*w+i%bw+bx0,v=d-1;
+    if(remove)m[g]=Math.min(m[g],v);else m[g]=Math.max(m[g],v)}
+  FGE.stroke=null;FGE.strokeC.getContext("2d").clearRect(0,0,w,h);fgeDraw()}
 // ---- magnetic line: between clicks it follows the strongest edges (shortest path where edges are cheap)
 function fgeWire(a,b){const {w,h}=FGE,E=FGE.edge,pad=40;
   const bx0=Math.max(0,Math.min(a[0],b[0])-pad),by0=Math.max(0,Math.min(a[1],b[1])-pad),bx1=Math.min(w-1,Math.max(a[0],b[0])+pad),by1=Math.min(h-1,Math.max(a[1],b[1])+pad);
@@ -1346,7 +1400,7 @@ function fgeLassoClick(x,y){
 function fgeLassoBack(){if(!FGE.pts.length)return;if(FGE.closed){FGE.closed=false;FGE.segs.pop()}else{FGE.pts.pop();FGE.segs.pop()}fgeLassoUi()}
 function fgeLassoClear(){FGE.pts=[];FGE.segs=[];FGE.live=[];FGE.closed=false;fgeLassoUi()}
 function fgeLassoUi(){const n=FGE.pts.length;$("fgeAbove").disabled=n<2||FGE.closed;$("fgeInRm").disabled=$("fgeInKeep").disabled=!FGE.closed;
-  $("fgeLassoHint").textContent=!n?"Click along the top of the buildings, hills or tree. The line sticks to the edges between your clicks. Click the first point again to close a shape."
+  $("fgeLassoHint").textContent=!n?"Click along the top of whatever should stay in front, like the rooftops and the tree. Anything above the line goes, mountains included. The line sticks to the edges between your clicks. Click the first point again to close a shape."
     :FGE.closed?"Shape closed. Remove or keep what's inside it."
     :"Keep clicking along the edge. Go all the way across, then press 'Remove everything above the line'. Or click the first point to close a shape.";fgeDraw(true)}
 function fgeLassoApply(mode){const path=fgeLassoPath();if(path.length<2)return;const {w,h}=FGE;fgePush();
@@ -1372,13 +1426,14 @@ function fgeDraw(fast){if(!FGE.img)return;const cv=$("fgeCv"),x=cv.getContext("2
     let sd=5;const r=()=>(sd=sd*16807%2147483647)/2147483647;for(let i=0;i<200;i++){x.fillStyle=`rgba(255,255,255,${.3+r()*.6})`;x.fillRect(r()*w,r()*h*.8,1.5,1.5)}
     const fx=w*.62,fy=h*.25,gg=x.createRadialGradient(fx,fy,0,fx,fy,h*.18);gg.addColorStop(0,"#ffd27a");gg.addColorStop(.08,"#ff9a3c88");gg.addColorStop(1,"#0000");x.fillStyle=gg;x.fillRect(0,0,w,h)}
   x.drawImage(fgeCut(fast),0,0);
+  if(FGE.stroke&&FGE.strokeC)x.drawImage(FGE.strokeC,0,0);
   const path=fgeLassoPath().concat(FGE.live||[]);if(FGE.tool==="lasso"&&(path.length||FGE.pts.length)){const lw=Math.max(1.5,w/700);
     for(const [col,wd] of [["#000",lw*2.6],["#ffe14a",lw]]){x.strokeStyle=col;x.lineWidth=wd;x.lineJoin="round";x.beginPath();path.forEach(([px,py],i)=>i?x.lineTo(px+.5,py+.5):x.moveTo(px+.5,py+.5));x.stroke()}
     FGE.pts.forEach(([px,py],i)=>{x.fillStyle=i?"#ffe14a":"#39ff14";x.strokeStyle="#000";x.lineWidth=lw;x.beginPath();x.arc(px,py,lw*3.2,0,7);x.fill();x.stroke()})}}
 function fgeSave(){if(!FGE.img)return toast("Choose a photo first");const c=fgeCut(false);
   c.toBlob(b=>{uploadAsset("foreground",new File([b],(FGE.name||"foreground")+"-cutout.png",{type:"image/png"}));fgeClose()},"image/png")}
 function fgeInit(){
-  seg("fgeTool",FGE.tool,v=>{FGE.tool=v;$("fgeLassoBox").style.display=v==="lasso"?"":"none";FGE.live=[];fgeDraw(true)});fgeLassoUi();seg("fgeBack",FGE.back,v=>{FGE.back=v;fgeDraw()});
+  seg("fgeTool",FGE.tool,v=>{FGE.tool=v;$("fgeLassoBox").style.display=v==="lasso"?"":"none";$("fgeRoughNote").style.display=v.startsWith("rough")?"":"none";FGE.live=[];fgeDraw(true)});fgeLassoUi();seg("fgeBack",FGE.back,v=>{FGE.back=v;fgeDraw()});
   const lab=(id,f)=>{const el=$(id),u=()=>$(id+"V").textContent=f(+el.value);el.addEventListener("input",u);u()};
   lab("fgeTol",v=>v);lab("fgeBrush",v=>v+" px");lab("fgeHard",v=>v?Math.round(v*100)+"%":"hard");lab("fgeTrim",v=>v?v+" px":"none");lab("fgeSoft",v=>v?v+" px":"hard");
   $("fgeTrim").addEventListener("change",()=>fgeDraw());$("fgeSoft").addEventListener("change",()=>fgeDraw());
@@ -1386,16 +1441,24 @@ function fgeInit(){
   cv.addEventListener("pointerdown",e=>{if(!FGE.img)return;const [x,y]=fgeAt(e),p=y*FGE.w+x;
     if(FGE.tool==="lasso")return fgeLassoClick(x,y);fgePush();
     if(FGE.tool.startsWith("wand")){const keep=FGE.tool==="wand_keep";for(const q of fgeFlood([p],+$("fgeTol").value,true))FGE.mask[q]=keep?255:0;fgeDraw();return}
-    FGE.drag=true;cv.setPointerCapture(e.pointerId);fgeBrush(x,y);fgeDraw(true)});
+    FGE.drag=true;cv.setPointerCapture(e.pointerId);
+    if(FGE.tool.startsWith("rough")){fgeRoughStart();fgeRoughDab(x,y);FGE.lastXY=[x,y];return fgeDraw(true)}
+    fgeBrush(x,y);fgeDraw(true)});
   let raf=0;
   cv.addEventListener("pointermove",e=>{
     if(FGE.tool==="lasso"&&FGE.pts.length&&!FGE.closed){const at=fgeAt(e);if(raf)return;raf=requestAnimationFrame(()=>{raf=0;FGE.live=fgeWire(FGE.pts[FGE.pts.length-1],at);fgeDraw(true)});return}
-    if(!FGE.drag)return;const [x,y]=fgeAt(e);fgeBrush(x,y);fgeDraw(true)});
+    if(!FGE.drag)return;const [x,y]=fgeAt(e);
+    if(FGE.tool.startsWith("rough")){const [px,py]=FGE.lastXY,st=Math.max(1,Math.ceil(Math.hypot(x-px,y-py)/(FGE.lastR*.4||4)));
+      for(let i=1;i<=st;i++)fgeRoughDab(Math.round(px+(x-px)*i/st),Math.round(py+(y-py)*i/st));FGE.lastXY=[x,y];
+      if(!raf)raf=requestAnimationFrame(()=>{raf=0;fgeDraw(true)});return}
+    fgeBrush(x,y);fgeDraw(true)});
   addEventListener("keydown",e=>{if(!$("fge").classList.contains("on"))return;
     if(e.key==="Escape"&&FGE.pts.length){fgeLassoClear();e.preventDefault()}
     else if(e.key==="Backspace"&&FGE.pts.length&&document.activeElement.tagName!=="INPUT"){fgeLassoBack();e.preventDefault()}
     else if((e.ctrlKey||e.metaKey)&&e.key==="z"){fgeUndo();e.preventDefault()}});
-  cv.addEventListener("pointerup",()=>{if(FGE.drag){FGE.drag=false;fgeDraw()}})}
+  cv.addEventListener("pointerup",()=>{if(!FGE.drag)return;FGE.drag=false;
+    if(FGE.tool.startsWith("rough")&&FGE.stroke){$("fgeCv").style.cursor="progress";setTimeout(()=>{fgeRoughApply();$("fgeCv").style.cursor=""},10);return}
+    fgeDraw()})}
 function useFg(p){setLook({fg:"custom",fg_image:p});renderAssets("foreground")}
 // several Release Kit tabs open: keep them all showing the same look
 addEventListener("storage",e=>{if(e.key!=="rk_look"||!e.newValue)return;try{const v=JSON.parse(e.newValue);if(JSON.stringify(v)!==JSON.stringify(LOOK)){LOOK=Object.assign({},LOOK_DEFAULT,v);edSync();edRefresh()}}catch(_){}});
