@@ -687,7 +687,8 @@ def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertica
            with_fg=True):
     """Returns (layer_w, layer_h, feed) where feed(write) writes n_frames RGBA frames for ffmpeg.
     kind: one style, or a list (first drawn first, i.e. behind; rgb2 colours the one behind).
-    "fireworks" in the list is the fireworks show; with_fg puts the foreground in front (lit by the flashes)."""
+    "fireworks" in the list is the fireworks show; with_fg puts the foreground in front (lit by the flashes).
+    Snow from the show can fall in front of the foreground (fw_snow_order "front", the default) or behind it."""
     kinds = list(kind) if isinstance(kind, (list, tuple)) else [kind]
     lw, lh = layer_size(w, h)
     data = analyse(audio_path, fps, start, dur, n_frames)  # analysed once, shared by all styles
@@ -718,6 +719,8 @@ def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertica
                 fr.alpha_composite(fireworks.lit_foreground(fg, show.light) if (show and light) else fg)
             if front:
                 fr.alpha_composite(fw)
+            if show is not None and show.front is not None:  # snow falling in front of the foreground
+                fr.alpha_composite(show.front)
             if el:
                 bump, canvas, tiles = el
                 tile = tiles[int(round(float(data["bass"][i]) * (len(tiles) - 1)))]

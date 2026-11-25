@@ -357,6 +357,7 @@ class Show:
         self.sky_hi = 0.42 if w >= h else 0.5
         self.center = 1.0
         self.light = None
+        self.front = None  # snow in front of the foreground (drawn by the feeder after it), or None
         self.setup({}, None, 0.0, None, len(data["bass"]))
 
     # -- options and the beat plan
@@ -382,6 +383,7 @@ class Show:
         self.xshape = o.get("fw_shape") if o.get("fw_shape") in SHAPES else "all"
         self.exact = max(0.0, min(1.0, float(o.get("fw_exact", 0.7))))
         self.snow_on = o.get("fw_snow", True) is not False
+        self.snow_front = o.get("fw_snow_order", "front") != "behind"
         self.amount = max(0.4, min(1.6, float(o.get("fw_size") or 1)))
         self.trail = max(0.0, min(1.0, float(o.get("fw_trail", 0.55))))
         every = max(1, min(4, int(o.get("fw_every") or 1)))
@@ -637,6 +639,10 @@ class Show:
         p.begin()
         d, g, gs = p.d, p.g, p.gs
         self._sky_light(p.glow, gs)
+        self.front, sd = None, d  # snow: in its own layer when it falls in front of the foreground
+        if self.snow_front and any(q.kind == "snow" for q in self.parts):
+            self.front = Image.new("RGBA", (self.w, self.h), (0, 0, 0, 0))
+            sd = ImageDraw.Draw(self.front)
 
         keep = []
         for r in self.rockets:  # rockets going up
@@ -688,7 +694,7 @@ class Show:
                 q.x += (q.vx + math.sin(q.ph) * 0.35 * u) * k
                 q.y += q.vy * k
                 r = q.size * u
-                d.ellipse((q.x - r, q.y - r, q.x + r, q.y + r), fill=(255, 255, 255, 215))
+                sd.ellipse((q.x - r, q.y - r, q.x + r, q.y + r), fill=(255, 255, 255, 215))
                 if q.y < self.h + 10:
                     nxt.append(q)
                 continue

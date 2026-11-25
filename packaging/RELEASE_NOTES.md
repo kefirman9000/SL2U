@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.5
+- **Snow falls in front of the foreground** (over the rooftops, trees and crowd) while the fireworks stay behind it. In the Fireworks layer, under "Snow falling", you can put the snow behind the foreground again.
+
 ### New in 1.8.4
 - **Fireworks go on for the whole video.** With a timeline, the first part starts with the song, and after the finale the show carries on to the end instead of stopping. A finale typed in past the end of the song is moved so it still happens.
 - **Finale "At the end":** one click puts the finale at the very end of the song, whatever its length. The quick starts now use it.

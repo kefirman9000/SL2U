@@ -428,7 +428,8 @@ details.more[open]>summary{margin-bottom:4px}
             <div id="edFwShapes" style="margin-top:12px"><label>Christmas shapes <span class="muted" style="font-weight:400">(they keep their own colours)</span></label>
               <div class="seg wrap" id="edFwShape"></div>
               <div class="ed-row"><label>How exact</label><input type="range" id="edFwExact" min="0" max="1" step="0.05"><span class="val" id="edFwExactV"></span></div>
-              <label class="chk"><input type="checkbox" id="edFwSnow">Snow falling</label></div>
+              <label class="chk"><input type="checkbox" id="edFwSnow">Snow falling</label>
+              <div class="ed-row" id="edFwSnowRow"><label>Snow</label><div class="seg" id="edFwSnowOrder"><button data-v="front">In front of the foreground</button><button data-v="behind">Behind it, with the fireworks</button></div></div></div>
             <div id="edFwMixBox" style="margin-top:12px"><label>How often each type comes up <span class="muted" style="font-weight:400">(Mixed show and Finale)</span></label><div id="edFwMix"></div></div>
             <label style="margin-top:12px">Colours</label>
             <div class="seg wrap" id="edFwPal"><button data-v="multi">Every colour</button><button data-v="gold">Gold and white</button><button data-v="pink">Pink and purple</button><button data-v="ice">Blue and white</button><button data-v="fire">Red and orange</button><button data-v="xmas">Christmas</button><button data-v="custom">My colours</button></div>
@@ -1085,7 +1086,7 @@ const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan",
 const FW_PARTS0=[{t:"0:00",e:"peony",a:0.5},{t:"0:30",e:"willow",a:1},{t:"1:00",e:"mixed",a:1.5}];
 const LOOK_DEFAULT={fireworks:false,fw_effect:"mixed",fw_palette:"multi",fw_colors:["#ff2d3a","#21c45a","#ffd84a"],fw_mix:{peony:40,willow:20,ring:12,crackle:15,heart:5,xmas:0},
   fw_shape:"all",fw_exact:0.7,fw_snow:true,fw_size:1,fw_trail:0.55,fw_every:1,fw_rockets:true,fw_order:"behind",fw_tl:false,fw_parts:FW_PARTS0,fw_finale:"",fw_finale_len:20,
-  fw_build:true,fw_blend:6,fg:"none",fg_image:"",fg_light:true,fg_last:"skyline",visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
+  fw_build:true,fw_blend:6,fw_snow_order:"front",fg:"none",fg_image:"",fg_light:true,fg_last:"skyline",visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
   clips:[],clip_switch:"beat",clip_bars:4,clip_fit:"fill",progress:"off",prog_last:"bar_time",now_playing:true,
   fx_zoom:0,fx_shake:0,fx_flash:0,fx_color:false,fx_last:null,overlays:[],ovl_last:["dust"],overlay_amount:0.7,vis2:"none",vis2_color:""};
 let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
@@ -1220,7 +1221,7 @@ function fwRender(){const L=LOOK;
   $("edFwMixBox").style.display=has("mixed")||has("finale")||(usesTl&&L.fw_finale)?"":"none";
   $("edFwColRow").style.display=L.fw_palette==="custom"?"":"none";
   document.querySelectorAll(".fwc").forEach(c=>c.value=(L.fw_colors||[])[+c.dataset.i]||"#ffffff");
-  $("edFwExact").value=L.fw_exact;$("edFwExactV").textContent=L.fw_exact<.35?"loose":L.fw_exact<.7?"medium":"sharp";$("edFwSnow").checked=L.fw_snow!==false;
+  $("edFwExact").value=L.fw_exact;$("edFwExactV").textContent=L.fw_exact<.35?"loose":L.fw_exact<.7?"medium":"sharp";$("edFwSnow").checked=L.fw_snow!==false;seg("edFwSnowOrder",L.fw_snow_order||"front");$("edFwSnowRow").style.display=L.fw_snow!==false?"":"none";
   $("edFwSize").value=L.fw_size;$("edFwSizeV").textContent=Math.round(L.fw_size*100)+"%";$("edFwTrail").value=L.fw_trail;$("edFwTrailV").textContent=Math.round(L.fw_trail*100)+"%";
   $("edFwEvery").value=String(L.fw_every||1);$("edFwRockets").checked=L.fw_rockets!==false;
   const tot=FW_MIXT.reduce((a,[k])=>a+(+(L.fw_mix||{})[k]||0),0);
@@ -1301,7 +1302,7 @@ function fwInit(){
   seg("edFg",LOOK.fg,v=>{if(v==="custom"&&!LOOK.fg_image){if(ASSETS.foreground.length)return useFg(ASSETS.foreground[0]);return $("edFgFile").click()}setLook({fg:v})});
   $("edFgLight").onchange=e=>setLook({fg_light:e.target.checked});
   document.querySelectorAll(".fwc").forEach(c=>c.oninput=()=>{const cs=(LOOK.fw_colors||[]).slice();cs[+c.dataset.i]=c.value;setLook({fw_colors:cs})});
-  $("edFwExact").oninput=e=>setLook({fw_exact:+e.target.value});$("edFwSnow").onchange=e=>setLook({fw_snow:e.target.checked});
+  $("edFwExact").oninput=e=>setLook({fw_exact:+e.target.value});$("edFwSnow").onchange=e=>setLook({fw_snow:e.target.checked});seg("edFwSnowOrder",LOOK.fw_snow_order||"front",v=>setLook({fw_snow_order:v}));
   $("edFwSize").oninput=e=>setLook({fw_size:+e.target.value});$("edFwTrail").oninput=e=>setLook({fw_trail:+e.target.value});
   $("edFwEvery").onchange=e=>setLook({fw_every:+e.target.value});$("edFwRockets").onchange=e=>setLook({fw_rockets:e.target.checked});
   $("edFwMix").oninput=e=>{const k=e.target.dataset.mix;if(k)setLook({fw_mix:Object.assign({},LOOK.fw_mix,{[k]:+e.target.value})})};
