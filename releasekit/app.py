@@ -314,7 +314,7 @@ def build_job(kind, r, p):
             [t["path"] for t in tracks], img, os.path.join(out, "youtube" if not ex else "videos", packages.safe(name) + ext),
             [t.get("title") or os.path.basename(t["path"]) for t in tracks], say(title), by,
             p.get("resolution", "1080p"), p.get("visualizer") or vis_global, float(p.get("gap", 1.0)), prog, cancel,
-            opts=vopts, size=size, enc=enc)
+            opts=vopts, size=size, enc=enc, text=bool(text))
 
     if kind == "long_video":
         idx = p.get("tracks")  # list of indexes, or None for selected track

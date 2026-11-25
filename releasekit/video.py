@@ -332,7 +332,7 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
             is_main = k == vis
             pos_k = pos_main if is_main else (opts.get("vis2_pos") or pos_main)  # layered behind the main one
             chain, pos = reactive.vis_chain(k, w, h, fps, vertical, rgb if is_main else rgb2,
-                                            opts.get("vis_size") or 1.0, pos_k)
+                                            opts.get("vis_size") or 1.0, pos_k, lift=bool(opts.get("_lift")))
             fc += [f"[{a}]{chain}[vis{j}]", f"[{cur}][vis{j}]overlay={pos}:shortest=1[vc{j}]"]
             cur = f"vc{j}"
     else:
@@ -452,6 +452,8 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
         ass = overlay.build(os.path.join(tmp, "overlay.ass"), w, h, dur,
                             reactive.pick_color(opts.get("vis_color", "white"), image), prog_bar, shifted,
                             now_playing=bool(chapters) and opts.get("now_playing", True) is not False)
+        if chapters and opts.get("now_playing", True) is not False:
+            opts = dict(opts, _lift=True)  # bars and waves sit above the "Now playing" line
     if enc or motion != "still" or ass or clips:
         # export settings / moving background / overlays / clips: one pass with everything
         if (motion != "still" or clips) and not _reactive_on(opts):
@@ -497,7 +499,7 @@ def fmt_ts(sec):
 
 @cleans_temp
 def album_video(tracks, image, out, titles=None, album_title="", artist="", resolution="1080p",
-                visualizer="none", gap=1.0, progress=None, cancel=None, opts=None, size=None, enc=None):
+                visualizer="none", gap=1.0, progress=None, cancel=None, opts=None, size=None, enc=None, text=True):
     """All tracks back to back in one video, with chapters, and "now playing" titles if the look has them on."""
     titles = titles or [os.path.splitext(os.path.basename(t))[0] for t in tracks]
     tmp = _mkdtemp(prefix="rk_")
@@ -508,7 +510,7 @@ def album_video(tracks, image, out, titles=None, album_title="", artist="", reso
         chapters.append((t, name))
         t += ff.duration(path) + gap
     tmp_out = os.path.join(tmp, "album_nochap" + os.path.splitext(out)[1])
-    release_video(joined, image, tmp_out, album_title, artist, resolution, visualizer, fade=False,
+    release_video(joined, image, tmp_out, album_title, artist, resolution, visualizer, text=text, fade=False,
                   progress=_stage(progress, 0.15, 0.97), cancel=cancel, opts=opts, size=size, enc=enc,
                   chapters=chapters if len(chapters) > 1 else None)
     # embed chapter markers into the MP4 as well

@@ -50,7 +50,7 @@ def _tint(rgb):
             f":b='min(255\\,val*3)*{b}/255'")
 
 
-def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255), size=1.0, pos="bottom"):
+def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255), size=1.0, pos="bottom", lift=False):
     """ffmpeg filter text that turns an audio stream into a transparent visualizer layer, and where to put it.
     size: 0.6-1.6 times the normal size. pos: bottom, middle or top (bar and wave styles)."""
     hexc = "0x%02x%02x%02x" % rgb
@@ -59,6 +59,8 @@ def vis_chain(kind, w, h, fps, vertical=False, rgb=(255, 255, 255), size=1.0, po
     vw = ev(min(w * 0.96, w * (0.86 if vertical else 0.7) * (1 + (size - 1) * 0.6)))
     vh = ev(h * (0.12 if vertical else 0.2) * size)
     bottom = int(h * (0.1 if vertical else 0.08))
+    if lift:  # "Now playing" lives along the bottom: sit above it
+        bottom = max(bottom, int(min(w, h) * 0.16))
     place = {"middle": "(W-w)/2:(H-h)/2", "top": f"(W-w)/2:{int(h * 0.16)}"}.get(pos, f"(W-w)/2:H-h-{bottom}")
     if kind in ("bars", "mirror"):
         vh = ev(h * (0.14 if vertical else 0.22) * (0.5 if kind == "mirror" else 1) * size)

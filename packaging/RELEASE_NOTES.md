@@ -4,6 +4,11 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.7.4
+- **Choose the text on playlist videos:** a new "Text on the video" choice in the Playlist video form: title and "Now playing", only "Now playing", only the title, or **no text at all** (the progress bar then shows without the time). YouTube chapters are still added to the file.
+- Playlist videos now follow the Title and artist layer's on/off switch.
+- Bars and waveforms sit above the "Now playing" line instead of on top of it.
+
 ### New in 1.7.3
 - **Moving visualizers render a little faster again:** the drawn layer (3D Pipes, particles, ring, starfield…) is laid over the background without a needless color conversion on every frame.
 
