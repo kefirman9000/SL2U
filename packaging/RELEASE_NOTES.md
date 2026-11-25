@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.8
+- **The finale is one at a time too.** It now follows the "At once" choice like the rest of the show (the preview often shows the finale, because it plays the loudest part of the song, which is usually near the end). To have the finale set lots off together, tick "Let the finale set off many at once".
+
 ### New in 1.8.7
 - **Fireworks go off one at a time.** A new "At once" choice in the Fireworks layer: **One at a time** (the new default: the next one goes off on the first beat after the last one has faded), up to 2, up to 3, or no limit (how it was before). In a mixed show, each beat picks one kind instead of setting several off together.
 - **The finale can still go big:** "The finale can have many at once" (on by default) under the timeline's finale settings.

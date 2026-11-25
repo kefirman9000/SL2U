@@ -400,7 +400,7 @@ class Show:
             limit = max(0, min(10, int(o.get("fw_max", 1))))
         except (TypeError, ValueError):
             limit = 1
-        fin_big = o.get("fw_finale_big", True) is not False
+        fin_big = o.get("fw_finale_many") is True  # off unless asked for: the finale follows "At once" too
         busy = []  # when each firework in the sky has faded (seconds)
         self.events = {}
         if audio_path is None:
