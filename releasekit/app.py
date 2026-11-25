@@ -944,6 +944,12 @@ def api_look_preview():
         if gen != _preview_gen["n"]:
             return ("", 204)  # a newer preview was asked for meanwhile
         src, start = _preview_audio(b.get("track"))
+        at = b.get("at")
+        if isinstance(at, (int, float)) and at >= 0 and src == b.get("track"):  # "preview from here" on a timeline
+            try:
+                start = max(0.0, min(float(at), ff.duration(src) - 1.0))
+            except Exception:
+                pass
         opts = {k: style.get(k) for k in video.STYLE_KEYS if style.get(k) not in (None, "")}
         if opts.get("bump") == "logo" and not (opts.get("logo") and os.path.isfile(opts["logo"])):
             opts["bump"] = "cover"

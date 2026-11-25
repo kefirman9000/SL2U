@@ -4,6 +4,16 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.4
+- **Fireworks go on for the whole video.** With a timeline, the first part starts with the song, and after the finale the show carries on to the end instead of stopping. A finale typed in past the end of the song is moved so it still happens.
+- **Finale "At the end":** one click puts the finale at the very end of the song, whatever its length. The quick starts now use it.
+- **Drag the timeline:** the bar is now the real length of your song, with a time line under it. Drag the white handles to move where a part starts, drag the finale to move it and its edge to change how long it lasts, and double-click to add a part. Click the time line to preview the video from that moment.
+- **"How many" can be 0** for a quiet stretch in a show.
+- **Smart select** in the foreground maker: click the sky once and the app works out where it ends, along the real edges. Not quite right? Click (or scribble on) what should stay, or more of what should go, and it works it out again. Right-click does the other one. A sky that fades from blue to orange is still found as one sky.
+- **Lasso:** draw around an area freehand to remove it, keep only it, or bring it back. It snaps to the real edge nearby, so you can draw loosely.
+- **Feather:** choose how many pixels the edge of a selection blends over, and feather the whole edge up to 30 px.
+- **Clean edge colours:** soft edges no longer keep a sky-coloured halo.
+
 ### New in 1.8.3
 - **Rough paint** in the foreground maker: scribble over what you want gone (sky, mountains, stars). You don't have to be careful at the edges: when you let go, the real edge is found from the colours and blended softly. It won't cross a clear edge like a roof line, and dark spots inside a tree stay. **Rough paint: keep** brings parts back the same way.
 - The magnetic line's tips now say you can trace whatever should stay in front, for example only the rooftops and the tree, so the mountains go too.

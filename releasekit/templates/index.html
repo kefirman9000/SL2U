@@ -86,6 +86,7 @@ body:not(.ember) .counter,body:not(.ember) #readyScore{font-family:var(--pix);fo
 .fge-stage{position:relative;min-height:320px;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px;overflow:hidden}
 .fge-stage canvas{max-width:100%;max-height:72vh;cursor:crosshair;touch-action:none}
 .fge-empty{position:absolute}
+.fge-side{max-height:82vh;overflow:auto;padding-right:4px}
 .fge-side label{display:block;font-size:12.5px;margin-top:8px}
 @media(max-width:820px){.fge-body{grid-template-columns:1fr}}
 .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(760px,94vw);max-height:84vh;display:flex;flex-direction:column}
@@ -198,8 +199,21 @@ details.more[open]>summary{margin-bottom:4px}
 .sw0{width:38px;flex:none}
 .inspector{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel)}
 .fwtl{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
-.tlbar{display:flex;height:30px;border-radius:7px;overflow:hidden;border:1px solid var(--line);margin:8px 0;background:var(--panel2)}
-.tlbar span{display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;border-right:1px solid #0005}
+.tlwrap{position:relative;margin:22px 0 4px;user-select:none;touch-action:none}
+.tlbar{position:relative;height:34px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);cursor:copy}
+.tlbar .sg{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;border-right:1px solid #0005;box-sizing:border-box}
+.tlbar .sg:first-child{border-radius:6px 0 0 6px}.tlbar .sg.last{border-radius:0 6px 6px 0;border-right:0}
+.tlbar .sg.fin{cursor:grab;box-shadow:inset 0 0 0 2px #fff6}.tlbar .sg.fin:active{cursor:grabbing}
+.tlbar .tlh{position:absolute;top:-6px;bottom:-6px;width:14px;margin-left:-7px;cursor:ew-resize;z-index:3}
+.tlbar .tlh::after{content:"";position:absolute;left:5px;top:2px;bottom:2px;width:4px;border-radius:3px;background:#fff;box-shadow:0 0 0 1px #000a}
+.tlbar .tlh:hover::after,.tlbar .tlh.on::after{background:var(--accent)}
+.tlbar .ph{position:absolute;top:-8px;bottom:-8px;width:2px;margin-left:-1px;background:#fff;z-index:2;pointer-events:none;box-shadow:0 0 0 1px #000a}
+.tltip{position:absolute;top:-21px;transform:translateX(-50%);font-size:11px;background:#000;color:#fff;padding:1px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;display:none;z-index:4}
+.tlruler{position:relative;height:18px;cursor:pointer;border-bottom:1px dashed var(--line)}
+.tlruler span{position:absolute;top:2px;transform:translateX(-50%);font-size:10px;color:var(--muted)}
+.tlruler span:first-child{transform:none}.tlruler span:first-child::before{left:0}
+.tlruler span::before{content:"";position:absolute;left:50%;top:-3px;height:4px;border-left:1px solid var(--muted)}
+.tlruler:hover{background:rgba(255,255,255,.03)}
 .fwrow{display:grid;grid-template-columns:72px minmax(0,1fr) minmax(0,.9fr) 28px;gap:6px;align-items:center;margin-top:6px}
 .fwrow input[type=range]{accent-color:var(--accent);padding:0;border:0;background:none}
 .fwrow button{padding:4px 0}
@@ -427,13 +441,14 @@ details.more[open]>summary{margin-bottom:4px}
             <div class="fwtl">
               <label class="chk" style="font-weight:600"><input type="checkbox" id="edFwTl">Plan a show with a timeline</label>
               <div id="edFwTlBox">
-                <div class="tlbar" id="edFwBar"></div>
+                <div class="tlwrap"><div class="tltip" id="edFwTip"></div><div class="tlbar" id="edFwBar"></div><div class="tlruler" id="edFwRuler" title="Click to preview the video from this moment"></div></div>
+                <p class="muted" style="font-size:12px;margin:2px 0 8px"><span id="edFwLen"></span> Drag the white handles to move where a part starts. Drag the finale to move it, and its edge to make it longer or shorter. Double-click the bar to add a part there. Click the time line under it to preview from that moment<span id="edFwAt"></span>.</p>
                 <div id="edFwRows"></div>
                 <div class="row"><button class="b s" id="edFwAdd">＋ Add a part</button></div>
-                <div class="ed-row"><label>Finale at</label><input id="edFwFin" placeholder="e.g. 2:45 (blank = none)" style="flex:1"><label style="min-width:0">for</label><input id="edFwFinLen" type="number" min="3" max="120" style="width:70px"><span class="muted" style="font-size:12px">s</span></div>
+                <div class="ed-row"><label>Finale at</label><input id="edFwFin" placeholder="e.g. 2:45, or end (blank = none)" style="flex:1"><button class="b s" id="edFwFinEnd" title="The finale ends with the song">At the end</button><label style="min-width:0">for</label><input id="edFwFinLen" type="number" min="3" max="120" style="width:70px"><span class="muted" style="font-size:12px">s</span></div>
                 <label class="chk"><input type="checkbox" id="edFwBuild">Build up to the finale over the 20 seconds before</label>
                 <div class="ed-row"><label>Blend parts over</label><input type="range" id="edFwBlend" min="0" max="12" step="1"><span class="val" id="edFwBlendV"></span></div>
-                <p class="muted" style="font-size:12px">Times are in the song (minutes:seconds). Near each change the old type gets rarer as the new one takes over.</p>
+                <p class="muted" style="font-size:12px">Times are in the song (minutes:seconds). The first part starts with the song, and after the finale the show carries on to the end of the video. Near each change the old type gets rarer as the new one takes over. Set "How many" to 0 for a quiet stretch.</p>
               </div>
             </div>
           </div>
@@ -791,9 +806,20 @@ details.more[open]>summary{margin-bottom:4px}
     <div class="fge-stage"><canvas id="fgeCv"></canvas><div class="muted fge-empty" id="fgeEmpty">Choose a photo to start</div></div>
     <div class="fge-side">
       <button class="b p" style="width:100%" onclick="fgeAutoSky()">✨ Remove the sky</button>
-      <p class="muted" style="font-size:12px;margin:6px 0 10px">A quick try for plain skies. To choose exactly what stays (for example, only the village, without the mountains), use the magnetic line below.</p>
+      <p class="muted" style="font-size:12px;margin:6px 0 10px">A quick try for plain skies. For anything else, use ✨ Smart select below: click the sky, and the app works out the rest. To keep only the village without the mountains, also click the mountains.</p>
       <label>Tool</label>
-      <div class="seg wrap" id="fgeTool"><button data-v="lasso">🧲 Magnetic line</button><button data-v="rough_rm">🖌 Rough paint: remove</button><button data-v="rough_keep">🖌 Rough paint: keep</button><button data-v="wand_rm">Wand: remove</button><button data-v="wand_keep">Wand: keep</button><button data-v="erase">Eraser</button><button data-v="restore">Restore brush</button><button data-v="smooth">Soften edge</button></div>
+      <div class="seg wrap" id="fgeTool"><button data-v="smart">✨ Smart select</button><button data-v="free">➰ Lasso</button><button data-v="lasso">🧲 Magnetic line</button><button data-v="rough_rm">🖌 Rough paint: remove</button><button data-v="rough_keep">🖌 Rough paint: keep</button><button data-v="wand_rm">Wand: remove</button><button data-v="wand_keep">Wand: keep</button><button data-v="erase">Eraser</button><button data-v="restore">Restore brush</button><button data-v="smooth">Soften edge</button></div>
+      <div id="fgeSmartBox" class="note" style="margin:8px 0 0;font-size:12px">
+        <div class="seg" id="fgeSmartMode"><button data-v="go">Click what goes (sky)</button><button data-v="stay">Click what stays</button></div>
+        <p id="fgeSmartHint" style="margin:6px 0 0">Click the sky once: the app works out where it ends. Didn't get it right? Click (or scribble) on what should stay, or on more of what should go, and it works it out again. Right-click does the other one.</p>
+        <div class="row" style="margin-top:6px;gap:6px"><button class="b s" onclick="fgeSmartBack()">Undo last click</button><button class="b s" onclick="fgeSmartEnd(true)">Done: start a new selection</button></div></div>
+      <div id="fgeFreeBox" class="note" style="margin:8px 0 0;font-size:12px;display:none">
+        <div class="seg wrap" id="fgeFreeMode"><button data-v="rm">Remove inside</button><button data-v="keep">Keep only inside</button><button data-v="add">Bring back inside</button></div>
+        <p style="margin:6px 0 0">Hold the mouse down and draw around an area. When you let go, the shape closes and is used.</p>
+        <div class="ed-row"><label>Snap to edges</label><input type="range" id="fgeSnap" min="0" max="40" step="1" value="8"><span class="val" id="fgeSnapV"></span></div>
+        <p class="muted" style="margin:0">The line moves up to this far to sit on the real edge, so you can draw loosely.</p></div>
+      <div class="ed-row" id="fgeFeatherRow"><label>Feather</label><input type="range" id="fgeFeather" min="0" max="40" step="1" value="2"><span class="val" id="fgeFeatherV"></span></div>
+      <p class="muted" id="fgeFeatherNote" style="font-size:12px;margin:0">How many pixels the edge of a selection blends over (smart select, lasso and magnetic line).</p>
       <div id="fgeLassoBox" class="note" style="margin:8px 0 0;font-size:12px">
         <span id="fgeLassoHint">Click along the top of whatever should stay in front, like the rooftops and the tree. Anything above the line goes, mountains included. The line sticks to the edges between your clicks. Click the first point again to close a shape.</span>
         <div class="row" style="margin-top:6px;gap:6px"><button class="b s p" id="fgeAbove" onclick="fgeLassoApply('above')">Remove everything above the line</button>
@@ -804,7 +830,8 @@ details.more[open]>summary{margin-bottom:4px}
       <div class="ed-row"><label>Brush size</label><input type="range" id="fgeBrush" min="4" max="160" step="2" value="40"><span class="val" id="fgeBrushV"></span></div>
       <div class="ed-row"><label>Brush softness</label><input type="range" id="fgeHard" min="0" max="1" step="0.05" value="0.5"><span class="val" id="fgeHardV"></span></div>
       <div class="ed-row"><label>Trim the edge</label><input type="range" id="fgeTrim" min="0" max="4" step="1" value="1"><span class="val" id="fgeTrimV"></span></div>
-      <div class="ed-row"><label>Soft edge</label><input type="range" id="fgeSoft" min="0" max="8" step="0.5" value="1.5"><span class="val" id="fgeSoftV"></span></div>
+      <div class="ed-row"><label>Feather the whole edge</label><input type="range" id="fgeSoft" min="0" max="30" step="0.5" value="1.5"><span class="val" id="fgeSoftV"></span></div>
+      <label class="chk"><input type="checkbox" id="fgeDefringe" checked>Clean the edge colours (no sky-coloured halo)</label>
       <label class="chk"><input type="checkbox" id="fgeIslands" checked>Also remove bits floating in the sky (birds, specks)</label>
       <label style="margin-top:10px">See it against</label>
       <div class="seg" id="fgeBack"><button data-v="night">Night sky</button><button data-v="check">Checkerboard</button><button data-v="red">Red</button></div>
@@ -1093,7 +1120,7 @@ function layerInfo(){const L=LOOK,tr=vpl()[+$("exTrack").value||0]||{};
     {k:"center",name:"Center",on:L.bump!=="none",sum:centerSum,warn:L.bump==="logo"&&!L.logo},
     {k:"fg",name:"Foreground",on:L.fg!=="none",warn:L.fg==="custom"&&!L.fg_image,sum:L.fg==="none"?"Off":L.fg==="custom"?(L.fg_image?fileName(L.fg_image):"My picture: none chosen yet"):FG_NAME[L.fg]},
     {k:"vis",name:"Visualizer",on:L.visualizer!=="none",sum:L.visualizer==="none"?"Off":`${VIS_NAME(L.visualizer)}${L.vis2&&L.vis2!=="none"?" + "+VIS_NAME(L.vis2):""} · ${COLORNAME(L.vis_color)} · ${Math.round(L.vis_size*100)}%`},
-    {k:"fw",name:"Fireworks",on:!!L.fireworks,sum:!L.fireworks?"Off":(L.fw_tl?`Show: ${(L.fw_parts||[]).length} part${(L.fw_parts||[]).length===1?"":"s"}${L.fw_finale?", finale at "+L.fw_finale:""}`:FW_NAME[L.fw_effect])+` · ${L.fw_palette==="custom"?"my colours":{multi:"every colour",gold:"gold",pink:"pink and purple",ice:"blue and white",fire:"red and orange",xmas:"Christmas colours"}[L.fw_palette]}`},
+    {k:"fw",name:"Fireworks",on:!!L.fireworks,sum:!L.fireworks?"Off":(L.fw_tl?`Show: ${(L.fw_parts||[]).length} part${(L.fw_parts||[]).length===1?"":"s"}${L.fw_finale?(L.fw_finale==="end"?", finale at the end":", finale at "+L.fw_finale):""}`:FW_NAME[L.fw_effect])+` · ${L.fw_palette==="custom"?"my colours":{multi:"every colour",gold:"gold",pink:"pink and purple",ice:"blue and white",fire:"red and orange",xmas:"Christmas colours"}[L.fw_palette]}`},
     {k:"beat",name:"Beat effects",on:fxOn(L),sum:fxOn(L)?[+L.fx_zoom&&"zoom punch",+L.fx_shake&&"shake",+L.fx_flash&&"flash",L.fx_color&&"colors change"].filter(Boolean).join(" · "):"Off"},
     {k:"bg",name:"Background",on:null,warn:L.bg==="clips"&&!(L.clips||[]).length,sum:L.bg==="clips"?((L.clips||[]).length?`${L.clips.length} video clip${L.clips.length>1?"s":""} · ${L.clip_switch==="full"?"each played through":"changing every "+L.clip_bars+" bar"+(L.clip_bars>1?"s":"")}`:"Video clips: none chosen yet"):`${BGNAME[L.bg]||L.bg} · ${MOVENAME[L.motion]||L.motion}`+(L.picture?` · ${fileName(L.picture)}`:"")}]}
 function renderLayers(){$("edLayers").innerHTML=layerInfo().map(l=>`<div class="layer ${ED.layer===l.k?"sel":""} ${l.on===false?"off":""}" data-l="${l.k}">
@@ -1179,9 +1206,9 @@ const FG_NAME={none:"None",skyline:"City skyline",crowd:"Crowd",mountains:"Mount
 const secs=v=>{v=String(v??"").trim();const m=v.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/);return m?+m[1]*60+ +m[2]:(parseFloat(v)||0)};
 const mmss=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,"0")}`;
 function fwPreset(k){
-  if(k==="newyear")setLook({fireworks:true,fw_effect:"mixed",fw_palette:"multi",fw_tl:true,fw_parts:[{t:"0:00",e:"peony",a:0.5},{t:"0:40",e:"mixed",a:1},{t:"1:20",e:"ring",a:1}],fw_finale:"2:30",fw_finale_len:20,fw_build:true,fg:LOOK.fg==="none"?"skyline":LOOK.fg});
+  if(k==="newyear")setLook({fireworks:true,fw_effect:"mixed",fw_palette:"multi",fw_tl:true,fw_parts:[{t:"0:00",e:"peony",a:0.5},{t:"0:40",e:"mixed",a:1},{t:"1:20",e:"ring",a:1}],fw_finale:"end",fw_finale_len:20,fw_build:true,fg:LOOK.fg==="none"?"skyline":LOOK.fg});
   if(k==="xmas")setLook({fireworks:true,fw_effect:"xmas",fw_palette:"xmas",fw_shape:"all",fw_snow:true,fw_tl:true,fw_mix:{peony:30,willow:15,ring:10,crackle:10,heart:0,xmas:35},
-    fw_parts:[{t:"0:00",e:"xmas",a:0.5},{t:"0:40",e:"mixed",a:1},{t:"1:20",e:"xmas",a:1}],fw_finale:"2:30",fw_finale_len:20,fw_build:true,fg:LOOK.fg==="none"?"mountains":LOOK.fg});
+    fw_parts:[{t:"0:00",e:"xmas",a:0.5},{t:"0:40",e:"mixed",a:1},{t:"1:20",e:"xmas",a:1}],fw_finale:"end",fw_finale_len:20,fw_build:true,fg:LOOK.fg==="none"?"mountains":LOOK.fg});
   if(k==="party")setLook({fireworks:true,fw_effect:"confetti",fw_palette:"multi",fw_tl:false,fw_every:2,fg:LOOK.fg==="none"?"crowd":LOOK.fg});
   toast("Fireworks set up. Change anything you like.")}
 function fwParts(){return (LOOK.fw_parts||[]).map(p=>Object.assign({},p))}
@@ -1200,18 +1227,72 @@ function fwRender(){const L=LOOK;
   if(!$("edFwMix").children.length)$("edFwMix").innerHTML=FW_MIXT.map(([k,n])=>`<div class="ed-row"><label>${n}</label><input type="range" min="0" max="100" step="5" data-mix="${k}"><span class="val" id="fwMix_${k}"></span></div>`).join("");
   FW_MIXT.forEach(([k])=>{const v=+(L.fw_mix||{})[k]||0,el=$("edFwMix").querySelector(`[data-mix=${k}]`);if(document.activeElement!==el)el.value=v;$("fwMix_"+k).textContent=v?Math.round(v/(tot||1)*100)+"%":"never"});
   $("edFwTl").checked=usesTl;$("edFwTlBox").style.display=usesTl?"":"none";$("edFwTlNote").style.display=usesTl?"":"none";$("edFwEffect").style.opacity=usesTl?.55:1;
-  if(document.activeElement!==$("edFwFin"))$("edFwFin").value=L.fw_finale||"";$("edFwFinLen").value=L.fw_finale_len||20;$("edFwBuild").checked=L.fw_build!==false;
+  if(document.activeElement!==$("edFwFin"))$("edFwFin").value=L.fw_finale==="end"?"end":(L.fw_finale||"");$("edFwFinEnd").classList.toggle("p",L.fw_finale==="end");$("edFwFinLen").value=L.fw_finale_len||20;$("edFwBuild").checked=L.fw_build!==false;
   $("edFwBlend").value=L.fw_blend;$("edFwBlendV").textContent=+L.fw_blend?L.fw_blend+" s":"off";
   if(!document.activeElement||!document.activeElement.closest||!document.activeElement.closest("#edFwRows"))
     $("edFwRows").innerHTML='<div class="fwrow muted" style="font-size:12px"><span>Starts at</span><span>Effect</span><span>How many</span><span></span></div>'+parts.map((p,i)=>`<div class="fwrow">
-      <input data-i="${i}" data-k="t" value="${esc(String(p.t))}" aria-label="Start time"><select data-i="${i}" data-k="e">${FW_EFFECTS.map(([v,n])=>`<option value="${v}"${v===p.e?" selected":""}>${n}</option>`).join("")}</select>
-      <input type="range" data-i="${i}" data-k="a" min="0.25" max="3" step="0.25" value="${+p.a||1}" title="${+p.a||1}× per beat"><button class="b s" data-del="${i}" title="Remove this part">×</button></div>`).join("");
-  // the bar: parts, build-up and finale over the song
-  const len=Math.max(30,...(vpl().map(t=>t.duration||0)),secs(L.fw_finale||0)+(+L.fw_finale_len||20)+5,...parts.map(p=>secs(p.t)+20));
-  const cues=parts.map(p=>({t:secs(p.t),e:p.e})).sort((a,b)=>a.t-b.t),fin=L.fw_finale?secs(L.fw_finale):null;
-  let segs=cues.filter(c=>fin===null||c.t<fin);if(fin!==null){if(L.fw_build!==false&&segs.length)segs.push({t:Math.max(segs[segs.length-1].t+1,fin-20),e:segs[segs.length-1].e,build:1});segs.push({t:fin,e:"finale",end:fin+(+L.fw_finale_len||20)})}
-  $("edFwBar").innerHTML=segs.map((c,i)=>{const end=i+1<segs.length?segs[i+1].t:(c.end||len);const nm=c.build?"build-up":FW_NAME[c.e];
-    return `<span style="width:${Math.max(0,(end-c.t)/len*100)}%;background:${FW_COL[c.e]||"#888"};${c.build?"background-image:repeating-linear-gradient(45deg,#0002 0 6px,#0000 6px 12px)":""}" title="${mmss(c.t)} ${nm}">${nm}</span>`}).join("")}
+      ${i===fwFirst(parts)?`<input value="0:00" disabled title="The first part starts with the song">`:`<input data-i="${i}" data-k="t" value="${esc(String(p.t))}" aria-label="Start time">`}<select data-i="${i}" data-k="e">${FW_EFFECTS.map(([v,n])=>`<option value="${v}"${v===p.e?" selected":""}>${n}</option>`).join("")}</select>
+      <input type="range" data-i="${i}" data-k="a" min="0" max="3" step="0.25" value="${p.a===0||p.a==="0"?0:(+p.a||1)}" title="${+p.a===0?"none (a quiet stretch)":(+p.a||1)+"× per beat"}"><button class="b s" data-del="${i}" title="Remove this part">×</button></div>`).join("");
+  fwBar()}
+// the timeline over the whole song: same rules as fireworks.cues() in Python
+var FW={len:{},drag:null,total:60};
+function fwFirst(parts){let k=-1;parts.forEach((p,i)=>{if(k<0||secs(p.t)<secs(parts[k].t))k=i});return k}
+function fwSongLen(){const tr=vpl()[+$("exTrack").value||0];if(!tr||!tr.path)return null;const p=tr.path;
+  if(p in FW.len)return FW.len[p];FW.len[p]=null;
+  api("/api/audio_info",{path:p}).then(j=>{if(j&&j.duration){FW.len[p]=j.duration;fwBar()}}).catch(()=>{});return null}
+function fwCues(L,total){
+  const parts=(L.fw_parts||[]).map((p,i)=>({t:secs(p.t),e:p.e,a:+p.a,i})).filter(p=>FW_NAME[p.e]).sort((a,b)=>a.t-b.t);
+  if(parts.length)parts[0].t=0;
+  let c=parts;const f=L.fw_finale;
+  if(f){const len=Math.max(3,+L.fw_finale_len||20),atEnd=String(f).trim().toLowerCase()==="end";
+    let fin=atEnd?(total?Math.max(0,total-len):null):secs(f);
+    if(fin!==null&&!atEnd&&total&&fin>total-3)fin=Math.max(0,total-len);
+    if(fin!==null){c=parts.filter(p=>p.t<fin);const before=c.length?c[c.length-1]:{t:0,e:L.fw_effect==="finale"?"mixed":L.fw_effect,a:1};
+      if(!c.length&&fin>0)c=[Object.assign({},before,{auto:1})];
+      const bt=Math.max(before.t+1,fin-20);if(L.fw_build!==false&&c.length&&bt<fin-1)c.push({t:bt,e:before.e,build:1});
+      const end=fin+len;c.push({t:fin,e:"finale",end,fin:1,atEnd});
+      const post=parts.filter(p=>p.t>=end);
+      if((!total||end<total-.5)&&!(post.length&&post[0].t-end<1))c.push({t:end,e:before.e,after:1});
+      c=c.concat(post)}}
+  return c.length?c:[{t:0,e:L.fw_effect,auto:1}]}
+function fwBar(){const L=LOOK,parts=L.fw_parts||[],song=fwSongLen();
+  const est=Math.max(60,...parts.map(p=>secs(p.t)+30),L.fw_finale&&L.fw_finale!=="end"?secs(L.fw_finale)+(+L.fw_finale_len||20)+10:0);
+  const len=FW.total=song||est,pc=t=>Math.max(0,Math.min(100,t/len*100));
+  const segs=fwCues(L,len).filter(c=>c.t<len);let html="";
+  segs.forEach((c,k)=>{const end=Math.min(len,k+1<segs.length?segs[k+1].t:len),nm=c.build?"build-up":c.after?FW_NAME[c.e]+" (after the finale)":FW_NAME[c.e];
+    html+=`<div class="sg${c.fin?" fin":""}${k===segs.length-1?" last":""}"${c.fin?' data-h="fin"':""} style="left:${pc(c.t)}%;width:${pc(end)-pc(c.t)}%;background:${FW_COL[c.e]||"#888"};${c.build?"background-image:repeating-linear-gradient(45deg,#0002 0 6px,#0000 6px 12px);":""}${c.after?"opacity:.8;":""}" title="${mmss(c.t)}–${mmss(end)} ${nm}${c.fin?" · drag to move":""}">${nm}</div>`;
+    if(c.i!==undefined&&k>0&&!c.auto)html+=`<div class="tlh" data-h="part" data-i="${c.i}" style="left:${pc(c.t)}%" title="${mmss(c.t)}: drag to move where ${FW_NAME[c.e]} starts"></div>`;
+    if(c.fin)html+=c.atEnd||c.end>=len-.5?`<div class="tlh" data-h="finlen_end" style="left:${pc(c.t)}%" title="Drag to make the finale longer or shorter"></div>`
+      :`<div class="tlh" data-h="finlen" style="left:${pc(c.end)}%" title="Drag to make the finale longer or shorter"></div>`});
+  if(typeof ED.at==="number"&&ED.at<len)html+=`<div class="ph" style="left:${pc(ED.at)}%"></div>`;
+  $("edFwBar").innerHTML=html;
+  const step=[5,10,15,30,60,120,300,600].find(s=>len/s<=8)||900;let ru="";for(let t=0;t<=len+.01;t+=step)ru+=`<span style="left:${pc(t)}%">${mmss(t)}</span>`;
+  $("edFwRuler").innerHTML=ru;
+  const tr=vpl()[+$("exTrack").value||0];
+  $("edFwLen").textContent=song?`The bar is the whole of "${tr.title||"the song"}" (${mmss(song)}).`:tr?"":"Add a track to see the bar at the song's real length.";
+  $("edFwAt").innerHTML=typeof ED.at==="number"?` (now previewing from ${mmss(ED.at)} · <a href="#" onclick="ED.at=null;fwBar();edRefresh();return false">back to the loudest part</a>)`:""}
+function fwFinT(){const c=fwCues(LOOK,FW.total).find(c=>c.fin);return c?c.t:null}
+function fwDragInit(){const bar=$("edFwBar"),tip=$("edFwTip");
+  const tAt=e=>{const r=bar.getBoundingClientRect();return Math.max(0,Math.min(FW.total,(e.clientX-r.left)/r.width*FW.total))};
+  const showTip=(t,txt)=>{tip.style.display="block";tip.style.left=(t/FW.total*100)+"%";tip.textContent=txt};
+  bar.addEventListener("pointerdown",e=>{const h=e.target.closest("[data-h]");if(!h||e.button)return;e.preventDefault();bar.setPointerCapture(e.pointerId);
+    FW.drag={kind:h.dataset.h,i:+h.dataset.i,t0:tAt(e),fin0:fwFinT(),len0:Math.max(3,+LOOK.fw_finale_len||20),moved:false};h.classList.add("on")});
+  bar.addEventListener("pointermove",e=>{const d=FW.drag;if(!d)return;const t=tAt(e),T=FW.total;
+    if(!d.moved&&Math.abs(t-d.t0)<T*.004)return;d.moved=true;
+    if(d.kind==="part"){const ps=fwParts();if(!ps[d.i])return;const nt=Math.max(1,Math.round(t));ps[d.i].t=mmss(nt);LOOK.fw_parts=ps;showTip(nt,`${FW_NAME[ps[d.i].e]} from ${mmss(nt)}`)}
+    else if(d.kind==="fin"){let nf=Math.max(0,Math.min(T-d.len0,d.fin0+(t-d.t0)));
+      if(nf>=T-d.len0-.75){LOOK.fw_finale="end";showTip(T-d.len0,"Finale at the end of the song")}else{nf=Math.round(nf);LOOK.fw_finale=mmss(nf);showTip(nf,`Finale at ${mmss(nf)}`)}}
+    else if(d.kind==="finlen"){const nl=Math.max(3,Math.min(120,Math.round(t-d.fin0)));LOOK.fw_finale_len=nl;showTip(d.fin0+nl,`Finale for ${nl} s`)}
+    else if(d.kind==="finlen_end"){const nl=Math.max(3,Math.min(120,Math.round(T-t)));LOOK.fw_finale_len=nl;showTip(T-nl,`Finale: the last ${nl} s`)}
+    fwBar()});
+  const up=()=>{const d=FW.drag;if(!d)return;FW.drag=null;tip.style.display="none";if(!d.moved)return fwBar();
+    const ps=fwParts().sort((a,b)=>secs(a.t)-secs(b.t));setLook({fw_parts:ps,fw_finale:LOOK.fw_finale,fw_finale_len:LOOK.fw_finale_len})};
+  bar.addEventListener("pointerup",up);bar.addEventListener("pointercancel",up);
+  bar.addEventListener("dblclick",e=>{if(e.target.closest(".tlh"))return;const t=Math.max(1,Math.round(tAt(e))),c=fwCues(LOOK,FW.total).filter(c=>c.t<=t).pop();
+    const e2=c&&!c.fin&&FW_NAME[c.e]?(c.e==="mixed"?"peony":"mixed"):"mixed";
+    const ps=fwParts();ps.push({t:mmss(t),e:e2,a:1});ps.sort((a,b)=>secs(a.t)-secs(b.t));setLook({fw_parts:ps,fireworks:true});toast(`Added a part at ${mmss(t)}. Choose its effect in the list.`)});
+  $("edFwRuler").addEventListener("click",e=>{const r=e.currentTarget.getBoundingClientRect(),t=Math.max(0,Math.min(FW.total,(e.clientX-r.left)/r.width*FW.total));
+    ED.at=Math.round(t*10)/10;fwBar();edRefresh();toast(`Previewing from ${mmss(ED.at)}`)})}
 function fwInit(){
   $("edFwEffect").innerHTML=FW_EFFECTS.map(([v,n])=>`<button data-v="${v}">${n}</button>`).join("");
   $("edFwShape").innerHTML=FW_SHAPES.map(([v,n])=>`<button data-v="${v}">${n}</button>`).join("");
@@ -1225,7 +1306,9 @@ function fwInit(){
   $("edFwEvery").onchange=e=>setLook({fw_every:+e.target.value});$("edFwRockets").onchange=e=>setLook({fw_rockets:e.target.checked});
   $("edFwMix").oninput=e=>{const k=e.target.dataset.mix;if(k)setLook({fw_mix:Object.assign({},LOOK.fw_mix,{[k]:+e.target.value})})};
   $("edFwTl").onchange=e=>setLook({fw_tl:e.target.checked,fireworks:true});
-  $("edFwFin").onchange=e=>{const v=e.target.value.trim();setLook({fw_finale:v?mmss(secs(v)):""})};
+  $("edFwFin").onchange=e=>{const v=e.target.value.trim();setLook({fw_finale:!v?"":/^(end|at the end)$/i.test(v)?"end":mmss(secs(v))})};
+  $("edFwFinEnd").onclick=()=>setLook({fw_finale:"end",fireworks:true,fw_tl:true});fwDragInit();
+  $("exTrack").addEventListener("change",()=>{ED.at=null;fwBar()});
   $("edFwFinLen").onchange=e=>setLook({fw_finale_len:Math.max(3,Math.min(120,+e.target.value||20))});
   $("edFwBuild").onchange=e=>setLook({fw_build:e.target.checked});$("edFwBlend").oninput=e=>setLook({fw_blend:+e.target.value});
   $("edFwRows").addEventListener("change",e=>{const el=e.target,i=+el.dataset.i,k=el.dataset.k;if(!k)return;const ps=fwParts();
@@ -1235,7 +1318,7 @@ function fwInit(){
   dropZone($("edFgBox"),"foreground");loadAssets("foreground");fgeInit()}
 
 // ---------- foreground editor: make the sky of a photo see-through
-const FGE={pts:[],live:[],closed:false,img:null,w:0,h:0,rgb:null,soft:null,mask:null,undo:[],tool:"lasso",back:"night",drag:false,name:"foreground"};
+const FGE={pts:[],live:[],closed:false,img:null,w:0,h:0,rgb:null,soft:null,mask:null,undo:[],tool:"smart",back:"night",drag:false,name:"foreground",smart:null,smartMode:"go",free:null,freeMode:"rm",work:null};
 function fgeClose(){$("fge").classList.remove("on")}
 function fgeOpen(src){$("fge").classList.add("on");
   if(!src){$("fgeEmpty").style.display="";return}
@@ -1244,7 +1327,7 @@ function fgeOpen(src){$("fge").classList.add("on");
   else{FGE.name=src.name.replace(/\.[^.]+$/,"");im.src=URL.createObjectURL(src)}}
 function fgeLoad(im){const k=Math.min(1,1920/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k);
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(im,0,0,w,h);
-  const d=x.getImageData(0,0,w,h).data;Object.assign(FGE,{img:c,w,h,rgb:new Uint8ClampedArray(w*h*3),mask:new Uint8Array(w*h),undo:[]});
+  const d=x.getImageData(0,0,w,h).data;Object.assign(FGE,{img:c,w,h,rgb:new Uint8ClampedArray(w*h*3),mask:new Uint8Array(w*h),undo:[],work:null,smart:null,free:null});
   for(let i=0,j=0;i<d.length;i+=4,j+=3){FGE.rgb[j]=d[i];FGE.rgb[j+1]=d[i+1];FGE.rgb[j+2]=d[i+2];FGE.mask[i/4]=d[i+3]}
   // a lightly blurred copy, so noise and grain don't stop the fill
   const b=document.createElement("canvas");b.width=w;b.height=h;const bx=b.getContext("2d");bx.filter="blur(1.2px)";bx.drawImage(c,0,0);
@@ -1280,9 +1363,9 @@ function fgeSkySeeds(tol){  // the sky along the top edge: smooth stretches, pre
   const best=Math.max(...sc.map(x=>x.sky));const pick=best>0?sc.filter(x=>x.sky>=best*.5):[sc.sort((a,b)=>b.n-a.n)[0]];
   return pick.flatMap(x=>{const o=[];for(let i=x.r[0];i<x.r[1];i++)o.push(i);return o})}
 function fgePush(){FGE.undo.push(FGE.mask.slice());if(FGE.undo.length>25)FGE.undo.shift()}
-function fgeUndo(){if(!FGE.undo.length)return toast("Nothing to undo");FGE.mask=FGE.undo.pop();fgeDraw()}
-function fgeReset(){if(!FGE.img)return;fgePush();FGE.mask=FGE.base.slice();fgeDraw()}
-function fgeAutoSky(){if(!FGE.img)return $("fgeFile").click();const {w,h}=FGE,tol=+$("fgeTol").value;fgePush();
+function fgeUndo(){if(!FGE.undo.length)return toast("Nothing to undo");if(FGE.smart&&FGE.smart.strokes.length)FGE.smart.strokes.pop();else FGE.smart=null;FGE.mask=FGE.undo.pop();fgeDraw()}
+function fgeReset(){if(!FGE.img)return;FGE.smart=null;fgePush();FGE.mask=FGE.base.slice();fgeDraw()}
+function fgeAutoSky(){if(!FGE.img)return $("fgeFile").click();const {w,h}=FGE,tol=+$("fgeTol").value;FGE.smart=null;fgePush();
   const seeds=new Set(fgeSkySeeds(tol));if(!seeds.size){FGE.undo.pop();return toast("No sky found along the top edge. Use the wand on the sky instead.",5000)}
   // each column from the top down: still sky while it is smooth, has no edge and looks like the sky above it.
   // Small bright things (stars, birds) are stepped over; the first real thing (a roof, a tree, a hill) ends it.
@@ -1403,14 +1486,112 @@ function fgeLassoUi(){const n=FGE.pts.length;$("fgeAbove").disabled=n<2||FGE.clo
   $("fgeLassoHint").textContent=!n?"Click along the top of whatever should stay in front, like the rooftops and the tree. Anything above the line goes, mountains included. The line sticks to the edges between your clicks. Click the first point again to close a shape."
     :FGE.closed?"Shape closed. Remove or keep what's inside it."
     :"Keep clicking along the edge. Go all the way across, then press 'Remove everything above the line'. Or click the first point to close a shape.";fgeDraw(true)}
-function fgeLassoApply(mode){const path=fgeLassoPath();if(path.length<2)return;const {w,h}=FGE;fgePush();
+function fgeLassoApply(mode){const path=fgeLassoPath();if(path.length<2)return;const {w,h}=FGE;FGE.smart=null;fgePush();
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.beginPath();
   if(mode==="above"){const L=path[0][0]<path[path.length-1][0]?path:path.slice().reverse();  // left to right, out to both edges, then over the top
     x.moveTo(0,L[0][1]);for(const [px,py] of L)x.lineTo(px+.5,py+.5);x.lineTo(w,L[L.length-1][1]);x.lineTo(w,0);x.lineTo(0,0)}
   else{path.forEach(([px,py],i)=>i?x.lineTo(px+.5,py+.5):x.moveTo(px+.5,py+.5))}
-  x.closePath();x.fill();const d=x.getImageData(0,0,w,h).data,m=FGE.mask;
-  for(let i=0;i<w*h;i++){const inside=d[i*4+3]>127;if(mode==="in_keep"){if(!inside)m[i]=0}else if(inside)m[i]=0}
+  x.closePath();x.fill();const d=x.getImageData(0,0,w,h).data,m=FGE.mask,bin=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++)bin[i]=d[i*4+3]>127?1:0;const a=fgeFeatherA(bin,+$("fgeFeather").value);
+  for(let i=0;i<w*h;i++)m[i]=Math.min(m[i],mode==="in_keep"?a[i]:255-a[i])
   fgeLassoClear();fgeDraw();toast(mode==="above"?"Removed everything above the line":mode==="in_rm"?"Removed the inside of the shape":"Kept only the inside of the shape")}
+// ---- smart select: click (or scribble) on what goes and on what stays; the split is worked out from colours and edges
+// (a seeded watershed: both sides grow from the clicks, cheaply through similar colours and slowly across edges, and
+// meet at the strongest edge between them). Worked out on a smaller copy, then the edge is redone at full size.
+const fgeCd=(C,a,r,g,b)=>{const dr=C[a*3]-r,dg=C[a*3+1]-g,db=C[a*3+2]-b;return Math.sqrt(dr*dr*.3+dg*dg*.59+db*db*.11)*1.7};
+function fgeKmeans(C,idx,k){if(!idx.length)return [];k=Math.min(k,idx.length);const cs=[];
+  for(let i=0;i<k;i++){const j=idx[Math.floor((i+.5)*idx.length/k)];cs.push([C[j*3],C[j*3+1],C[j*3+2]])}
+  for(let it=0;it<8;it++){const s=cs.map(()=>[0,0,0,0]);
+    for(const j of idx){let b=0,bd=1e9;for(let c=0;c<k;c++){const d=fgeCd(C,j,cs[c][0],cs[c][1],cs[c][2]);if(d<bd){bd=d;b=c}}const t=s[b];t[0]+=C[j*3];t[1]+=C[j*3+1];t[2]+=C[j*3+2];t[3]++}
+    s.forEach((t,c)=>{if(t[3])cs[c]=[t[0]/t[3],t[1]/t[3],t[2]/t[3]]})}
+  return cs}
+// C: rgb per pixel, G: edge strength, lab0: 0 = to decide, 1 = goes, 2 = stays. near (optional): only seeds marked there
+// describe each side's colours; pull (optional, [for goes, for stays]) makes a side dearer away from a drawn line. Returns the labels (1 or 2) for every pixel. First mostly by the edges; then again with
+// each side's colours taken from that first result (so a sky that fades from blue to orange is still one sky).
+function fgeSegment(C,G0,w,h,lab0,near,pull){const N=w*h,G=Float32Array.from(G0);
+  // edge strength isn't measured on the outer border: copy it in, or one side sneaks round along the frame
+  if(w>2&&h>2){for(let x=0;x<w;x++){G[x]=G[w+Math.min(w-2,Math.max(1,x))];G[N-w+x]=G[N-2*w+Math.min(w-2,Math.max(1,x))]}
+    for(let y=0;y<h;y++){const r=Math.min(h-2,Math.max(1,y))*w;G[y*w]=G[r+1];G[y*w+w-1]=G[r+w-2]}}
+  const sample=(L,lab,ok)=>{const all=[];for(let j=0;j<N;j++)if(lab[j]===L&&ok(j))all.push(j);
+    if(all.length<=3000)return all;const o=[],st=all.length/3000;for(let k=0;k<3000;k++)o.push(all[Math.floor(k*st)]);return o};
+  let mg=fgeKmeans(C,sample(1,lab0,j=>!near||near[j]),6),ms=fgeKmeans(C,sample(2,lab0,j=>!near||near[j]),6);
+  if(!mg.length||!ms.length){const lab=lab0.slice();for(let j=0;j<N;j++)if(!lab[j])lab[j]=mg.length?1:2;return lab}
+  const NB=1024,P1=new Uint16Array(N),P2=new Uint16Array(N);
+  const nb=(j,f)=>{const x=j%w;if(x>0)f(j-1);if(x<w-1)f(j+1);if(j>=w)f(j-w);if(j<N-w)f(j+w)};
+  const pass=(kd,ka)=>{const dm=(cs,j)=>{let b=1e9;for(const c of cs){const d=fgeCd(C,j,c[0],c[1],c[2]);if(d<b)b=d}return b};
+    for(let j=0;j<N;j++){if(lab0[j])continue;const dg=dm(mg,j),ds=dm(ms,j),e=G[j];
+      const p1=pull?pull[0][j]:0,p2=pull?pull[1][j]:0;
+      P1[j]=Math.min(NB-1,e+kd*Math.max(0,dg-ds)+ka*dg+p1)|0;P2[j]=Math.min(NB-1,e+kd*Math.max(0,ds-dg)+ka*ds+p2)|0}
+    const lab=lab0.slice(),B=Array.from({length:NB},()=>[]);
+    for(let j=0;j<N;j++){const L=lab[j];if(!L)continue;nb(j,q=>{if(!lab[q])B[(L===1?P1:P2)[q]].push(q*2+L-1)})}
+    for(let lv=0;lv<NB;lv++){const b=B[lv];while(b.length){const v=b.pop(),q=v>>1,L=(v&1)+1;if(lab[q])continue;lab[q]=L;
+        nb(q,r=>{if(!lab[r])B[Math.max(lv,(L===1?P1:P2)[r])].push(r*2+L-1)})}}
+    for(let j=0;j<N;j++)if(!lab[j])lab[j]=2;return lab};
+  const first=pass(.3,0),free=j=>!lab0[j]||(!near||near[j]);
+  const g2=fgeKmeans(C,sample(1,first,free),8),s2=fgeKmeans(C,sample(2,first,free),8);
+  if(!g2.length||!s2.length)return first;mg=g2;ms=s2;
+  return pass(FGE_KD,FGE_KA)}
+var FGE_KD=.8,FGE_KA=.08;  // how much each side's colours count next to the edges
+function fgeWork(){if(FGE.work)return FGE.work;const {w,h}=FGE,S=FGE.soft,k=Math.min(1,640/Math.max(w,h)),ww=Math.max(2,Math.round(w*k)),wh=Math.max(2,Math.round(h*k));
+  const C=new Float32Array(ww*wh*3),n=new Float32Array(ww*wh);
+  for(let y=0;y<h;y++){const yy=Math.min(wh-1,Math.floor(y*k));for(let x=0;x<w;x++){const j=yy*ww+Math.min(ww-1,Math.floor(x*k)),i=(y*w+x)*3;C[j*3]+=S[i];C[j*3+1]+=S[i+1];C[j*3+2]+=S[i+2];n[j]++}}
+  for(let j=0;j<ww*wh;j++){const d=n[j]||1;C[j*3]/=d;C[j*3+1]/=d;C[j*3+2]/=d}
+  const G=new Float32Array(ww*wh),ch=(j,c)=>C[j*3+c];
+  for(let y=1;y<wh-1;y++)for(let x=1;x<ww-1;x++){const j=y*ww+x;let s=0;
+    for(let c=0;c<3;c++){const gx=ch(j-ww+1,c)+2*ch(j+1,c)+ch(j+ww+1,c)-ch(j-ww-1,c)-2*ch(j-1,c)-ch(j+ww-1,c),gy=ch(j+ww-1,c)+2*ch(j+ww,c)+ch(j+ww+1,c)-ch(j-ww-1,c)-2*ch(j-ww,c)-ch(j-ww+1,c);
+      s+=(gx*gx+gy*gy)*[.3,.59,.11][c]}G[j]=Math.sqrt(s)/4*1.7}
+  return FGE.work={k,w:ww,h:wh,C,G}}
+// a yes/no area at full size -> the same area with its outline moved (up to R px) onto the real edge nearby
+function fgeRefineBand(inside,R){const {w,h}=FGE,N=w*h;R=Math.max(1,Math.min(60,Math.round(R)));
+  const dist=new Uint8Array(N).fill(255),q=[];
+  for(let j=0;j<N;j++){const x=j%w,v=inside[j];if((x>0&&inside[j-1]!==v)||(x<w-1&&inside[j+1]!==v)||(j>=w&&inside[j-w]!==v)||(j<N-w&&inside[j+w]!==v)){dist[j]=0;q.push(j)}}
+  if(!q.length)return inside;
+  for(let k=0;k<q.length;k++){const j=q[k],d=dist[j]+1;if(d>3*R)continue;const x=j%w;
+    for(const r of [x>0?j-1:-1,x<w-1?j+1:-1,j>=w?j-w:-1,j<N-w?j+w:-1])if(r>=0&&dist[r]>d){dist[r]=d;q.push(r)}}
+  const lab0=new Uint8Array(N),near=new Uint8Array(N),pg=new Uint8Array(N),ps=new Uint8Array(N),k=24/R;
+  for(let j=0;j<N;j++){const d=dist[j];lab0[j]=d<=R?0:inside[j]?2:1;near[j]=d<=3*R?1:0;
+    if(d<=R){if(inside[j])pg[j]=Math.round(d*k);else ps[j]=Math.round(d*k)}}  // with no edge nearby, the line stays where it was
+  const lab=fgeSegment(FGE.soft,FGE.edge,w,h,lab0,near,[pg,ps]),out=new Uint8Array(N);for(let j=0;j<N;j++)out[j]=lab[j]===2?1:0;return out}
+// yes/no -> 0..255 with the edge blended over about px pixels
+function fgeFeatherA(bin,px){const {w,h}=FGE,N=w*h,a=new Uint8ClampedArray(N);if(!px){for(let j=0;j<N;j++)a[j]=bin[j]?255:0;return a}
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d"),id=x.createImageData(w,h);
+  for(let j=0;j<N;j++){id.data[j*4+3]=bin[j]?255:0}x.putImageData(id,0,0);
+  const c2=document.createElement("canvas");c2.width=w;c2.height=h;const x2=c2.getContext("2d");x2.filter=`blur(${px/2}px)`;x2.drawImage(c,0,0);
+  const d=x2.getImageData(0,0,w,h).data;for(let j=0;j<N;j++)a[j]=d[j*4+3];return a}
+function fgeSmartStart(){if(!FGE.smart)FGE.smart={strokes:[],before:FGE.mask.slice()};return FGE.smart}
+function fgeSmartEnd(say){const had=FGE.smart&&FGE.smart.strokes.length;FGE.smart=null;fgeDraw();if(say)toast(had?"Kept. Your next clicks start a new selection.":"Click the sky (or what should go) to start")}
+function fgeSmartBack(){const s=FGE.smart;if(!s||!s.strokes.length)return toast("No clicks to undo");s.strokes.pop();FGE.undo.pop();fgeSmartRun()}
+function fgeSmartRun(){const s=FGE.smart;if(!s)return;const {w,h}=FGE,W=fgeWork(),k=W.k,N=W.w*W.h,lab0=new Uint8Array(N);
+  if(!s.strokes.length){FGE.mask=s.before.slice();return fgeDraw()}
+  let has=[0,0,0];
+  for(const st of s.strokes){const L=st.go?1:2,r=Math.max(1.5,st.r*k);has[L]=1;
+    for(const [px,py] of st.pts){const cx=px*k,cy=py*k;for(let y=Math.max(0,Math.floor(cy-r));y<=Math.min(W.h-1,Math.ceil(cy+r));y++)for(let x=Math.max(0,Math.floor(cx-r));x<=Math.min(W.w-1,Math.ceil(cx+r));x++)if((x-cx)**2+(y-cy)**2<=r*r)lab0[y*W.w+x]=L}}
+  if(!has[1]){FGE.mask=s.before.slice();fgeDraw();return toast("Now click on what should go (the sky)")}
+  if(!has[2])for(let x=0;x<W.w;x++){const j=(W.h-1)*W.w+x;if(!lab0[j])lab0[j]=2}   // nothing marked to stay: the bottom edge stays
+  const lab=fgeSegment(W.C,W.G,W.w,W.h,lab0),inside=new Uint8Array(w*h);
+  for(let y=0;y<h;y++){const yy=Math.min(W.h-1,Math.floor(y*k))*W.w;for(let x=0;x<w;x++)inside[y*w+x]=lab[yy+Math.min(W.w-1,Math.floor(x*k))]===2?1:0}
+  const ref=k<1?fgeRefineBand(inside,Math.ceil(1/k)+2):inside,a=fgeFeatherA(ref,+$("fgeFeather").value),m=FGE.mask,b=s.before;
+  let gone=0;for(let j=0;j<w*h;j++){m[j]=Math.min(b[j],a[j]);if(a[j]<128)gone++}
+  fgeDraw();$("fgeSmartHint").textContent=`${Math.round(gone/(w*h)*100)}% of the picture goes. Not quite right? Click or scribble on what should stay, or on more of what should go. Right-click does the other one.`}
+// ---- free-hand lasso: draw around an area; on release it closes, snaps to the edges nearby and is used
+function fgeFreeApply(){const pts=FGE.free;FGE.free=null;if(!pts||pts.length<3)return fgeDraw();const {w,h}=FGE,N=w*h;fgePush();
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.beginPath();
+  pts.forEach(([px,py],i)=>i?x.lineTo(px+.5,py+.5):x.moveTo(px+.5,py+.5));x.closePath();x.fill();
+  const d=x.getImageData(0,0,w,h).data;let bin=new Uint8Array(N),n=0;for(let j=0;j<N;j++){bin[j]=d[j*4+3]>127?1:0;n+=bin[j]}
+  if(n<4){FGE.undo.pop();return fgeDraw()}
+  const snap=+$("fgeSnap").value;if(snap)bin=fgeRefineBand(bin,snap);
+  const a=fgeFeatherA(bin,+$("fgeFeather").value),m=FGE.mask,mode=FGE.freeMode,B=FGE.base;
+  for(let j=0;j<N;j++){if(mode==="rm")m[j]=Math.min(m[j],255-a[j]);else if(mode==="keep")m[j]=Math.min(m[j],a[j]);else m[j]=Math.max(m[j],Math.min(B[j],a[j]))}
+  fgeDraw();toast(mode==="rm"?"Removed the inside":mode==="keep"?"Kept only the inside":"Brought back the inside")}
+// clean the edge colours: half see-through pixels take the colour of the solid ones next to them (no sky halo)
+function fgeDefringe(px,alpha,w,h,passes){const N=w*h,solid=new Uint8Array(N),todo=[];
+  for(let j=0;j<N;j++){if(alpha[j]>=240)solid[j]=1;else if(alpha[j]>0)todo.push(j)}
+  for(let p=0;p<passes&&todo.length;p++){const fill=[];
+    for(const j of todo){if(solid[j])continue;const x=j%w;let r=0,g=0,b=0,n=0;
+      for(const q of [x>0?j-1:-1,x<w-1?j+1:-1,j>=w?j-w:-1,j<N-w?j+w:-1,x>0&&j>=w?j-w-1:-1,x<w-1&&j>=w?j-w+1:-1,x>0&&j<N-w?j+w-1:-1,x<w-1&&j<N-w?j+w+1:-1])
+        if(q>=0&&solid[q]){r+=px[q*4];g+=px[q*4+1];b+=px[q*4+2];n++}
+      if(n)fill.push([j,r/n,g/n,b/n])}
+    for(const [j,r,g,b] of fill){px[j*4]=r;px[j*4+1]=g;px[j*4+2]=b;solid[j]=1}}}
 function fgeMaskCanvas(trim,soft){const {w,h}=FGE;let m=FGE.mask;
   for(let t=0;t<trim;t++){const n=m.slice();for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=y*w+x;if(!m[p])continue;
       if((x>0&&!m[p-1])||(x<w-1&&!m[p+1])||(y>0&&!m[p-w])||(y<h-1&&!m[p+w]))n[p]=0}m=n}
@@ -1418,7 +1599,12 @@ function fgeMaskCanvas(trim,soft){const {w,h}=FGE;let m=FGE.mask;
   for(let i=0;i<w*h;i++){id.data[i*4+3]=m[i];id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=255}x.putImageData(id,0,0);
   if(!soft)return c;const c2=document.createElement("canvas");c2.width=w;c2.height=h;const x2=c2.getContext("2d");x2.filter=`blur(${soft}px)`;x2.drawImage(c,0,0);return c2}
 function fgeCut(fast){const {w,h}=FGE,c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(FGE.img,0,0);
-  x.globalCompositeOperation="destination-in";x.drawImage(fgeMaskCanvas(fast?0:+$("fgeTrim").value,+$("fgeSoft").value),0,0);return c}
+  const soft=+$("fgeSoft").value,mc=fgeMaskCanvas(fast?0:+$("fgeTrim").value,soft);
+  if(fast||!$("fgeDefringe").checked){x.globalCompositeOperation="destination-in";x.drawImage(mc,0,0);return c}
+  const id=x.getImageData(0,0,w,h),px=id.data,md=mc.getContext("2d").getImageData(0,0,w,h).data,al=new Uint8Array(w*h);
+  for(let j=0;j<w*h;j++)al[j]=md[j*4+3];
+  fgeDefringe(px,al,w,h,Math.min(40,Math.ceil(soft*2)+(+$("fgeTrim").value)+3));
+  for(let j=0;j<w*h;j++)px[j*4+3]=al[j];x.putImageData(id,0,0);return c}
 function fgeDraw(fast){if(!FGE.img)return;const cv=$("fgeCv"),x=cv.getContext("2d"),{w,h}=FGE;
   if(FGE.back==="red"){x.fillStyle="#d01818";x.fillRect(0,0,w,h)}
   else if(FGE.back==="check"){const s=Math.max(8,w/60|0);for(let yy=0;yy<h;yy+=s)for(let xx=0;xx<w;xx+=s){x.fillStyle=((xx/s+yy/s)&1)?"#bbb":"#eee";x.fillRect(xx,yy,s,s)}}
@@ -1429,16 +1615,31 @@ function fgeDraw(fast){if(!FGE.img)return;const cv=$("fgeCv"),x=cv.getContext("2
   if(FGE.stroke&&FGE.strokeC)x.drawImage(FGE.strokeC,0,0);
   const path=fgeLassoPath().concat(FGE.live||[]);if(FGE.tool==="lasso"&&(path.length||FGE.pts.length)){const lw=Math.max(1.5,w/700);
     for(const [col,wd] of [["#000",lw*2.6],["#ffe14a",lw]]){x.strokeStyle=col;x.lineWidth=wd;x.lineJoin="round";x.beginPath();path.forEach(([px,py],i)=>i?x.lineTo(px+.5,py+.5):x.moveTo(px+.5,py+.5));x.stroke()}
-    FGE.pts.forEach(([px,py],i)=>{x.fillStyle=i?"#ffe14a":"#39ff14";x.strokeStyle="#000";x.lineWidth=lw;x.beginPath();x.arc(px,py,lw*3.2,0,7);x.fill();x.stroke()})}}
+    FGE.pts.forEach(([px,py],i)=>{x.fillStyle=i?"#ffe14a":"#39ff14";x.strokeStyle="#000";x.lineWidth=lw;x.beginPath();x.arc(px,py,lw*3.2,0,7);x.fill();x.stroke()})}
+  const lw=Math.max(1.5,w/700);
+  if(FGE.tool==="smart"&&FGE.smart)for(const st of FGE.smart.strokes){const col=st.go?"#ff3c8c":"#39ff14";x.strokeStyle=col;x.fillStyle=col;x.lineCap=x.lineJoin="round";
+    if(st.pts.length===1){x.beginPath();x.arc(st.pts[0][0],st.pts[0][1],lw*4,0,7);x.fill();x.strokeStyle="#000";x.lineWidth=lw;x.stroke()}
+    else{x.lineWidth=lw*4;x.beginPath();st.pts.forEach(([px,py],i)=>i?x.lineTo(px,py):x.moveTo(px,py));x.stroke()}}
+  if(FGE.free&&FGE.free.length>1){for(const [col,wd,dash] of [["#000",lw*2.6,[]],["#fff",lw,[lw*4,lw*3]]]){x.strokeStyle=col;x.lineWidth=wd;x.setLineDash(dash);x.beginPath();
+      FGE.free.forEach(([px,py],i)=>i?x.lineTo(px,py):x.moveTo(px,py));x.closePath();x.stroke()}x.setLineDash([])}}
 function fgeSave(){if(!FGE.img)return toast("Choose a photo first");const c=fgeCut(false);
   c.toBlob(b=>{uploadAsset("foreground",new File([b],(FGE.name||"foreground")+"-cutout.png",{type:"image/png"}));fgeClose()},"image/png")}
 function fgeInit(){
-  seg("fgeTool",FGE.tool,v=>{FGE.tool=v;$("fgeLassoBox").style.display=v==="lasso"?"":"none";$("fgeRoughNote").style.display=v.startsWith("rough")?"":"none";FGE.live=[];fgeDraw(true)});fgeLassoUi();seg("fgeBack",FGE.back,v=>{FGE.back=v;fgeDraw()});
+  const toolUi=()=>{const v=FGE.tool;$("fgeLassoBox").style.display=v==="lasso"?"":"none";$("fgeRoughNote").style.display=v.startsWith("rough")?"":"none";
+    $("fgeSmartBox").style.display=v==="smart"?"":"none";$("fgeFreeBox").style.display=v==="free"?"":"none";
+    $("fgeFeatherRow").style.display=$("fgeFeatherNote").style.display=["smart","free","lasso"].includes(v)?"":"none"};
+  seg("fgeTool",FGE.tool,v=>{if(v!==FGE.tool)FGE.smart=null;FGE.tool=v;seg("fgeTool",v);toolUi();FGE.live=[];FGE.free=null;fgeDraw(true)});fgeLassoUi();toolUi();
+  seg("fgeSmartMode",FGE.smartMode,v=>{FGE.smartMode=v;seg("fgeSmartMode",v)});seg("fgeFreeMode",FGE.freeMode,v=>{FGE.freeMode=v;seg("fgeFreeMode",v)});seg("fgeBack",FGE.back,v=>{FGE.back=v;fgeDraw()});
   const lab=(id,f)=>{const el=$(id),u=()=>$(id+"V").textContent=f(+el.value);el.addEventListener("input",u);u()};
-  lab("fgeTol",v=>v);lab("fgeBrush",v=>v+" px");lab("fgeHard",v=>v?Math.round(v*100)+"%":"hard");lab("fgeTrim",v=>v?v+" px":"none");lab("fgeSoft",v=>v?v+" px":"hard");
+  lab("fgeTol",v=>v);lab("fgeSnap",v=>v?v+" px":"off");lab("fgeFeather",v=>v?v+" px":"hard");
+  $("fgeFeather").addEventListener("change",()=>{if(FGE.smart&&FGE.smart.strokes.length)fgeSmartRun()});$("fgeDefringe").addEventListener("change",()=>fgeDraw());lab("fgeBrush",v=>v+" px");lab("fgeHard",v=>v?Math.round(v*100)+"%":"hard");lab("fgeTrim",v=>v?v+" px":"none");lab("fgeSoft",v=>v?v+" px":"hard");
   $("fgeTrim").addEventListener("change",()=>fgeDraw());$("fgeSoft").addEventListener("change",()=>fgeDraw());
-  const cv=$("fgeCv");
+  const cv=$("fgeCv");cv.addEventListener("contextmenu",e=>{if(FGE.tool==="smart")e.preventDefault()});
   cv.addEventListener("pointerdown",e=>{if(!FGE.img)return;const [x,y]=fgeAt(e),p=y*FGE.w+x;
+    if(FGE.tool==="smart"){const k=FGE.w/Math.max(1,cv.getBoundingClientRect().width),s=fgeSmartStart();fgePush();
+      s.strokes.push({go:(e.button===2)!==(FGE.smartMode==="go"),pts:[[x,y]],r:Math.max(3,+$("fgeBrush").value/4*k)});
+      FGE.drag=true;cv.setPointerCapture(e.pointerId);return fgeDraw(true)}
+    if(FGE.tool==="free"){FGE.free=[[x,y]];FGE.drag=true;cv.setPointerCapture(e.pointerId);return}
     if(FGE.tool==="lasso")return fgeLassoClick(x,y);fgePush();
     if(FGE.tool.startsWith("wand")){const keep=FGE.tool==="wand_keep";for(const q of fgeFlood([p],+$("fgeTol").value,true))FGE.mask[q]=keep?255:0;fgeDraw();return}
     FGE.drag=true;cv.setPointerCapture(e.pointerId);
@@ -1448,6 +1649,9 @@ function fgeInit(){
   cv.addEventListener("pointermove",e=>{
     if(FGE.tool==="lasso"&&FGE.pts.length&&!FGE.closed){const at=fgeAt(e);if(raf)return;raf=requestAnimationFrame(()=>{raf=0;FGE.live=fgeWire(FGE.pts[FGE.pts.length-1],at);fgeDraw(true)});return}
     if(!FGE.drag)return;const [x,y]=fgeAt(e);
+    if(FGE.tool==="smart"&&FGE.smart){const st=FGE.smart.strokes[FGE.smart.strokes.length-1],[lx,ly]=st.pts[st.pts.length-1];
+      if(Math.hypot(x-lx,y-ly)>st.r*.5){st.pts.push([x,y]);if(!raf)raf=requestAnimationFrame(()=>{raf=0;fgeDraw(true)})}return}
+    if(FGE.tool==="free"&&FGE.free){const [lx,ly]=FGE.free[FGE.free.length-1];if(Math.hypot(x-lx,y-ly)>=2){FGE.free.push([x,y]);if(!raf)raf=requestAnimationFrame(()=>{raf=0;fgeDraw(true)})}return}
     if(FGE.tool.startsWith("rough")){const [px,py]=FGE.lastXY,st=Math.max(1,Math.ceil(Math.hypot(x-px,y-py)/(FGE.lastR*.4||4)));
       for(let i=1;i<=st;i++)fgeRoughDab(Math.round(px+(x-px)*i/st),Math.round(py+(y-py)*i/st));FGE.lastXY=[x,y];
       if(!raf)raf=requestAnimationFrame(()=>{raf=0;fgeDraw(true)});return}
@@ -1457,6 +1661,7 @@ function fgeInit(){
     else if(e.key==="Backspace"&&FGE.pts.length&&document.activeElement.tagName!=="INPUT"){fgeLassoBack();e.preventDefault()}
     else if((e.ctrlKey||e.metaKey)&&e.key==="z"){fgeUndo();e.preventDefault()}});
   cv.addEventListener("pointerup",()=>{if(!FGE.drag)return;FGE.drag=false;
+    if(FGE.tool==="smart"||FGE.tool==="free"){cv.style.cursor="progress";setTimeout(()=>{try{FGE.tool==="smart"?fgeSmartRun():fgeFreeApply()}finally{cv.style.cursor=""}},10);return}
     if(FGE.tool.startsWith("rough")&&FGE.stroke){$("fgeCv").style.cursor="progress";setTimeout(()=>{fgeRoughApply();$("fgeCv").style.cursor=""},10);return}
     fgeDraw()})}
 function useFg(p){setLook({fg:"custom",fg_image:p});renderAssets("foreground")}
@@ -1473,8 +1678,8 @@ async function edRender(){if(!$("t-video").classList.contains("on"))return;
   if(!img)return edMsg("Make or choose a cover on the Artwork tab (or pick a picture in the Background layer) to see the preview.");
   const n=++ED.n;if(ED.ctl)ED.ctl.abort();const ctl=ED.ctl=new AbortController();
   const tr=vpl()[+$("exTrack").value||0];
-  $("edWhat").textContent=tr?`the loudest part of "${tr.title}"`:"a demo beat (add a track to hear yours)";
-  const body={image:img,track:tr?tr.path:null,title:tr?tr.title:(R.title||"Your title"),artist:R.artist||"Artist",aspect:ED.shape,text:LOOK.text_on!==false,vstyle:getStyle()};
+  $("edWhat").textContent=tr?(typeof ED.at==="number"?`"${tr.title}" from ${mmss(ED.at)}`:`the loudest part of "${tr.title}"`):"a demo beat (add a track to hear yours)";
+  const body={image:img,track:tr?tr.path:null,at:tr&&typeof ED.at==="number"?ED.at:null,title:tr?tr.title:(R.title||"Your title"),artist:R.artist||"Artist",aspect:ED.shape,text:LOOK.text_on!==false,vstyle:getStyle()};
   const get=async seconds=>{const r=await fetch("/api/look_preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({seconds},body)),signal:ctl.signal});
     if(r.status===204||n!==ED.n)return null;if(r.status===401){location.reload();return null}
     if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.statusText);const u=URL.createObjectURL(await r.blob());return n===ED.n?u:null};

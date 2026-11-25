@@ -67,28 +67,64 @@ def _sec(v, default=0.0):
 
 # ---------------------------------------------------------------- the show plan (what goes off when)
 
-class Plan:
-    """The single effect, or the timeline: parts blended near each change, a build-up and the finale."""
+def _amount(v):
+    try:
+        return max(0.0, min(4.0, float(1 if v in (None, "") else v)))
+    except (TypeError, ValueError):
+        return 1.0
 
-    def __init__(self, opts):
+
+def cues(opts, total=None):
+    """The timeline as cues [{t, e, a, ...}] covering the whole video (also used by tests and the editor's bar).
+
+    - the earliest part also covers the start of the song, so there is never a silent opening
+    - fw_finale is a time ("2:30") or "end" (the last fw_finale_len seconds of the song)
+    - a finale past the end of the song is moved so it still happens
+    - after the finale the show carries on with the part that came before it"""
+    effect = opts.get("fw_effect") if opts.get("fw_effect") in EFFECTS else "mixed"
+    parts = []
+    for p in opts.get("fw_parts") or []:
+        if isinstance(p, dict) and p.get("e") in EFFECTS:
+            parts.append({"t": _sec(p.get("t")), "e": p["e"], "a": _amount(p.get("a"))})
+    parts.sort(key=lambda p: p["t"])
+    if parts:
+        parts[0]["t"] = 0.0
+    fin = opts.get("fw_finale")
+    c = parts
+    if fin not in (None, "", False):
+        length = max(3.0, _sec(opts.get("fw_finale_len"), 20))
+        if str(fin).strip().lower() == "end":
+            fin = max(0.0, total - length) if total else None
+        else:
+            fin = _sec(fin)
+            if total and fin > total - 3:  # would start after (or just before) the end: still show it
+                fin = max(0.0, total - length)
+        if fin is not None:
+            c = [p for p in parts if p["t"] < fin]
+            before = c[-1] if c else {"t": 0.0, "e": effect if effect != "finale" else "mixed", "a": 1.0}
+            if not c and fin > 0:
+                c = [dict(before)]
+            bt = max(before["t"] + 1, fin - 20)
+            if opts.get("fw_build", True) and c and bt < fin - 1:
+                c.append({"t": bt, "e": before["e"], "a": before["a"], "build": True})
+            end = fin + length
+            c.append({"t": fin, "e": "finale", "a": 1.2, "end": end})
+            post = [p for p in parts if p["t"] >= end]  # parts placed after the finale are kept
+            if (total is None or end < total - 0.5) and not (post and post[0]["t"] - end < 1):
+                c.append({"t": end, "e": before["e"], "a": before["a"], "after": True})  # the show goes on
+            c += post
+    return c or [{"t": 0.0, "e": effect, "a": 1.0}]
+
+
+class Plan:
+    """The single effect, or the timeline: parts blended near each change, a build-up and the finale.
+    total: the song's length in seconds (to place an "end" finale and keep the show going to the end)."""
+
+    def __init__(self, opts, total=None):
         self.effect = opts.get("fw_effect") if opts.get("fw_effect") in EFFECTS else "mixed"
         self.on = bool(opts.get("fw_tl"))
-        parts = []
-        for p in opts.get("fw_parts") or []:
-            if isinstance(p, dict) and p.get("e") in EFFECTS:
-                parts.append({"t": _sec(p.get("t")), "e": p["e"], "a": max(0.0, min(4.0, float(p.get("a") or 1)))})
-        parts.sort(key=lambda p: p["t"])
         self.blend = max(0.0, min(20.0, float(opts.get("fw_blend", 6) or 0)))
-        fin = opts.get("fw_finale")
-        c = parts
-        if fin not in (None, "", False):
-            fin, length = _sec(fin), max(3.0, _sec(opts.get("fw_finale_len"), 20))
-            c = [p for p in parts if p["t"] < fin]
-            if opts.get("fw_build", True) and c:
-                last = c[-1]
-                c.append({"t": max(last["t"] + 1, fin - 20), "e": last["e"], "a": last["a"], "build": True})
-            c.append({"t": fin, "e": "finale", "a": 1.2, "end": fin + length})
-        self.cues = c or [{"t": 0, "e": self.effect, "a": 1}]
+        self.cues = cues(opts, total)
 
     def mix(self, t):
         """[(effect, weight, amount)] at song time t."""
@@ -99,8 +135,6 @@ class Plan:
         while i + 1 < len(c) and c[i + 1]["t"] <= t:
             i += 1
         cur = c[i]
-        if t < cur["t"] or (cur["e"] == "finale" and t > cur.get("end", 1e9)):
-            return []
         a = cur["a"]
         if cur.get("build"):  # more and more towards the finale
             nx = c[i + 1]
@@ -331,7 +365,16 @@ class Show:
         self.opts = o
         self.start = float(start or 0)
         self.n = n_frames
-        self.plan = Plan(o)
+        total = None
+        if audio_path is not None:
+            try:  # the whole song, so an "end" finale is at the end of the song (also in a short clip from it)
+                from . import ff
+                total = ff.duration(audio_path)
+            except Exception:
+                total = None
+        if not total:
+            total = self.start + n_frames / self.fps
+        self.plan = Plan(o, total)
         self.palette = o.get("fw_palette") if o.get("fw_palette") in PALETTES else "multi"
         self.custom = [c for c in (_hex(x) for x in (o.get("fw_colors") or [])) if c] or [(255, 45, 58)]
         mix = o.get("fw_mix") if isinstance(o.get("fw_mix"), dict) else {}
