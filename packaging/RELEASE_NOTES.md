@@ -4,6 +4,10 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.1
+- **Snow is already falling** when the video starts (and rising embers are already in the air), instead of starting at the top.
+- **Softer, more natural flashes:** each firework now only lights the sky right around it, more gently and for a shorter moment, instead of brightening the whole screen. Lightning still lights up a wider part of the sky.
+
 ### New in 1.8.0
 - **Fireworks** (a new layer in the video editor): classic bursts, gold willow, rings, crackle, hearts, a finale, rising embers, lightning and confetti cannons, going off on the beats of your song. Rockets go up early so they burst right on the beat.
 - **Christmas shapes:** snowflakes, trees, presents, Santa, candy canes, stars, bells and "Merry Christmas", with a "How exact" slider (sharp picture or loose like a real show) and falling snow.

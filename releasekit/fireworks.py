@@ -295,7 +295,7 @@ _SPRITES = {}
 
 def _sprite(r):
     """Soft round light, alpha only."""
-    r = max(4, int(r))
+    r = max(4, int(r) // 4 * 4)  # a few sizes, made once
     if r in _SPRITES:
         return _SPRITES[r]
     yy, xx = np.mgrid[-r:r, -r:r]
@@ -389,8 +389,9 @@ class Show:
     def spark(self, x, y, vx, vy, c, **o):
         self.parts.append(P(x, y, vx, vy, c, **o))
 
-    def flash(self, x, y, c, a):
-        self.flashes.append([x, y, c, min(1.0, a)])
+    def flash(self, x, y, c, a, r=240):
+        """Light in the sky around a burst: r is its reach (for a 720 px tall picture)."""
+        self.flashes.append([x, y, c, min(1.0, a), r])
 
     def sky(self):
         return self.rng.uniform(0.14, 0.86) * self.w, self.rng.uniform(self.sky_lo, self.sky_hi) * self.h
@@ -484,6 +485,25 @@ class Show:
             self.spark(x, y, math.cos(a) * v, math.sin(a) * v, _whiten(pts[i % len(pts)][2] if pts else (255, 255, 255), 0.5),
                        life=R.uniform(25, 45), max=45, size=1.4)
 
+    def _prefill(self, song_t):
+        """Snow and embers already on screen at the first frame, as if they had been going for a while."""
+        R, u = self.rng, self.u
+        sw = min(1.0, self.plan.weight(song_t, "xmas")) if self.snow_on else 0
+        for _ in range(int(0.95 * sw * self.h / u)):
+            self.parts.append(P(R.uniform(-20, self.w + 20), R.uniform(-8, self.h), R.uniform(-0.3, 0.3) * u,
+                                R.uniform(0.5, 1.4) * u, (255, 255, 255), kind="snow", size=R.uniform(1, 2.8),
+                                ph=R.uniform(0, 6), life=1e9, max=1e9))
+        ew = self.plan.weight(song_t, "embers")
+        if ew:
+            n = len(self.parts)
+            self.embers(int(160 * self.amount * min(1.5, ew)))
+            for q in self.parts[n:]:
+                age = R.uniform(0, q.life * 0.9)
+                q.life -= age
+                q.y += q.vy * age
+                if q.y < 0:
+                    q.y = R.uniform(0, self.h)
+
     def launch(self, typ, s, frames):
         x, y = self.sky()
         self.rockets.append({"x0": x + self.rng.uniform(-60, 60) * self.u, "x": x, "y": y, "y0": self.h + 20 * self.u,
@@ -496,7 +516,7 @@ class Show:
             self.confetti(s)
         elif typ == "embers":
             self.embers(int(40 * self.amount), True)
-            self.flash(self.w / 2, self.h, (255, 140, 60), 0.25 * s)
+            self.flash(self.w / 2, self.h, (255, 140, 60), 0.2 * s, 320)
         else:
             x, y = self.sky()
             self.burst(typ, x, y, s)
@@ -520,7 +540,7 @@ class Show:
                 by += R.uniform(10, 28) * u
                 br.append((bx, by))
         self.bolts.append({"pts": pts, "br": br, "life": 14.0})
-        self.flash(x, ty * 0.5, (190, 210, 255), 0.9 * s + 0.2)
+        self.flash(x, ty * 0.5, (190, 210, 255), 0.5 * s + 0.15, 480)
 
     def confetti(self, s):
         R, u = self.rng, self.u
@@ -553,6 +573,8 @@ class Show:
         ew = self.plan.weight(song_t, "embers")
         if ew and R.random() < 0.5 * k * self.amount * min(1.5, ew):
             self.embers(1)
+        if i == 0:
+            self._prefill(song_t)
         if self.snow_on:
             sw = min(1.0, self.plan.weight(song_t, "xmas"))
             if sw and R.random() < 0.9 * sw * k:
@@ -588,7 +610,7 @@ class Show:
                         a, v = R.uniform(0, 6.283), R.uniform(0.6, 2.2) * u
                         nxt.append(P(q.x, q.y, math.cos(a) * v, math.sin(a) * v, (255, 255, 255), life=R.uniform(8, 16),
                                      max=16, size=1.3, glow=False))
-                    self.flash(q.x, q.y, (255, 240, 210), 0.06)
+                    self.flash(q.x, q.y, (255, 240, 210), 0.05, 70)
                 continue
             f = q.life / q.max
             if q.kind == "conf":
@@ -676,7 +698,7 @@ class Show:
 
         out = p.finish()
         for fl in self.flashes:
-            fl[3] *= 0.9 ** k
+            fl[3] *= 0.86 ** k
         self.flashes = [fl for fl in self.flashes if fl[3] > 0.02]
         return out
 
@@ -686,13 +708,13 @@ class Show:
             self.light = None
             return
         tot = max(1.0, sum(f[3] for f in self.flashes) / 1.2)  # many at once must not wash everything out
-        spr = _sprite(700 * self.u / gs)
-        r = spr.width // 2
-        for x, y, c, a in sorted(self.flashes, key=lambda f: -f[3])[:6]:
+        for x, y, c, a, rr in sorted(self.flashes, key=lambda f: -f[3])[:6]:
+            spr = _sprite(rr * self.u / gs)
+            r = spr.width // 2
             lay = Image.new("RGBA", spr.size, c + (0,))
-            lay.putalpha(spr.point(lambda v, m=0.2 * a / tot: int(v * m)))
+            lay.putalpha(spr.point(lambda v, m=0.13 * a / tot: int(v * m)))
             _paste(g, lay, x / gs - r, y / gs - r)
-        self.light = [(x, y, c, a / tot) for x, y, c, a in self.flashes]
+        self.light = [(x, y, c, a / tot, rr) for x, y, c, a, rr in self.flashes]
 
 
 def _paste(fr, tile, x, y):
@@ -801,11 +823,12 @@ def lit_foreground(fg, light, gs=3):
     w, h = fg.size
     lw, lh = max(2, w // gs), max(2, h // gs)
     glow = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
-    spr = _sprite(900 * (min(w, h) / 720) / gs)
-    r = spr.width // 2
-    for x, y, c, a in sorted(light, key=lambda f: -f[3])[:6]:
+    u = min(w, h) / 720
+    for x, y, c, a, rr in sorted(light, key=lambda f: -f[3])[:6]:
+        spr = _sprite(rr * 1.5 * u / gs)
+        r = spr.width // 2
         lay = Image.new("RGBA", spr.size, c + (0,))
-        lay.putalpha(spr.point(lambda v, m=0.3 * a: int(v * m)))
+        lay.putalpha(spr.point(lambda v, m=0.2 * a: int(v * m)))
         _paste(glow, lay, x / gs - r, y / gs - r)
     glow = glow.resize((w, h), Image.BILINEAR)
     a = np.asarray(glow).astype(np.float32)
