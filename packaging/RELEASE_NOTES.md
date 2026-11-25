@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.7.1
+- **Long videos are made 2–4 times faster.** Song videos, playlist videos and hour-long mixes with a picture background no longer re-read the picture for every frame, and the moving visualizers (3D Pipes, particles, ring, starfield…) are now drawn while the previous frames are still being encoded. A 6-minute 1080p playlist video with 3D Pipes went from about 20 minutes to 5 on a slow 2-core test machine.
+
 ### New in 1.7.0
 - **Beat effects:** a new layer that hits on every beat of your song: **zoom punch**, **camera shake**, **flash**, and **colors that change with each part of the song**. Start from Gentle, Club or Hard and adjust. The title stays still while the background moves.
 - **Effects on top:** rain, snow, floating dust, light leaks, lens flare and VHS tape, alone or mixed, with a strength slider.

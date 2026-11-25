@@ -194,6 +194,18 @@ def _motion_filter(motion, w, h, fps):
     return ""
 
 
+def _still_once(bg_args):
+    """["-loop", "1", ("-framerate", N,) "-i", pic] -> (["-i", pic], True): ffmpeg would otherwise decode
+    and rescale the picture for every frame, which made long videos several times slower."""
+    a = list(bg_args)
+    if a[:2] != ["-loop", "1"] or "-i" not in a:
+        return a, False
+    i = a.index("-i")
+    if any(x not in ("-loop", "1", "-framerate") and not str(x).isdigit() for x in a[:i]):
+        return a, False
+    return a[i:i + 2] + a[i + 2:], True
+
+
 def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, afade="", with_audio=True,
                     vertical=False, n_frames=None, spin_period=12.0, progress=None, cancel=None, enc=None,
                     motion="still", text_png=None, ass=None, bg_dim=None):
@@ -205,7 +217,7 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     vis2 = opts.get("vis2") or "none"
     rgb2 = reactive.pick_color(opts.get("vis2_color") or opts.get("vis_color", "white"), opts.get("image"))
     n_frames = n_frames or int(round(dur * fps))
-    args = list(bg_args) + (["-ss", str(start)] if start else []) + ["-t", str(dur), "-i", audio_path]
+    args = list(_still_once(bg_args)[0]) + (["-ss", str(start)] if start else []) + ["-t", str(dur), "-i", audio_path]
     darken = ""
     if bg_dim:  # your clips, made darker so the visualizer and text stand out
         k = max(0.1, 1 - float(bg_dim))
@@ -216,7 +228,11 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
         env = reactive.bass_envelope(audio_path, fps, start, dur, n_frames)
         grid = reactive.beat_grid(audio_path, start, dur) if (opts.get("fx_zoom") or opts.get("fx_shake")) else (120.0, 0.0)
         beat = fx.beat_filter(opts, env, w, h, fps, tempfile.mkdtemp(prefix="rk_fx_"), grid)
-    fc = [f"[0:v]fps={fps},scale={w}:{h}{_motion_filter(motion, w, h, fps)}{darken},setsar=1,format=yuv420p{beat}[bg]",
+    head = f"[0:v]fps={fps},scale={w}:{h}"
+    bg_args, still = _still_once(bg_args)
+    if still:  # a picture: decode and scale it once, then repeat that frame (not once per frame)
+        head = f"[0:v]scale={w}:{h},loop=loop=-1:size=1:start=0,setpts=N/{fps}/TB,fps={fps}"
+    fc = [f"{head}{_motion_filter(motion, w, h, fps)}{darken},setsar=1,format=yuv420p{beat}[bg]",
           f"[1:a]{afade + ',' if afade else ''}asplit=2[aout][av]" if with_audio else "[1:a]anull[av]"]
     cur = "bg"
     feed = None

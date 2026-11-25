@@ -257,15 +257,39 @@ def _run(args, total_seconds=None, progress=None, cancel=None, feed=None):
     if feed:
         def _feed():
             raw = proc.stdin.buffer if hasattr(proc.stdin, "buffer") else proc.stdin
-            try:
-                feed(raw.write)
-            except (BrokenPipeError, OSError, ValueError):
-                pass
-            finally:
+            import queue
+            q = queue.Queue(maxsize=8)  # draw the next frames while ffmpeg is still taking the last ones
+
+            def _write():
+                while True:
+                    b = q.get()
+                    if b is None:
+                        break
+                    try:
+                        raw.write(b)
+                    except (BrokenPipeError, OSError, ValueError):
+                        dead.append(1)
+                        while q.get() is not None:  # let the drawing side finish quickly
+                            pass
+                        break
                 try:
                     raw.close()
                 except OSError:
                     pass
+            dead = []
+            wt = threading.Thread(target=_write, daemon=True)
+            wt.start()
+
+            def put(b):
+                if dead:
+                    raise BrokenPipeError
+                q.put(b)
+            try:
+                feed(put)
+            except (BrokenPipeError, OSError, ValueError):
+                pass
+            finally:
+                q.put(None)
         threading.Thread(target=_feed, daemon=True).start()
 
     def _drain():
