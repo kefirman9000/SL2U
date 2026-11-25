@@ -26,6 +26,9 @@ SHAPES = ("snowflake", "tree", "present", "santa", "cane", "star", "bell", "text
 SNOW_TYPES = {"classic": "Classic", "soft": "Soft and fuzzy", "flakes": "Snowflakes", "blizzard": "Blizzard"}
 FOREGROUNDS = {"skyline": "City skyline", "crowd": "Crowd", "mountains": "Mountains and trees"}
 RISE = 0.6  # seconds a rocket takes to go up
+# about how long each kind fills the sky (seconds), for "how many at once"
+SHOW_TIME = {"peony": 1.1, "willow": 2.2, "ring": 1.1, "crackle": 0.8, "heart": 1.2, "xmas": 1.7, "mixed": 1.3,
+             "lightning": 0.3, "confetti": 2.5}
 
 
 def _hex(h):
@@ -164,9 +167,9 @@ class Plan:
             n = int(n) + (1 if rng.random() < n % 1 else 0)
             for _ in range(n):
                 if e == "finale":
-                    out += [("mixed", 0.5)] * (3 + int(round(3 * s)))
+                    out += [("mixed", 0.5, True)] * (3 + int(round(3 * s)))
                 else:
-                    out.append((e, s))
+                    out.append((e, s, False))
         return out
 
 
@@ -393,6 +396,12 @@ class Show:
         self.trail = max(0.0, min(1.0, float(o.get("fw_trail", 0.55))))
         every = max(1, min(4, int(o.get("fw_every") or 1)))
         rockets = o.get("fw_rockets", True) is not False
+        try:  # how many fireworks may fill the sky at once (0 = no limit); the finale can go bigger
+            limit = max(0, min(10, int(o.get("fw_max", 1))))
+        except (TypeError, ValueError):
+            limit = 1
+        fin_big = o.get("fw_finale_big", True) is not False
+        busy = []  # when each firework in the sky has faded (seconds)
         self.events = {}
         if audio_path is None:
             return
@@ -407,7 +416,18 @@ class Show:
                 f = int(round(t * self.fps))
                 b = float(bass[min(len(bass) - 1, max(0, f))]) if len(bass) else 0.5
                 s = min(1.0, 0.45 + 0.55 * b + (0.25 if j % 4 == 0 else 0))
-                for typ, ss in self.plan.shots(s, song_t, rng):
+                shots = self.plan.shots(s, song_t, rng)
+                if limit:
+                    rng.shuffle(shots)  # if only some may go off, a fair pick of what this beat wanted
+                for typ, ss, fin in shots:
+                    if limit and typ == "mixed" and not fin:
+                        typ = self.pick_mixed()  # decided now, so we know how long it fills the sky
+                    if limit and typ != "embers":
+                        busy = [b for b in busy if b > t]
+                        cap = max(limit, 6) if (fin and fin_big) else limit
+                        if len(busy) >= cap:
+                            continue
+                        busy.append(t + SHOW_TIME.get(typ, 1.2) * (0.6 if fin else 1.0))
                     if typ in GROUND or not rockets or t - RISE < 0:
                         self.events.setdefault(f, []).append(("fire", typ, ss))
                     else:  # send it up early so it bursts on the beat
