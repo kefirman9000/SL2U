@@ -23,6 +23,7 @@ MIX_TYPES = ("peony", "willow", "ring", "crackle", "heart", "xmas")
 MIX_DEFAULT = {"peony": 40, "willow": 20, "ring": 12, "crackle": 15, "heart": 5, "xmas": 0}
 PALETTES = ("multi", "gold", "pink", "ice", "fire", "xmas", "custom")
 SHAPES = ("snowflake", "tree", "present", "santa", "cane", "star", "bell", "text")
+SNOW_TYPES = {"classic": "Classic", "soft": "Soft and fuzzy", "flakes": "Snowflakes", "blizzard": "Blizzard"}
 FOREGROUNDS = {"skyline": "City skyline", "crowd": "Crowd", "mountains": "Mountains and trees"}
 RISE = 0.6  # seconds a rocket takes to go up
 
@@ -384,6 +385,10 @@ class Show:
         self.exact = max(0.0, min(1.0, float(o.get("fw_exact", 0.7))))
         self.snow_on = o.get("fw_snow", True) is not False
         self.snow_front = o.get("fw_snow_order", "front") != "behind"
+        self.snow_always = bool(o.get("fw_snow_always"))  # the whole video, not only with Christmas shapes
+        self.snow_type = o.get("fw_snow_type") if o.get("fw_snow_type") in SNOW_TYPES else "classic"
+        self.snow_amt = max(0.1, min(4.0, float(o.get("fw_snow_amount") or 1)))
+        self.snow_a = int(255 * max(0.05, min(1.0, float(o.get("fw_snow_opacity") or 0.85))))
         self.amount = max(0.4, min(1.6, float(o.get("fw_size") or 1)))
         self.trail = max(0.0, min(1.0, float(o.get("fw_trail", 0.55))))
         every = max(1, min(4, int(o.get("fw_every") or 1)))
@@ -534,6 +539,8 @@ class Show:
         """How much it snows: with Christmas shapes, or a mixed show / finale that includes them."""
         if not self.snow_on:
             return 0.0
+        if self.snow_always:
+            return 1.0
         w = self.plan.weight(t, "xmas")
         if self.mix.get("xmas", 0) > 0:
             w += self.plan.weight(t, "mixed") + self.plan.weight(t, "finale")
@@ -543,10 +550,9 @@ class Show:
         """Snow and embers already on screen at the first frame, as if they had been going for a while."""
         R, u = self.rng, self.u
         sw = self.snow_weight(song_t)
-        for _ in range(int(0.95 * sw * self.h / u)):
-            self.parts.append(P(R.uniform(-20, self.w + 20), R.uniform(-8, self.h), R.uniform(-0.3, 0.3) * u,
-                                R.uniform(0.5, 1.4) * u, (255, 255, 255), kind="snow", size=R.uniform(1, 2.8),
-                                ph=R.uniform(0, 6), life=1e9, max=1e9))
+        span = 1.7 if self.snow_type == "blizzard" else 1.0  # blizzard snow is spread over a wider strip (it blows in)
+        for _ in range(int(0.95 * sw * self.snow_amt * span * self.h / u)):
+            self.snowflake(R.uniform(-8, self.h))
         ew = self.plan.weight(song_t, "embers")
         if ew:
             n = len(self.parts)
@@ -557,6 +563,39 @@ class Show:
                 q.y += q.vy * age
                 if q.y < 0:
                     q.y = R.uniform(0, self.h)
+
+    def _snow_speed(self):
+        return {"blizzard": 4.7, "soft": 0.8, "flakes": 0.75}.get(self.snow_type, 1.0)
+
+    def snowflake(self, y=-8.0):
+        """One flake of the chosen snow type, at height y (blizzard snow blows in from the left too)."""
+        R, u, t = self.rng, self.u, self.snow_type
+        if t == "blizzard":
+            x, vx, vy, size = R.uniform(-0.7 * self.w, self.w + 20), R.uniform(1.8, 3.6) * u, R.uniform(2.0, 3.8) * u, R.uniform(0.8, 2.0)
+        elif t == "soft":
+            x, vx, vy, size = R.uniform(-20, self.w + 20), R.uniform(-0.25, 0.25) * u, R.uniform(0.4, 1.1) * u, R.uniform(1.8, 4.0)
+        elif t == "flakes":
+            x, vx, vy, size = R.uniform(-20, self.w + 20), R.uniform(-0.25, 0.25) * u, R.uniform(0.35, 1.0) * u, R.uniform(3.0, 6.5)
+        else:
+            x, vx, vy, size = R.uniform(-20, self.w + 20), R.uniform(-0.3, 0.3) * u, R.uniform(0.5, 1.4) * u, R.uniform(1, 2.8)
+        self.parts.append(P(x, y, vx, vy, (255, 255, 255), kind="snow", size=size, ph=R.uniform(0, 6),
+                            rot=R.uniform(0, 6.283), vr=R.uniform(-0.04, 0.04), life=1e9, max=1e9))
+
+    def draw_snow(self, sd, q):
+        r, A, t, x, y = q.size * self.u, self.snow_a, self.snow_type, q.x, q.y
+        if t == "soft":  # a glow with a brighter middle
+            for rr, a in ((2.2, 0.22), (1.3, 0.5), (0.6, 1.0)):
+                sd.ellipse((x - r * rr, y - r * rr, x + r * rr, y + r * rr), fill=(255, 255, 255, int(A * a)))
+        elif t == "flakes":  # six arms, slowly turning
+            wd = max(1, int(round(r / 3.2)))
+            for i in range(3):
+                a = q.rot + i * math.pi / 3
+                dx, dy = math.cos(a) * r, math.sin(a) * r
+                sd.line([(x - dx, y - dy), (x + dx, y + dy)], fill=(240, 248, 255, A), width=wd)
+        elif t == "blizzard":  # short streaks along the wind
+            sd.line([(x - q.vx * 2.2, y - q.vy * 2.2), (x, y)], fill=(255, 255, 255, A), width=max(1, int(round(r))))
+        else:
+            sd.ellipse((x - r, y - r, x + r, y + r), fill=(255, 255, 255, A))
 
     def launch(self, typ, s, frames):
         x, y = self.sky()
@@ -631,9 +670,9 @@ class Show:
             self._prefill(song_t)
         if self.snow_on:
             sw = self.snow_weight(song_t)
-            if sw and R.random() < 0.9 * sw * k:
-                self.parts.append(P(R.uniform(-20, self.w + 20), -8, R.uniform(-0.3, 0.3) * u, R.uniform(0.5, 1.4) * u,
-                                    (255, 255, 255), kind="snow", size=R.uniform(1, 2.8), ph=R.uniform(0, 6), life=1e9, max=1e9))
+            n = 0.9 * sw * k * self.snow_amt * self._snow_speed()  # faster snow needs more flakes for the same look
+            for _ in range(int(n) + (1 if R.random() < n % 1 else 0)):
+                self.snowflake()
 
         p = self.p
         p.begin()
@@ -691,11 +730,11 @@ class Show:
                 continue
             if q.kind == "snow":
                 q.ph += 0.02 * k
+                q.rot += q.vr * k
                 q.x += (q.vx + math.sin(q.ph) * 0.35 * u) * k
                 q.y += q.vy * k
-                r = q.size * u
-                sd.ellipse((q.x - r, q.y - r, q.x + r, q.y + r), fill=(255, 255, 255, 215))
-                if q.y < self.h + 10:
+                self.draw_snow(sd, q)
+                if q.y < self.h + 10 * u + q.size * u and q.x < self.w + 30 * u:
                     nxt.append(q)
                 continue
             if q.kind == "ember":
@@ -737,7 +776,8 @@ class Show:
                 gr = max(1.0, q.size * 3 * u / gs)
                 g.ellipse((q.x / gs - gr, q.y / gs - gr, q.x / gs + gr, q.y / gs + gr), fill=c + (int(160 * a),))
             nxt.append(q)
-        self.parts = nxt[-6000:]
+        snow = [q for q in nxt if q.kind == "snow"]  # snow is counted on its own, so heavy snow never cuts bursts short
+        self.parts = snow[-5000:] + [q for q in nxt if q.kind != "snow"][-6000:]
 
         bolts = []
         for b in self.bolts:  # lightning

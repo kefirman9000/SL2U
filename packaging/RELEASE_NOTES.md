@@ -4,6 +4,10 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.6
+- **More snow options** in the Fireworks layer: snow with Christmas shapes or **the whole video** (with any fireworks), four kinds (**Classic**, **Soft and fuzzy**, **Snowflakes** that turn as they fall, and a windy **Blizzard**), **how much** snow (20–300%) and its **opacity**.
+- Heavy snow no longer makes bursts disappear early.
+
 ### New in 1.8.5
 - **Snow falls in front of the foreground** (over the rooftops, trees and crowd) while the fireworks stay behind it. In the Fireworks layer, under "Snow falling", you can put the snow behind the foreground again.
 
