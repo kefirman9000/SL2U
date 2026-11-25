@@ -485,10 +485,19 @@ class Show:
             self.spark(x, y, math.cos(a) * v, math.sin(a) * v, _whiten(pts[i % len(pts)][2] if pts else (255, 255, 255), 0.5),
                        life=R.uniform(25, 45), max=45, size=1.4)
 
+    def snow_weight(self, t):
+        """How much it snows: with Christmas shapes, or a mixed show / finale that includes them."""
+        if not self.snow_on:
+            return 0.0
+        w = self.plan.weight(t, "xmas")
+        if self.mix.get("xmas", 0) > 0:
+            w += self.plan.weight(t, "mixed") + self.plan.weight(t, "finale")
+        return min(1.0, w)
+
     def _prefill(self, song_t):
         """Snow and embers already on screen at the first frame, as if they had been going for a while."""
         R, u = self.rng, self.u
-        sw = min(1.0, self.plan.weight(song_t, "xmas")) if self.snow_on else 0
+        sw = self.snow_weight(song_t)
         for _ in range(int(0.95 * sw * self.h / u)):
             self.parts.append(P(R.uniform(-20, self.w + 20), R.uniform(-8, self.h), R.uniform(-0.3, 0.3) * u,
                                 R.uniform(0.5, 1.4) * u, (255, 255, 255), kind="snow", size=R.uniform(1, 2.8),
@@ -576,7 +585,7 @@ class Show:
         if i == 0:
             self._prefill(song_t)
         if self.snow_on:
-            sw = min(1.0, self.plan.weight(song_t, "xmas"))
+            sw = self.snow_weight(song_t)
             if sw and R.random() < 0.9 * sw * k:
                 self.parts.append(P(R.uniform(-20, self.w + 20), -8, R.uniform(-0.3, 0.3) * u, R.uniform(0.5, 1.4) * u,
                                     (255, 255, 255), kind="snow", size=R.uniform(1, 2.8), ph=R.uniform(0, 6), life=1e9, max=1e9))

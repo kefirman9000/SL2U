@@ -4,6 +4,16 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.2
+- **Make a foreground from any photo:** in the Foreground layer, press "Make one from a photo…" to make the sky see-through.
+  - **Magnetic line:** click a few points along the top of the buildings, hills or trees. The line sticks to the edges between your clicks. Then remove everything above it, or close it into a shape and remove or keep the inside.
+  - **Remove the sky:** a one-click try for clear skies.
+  - **Wand:** remove or keep a similar area with one click.
+  - **Soft eraser and restore brushes** with a softness slider, and a **Soften edge** brush to blend rough spots.
+  - Trim and soften the whole edge, see it against a night sky, checkerboard or red, and undo (Ctrl+Z). Backspace removes the last point of the line.
+  - "Touch up the one in use…" reopens your current foreground.
+- Snow now also falls in a mixed show or finale that includes Christmas shapes.
+
 ### New in 1.8.1
 - **Snow is already falling** when the video starts (and rising embers are already in the air), instead of starting at the top.
 - **Softer, more natural flashes:** each firework now only lights the sky right around it, more gently and for a shorter moment, instead of brightening the whole screen. Lightning still lights up a wider part of the sky.
