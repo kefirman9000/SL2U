@@ -320,7 +320,7 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
                                     spin_period, rgb2=rgb2 if vis2 in drawn_k and len(drawn_k) > 1 else None)
         args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", str(fps), "-i", "pipe:0"]
         scale = "" if (lw, lh) == (w, h) else f"scale={w}:{h}:flags=bicubic,"
-        fc += [f"[2:v]{scale}format=rgba[lay]", f"[{cur}][lay]overlay=0:0:format=auto[v1]"]
+        fc += [f"[2:v]{scale}format=yuva420p[lay]", f"[{cur}][lay]overlay=0:0:format=yuv420[v1]"]  # no RGB round trip
         cur = "v1"
         bump = "none"  # already in the layer
     if classic_k:

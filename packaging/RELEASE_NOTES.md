@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.7.3
+- **Moving visualizers render a little faster again:** the drawn layer (3D Pipes, particles, ring, starfield…) is laid over the background without a needless color conversion on every frame.
+
 ### New in 1.7.2
 - **Video clip backgrounds no longer make thousands of pieces.** Each different piece of your clips is made once and then repeated, so an hour-long video with clips takes seconds to prepare instead of making tens of thousands of tiny files. Very short clips (a GIF, a one-frame video) now play for a few seconds each instead of flickering by 12 times a second.
 - **Working files are cleaned up.** The temporary files used while making a video are deleted when it's finished, and leftovers from older versions are removed when Release Kit starts. This can free up several gigabytes.
