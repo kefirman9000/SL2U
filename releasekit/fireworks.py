@@ -419,20 +419,29 @@ class Show:
                 shots = self.plan.shots(s, song_t, rng)
                 if limit:
                     rng.shuffle(shots)  # if only some may go off, a fair pick of what this beat wanted
+                # several in one beat: the first on the beat, the rest one after another until the next beat
+                n_go = len(shots)
+                if limit:  # spread over the ones that can actually go off
+                    n_go = min(n_go, max(limit, 6) if (fin_big and any(x[2] for x in shots)) else limit)
+                gap = max(per * every / max(1, n_go), 0.16)  # never closer than about 1/6 s apart
+                k = 0
                 for typ, ss, fin in shots:
+                    tk = t + (k * gap + (rng.uniform(-0.15, 0.15) * gap if k else 0.0))
                     if limit and typ == "mixed" and not fin:
                         typ = self.pick_mixed()  # decided now, so we know how long it fills the sky
                     if limit and typ != "embers":
-                        busy = [b for b in busy if b > t]
+                        busy = [x for x in busy if x > tk]
                         cap = max(limit, 6) if (fin and fin_big) else limit
                         if len(busy) >= cap:
                             continue
-                        busy.append(t + SHOW_TIME.get(typ, 1.2) * (0.6 if fin else 1.0))
-                    if typ in GROUND or not rockets or t - RISE < 0:
-                        self.events.setdefault(f, []).append(("fire", typ, ss))
-                    else:  # send it up early so it bursts on the beat
-                        fl = int(round((t - RISE) * self.fps))
-                        self.events.setdefault(fl, []).append(("launch", typ, ss, f - fl))
+                        busy.append(tk + SHOW_TIME.get(typ, 1.2) * (0.6 if fin else 1.0))
+                    k += 1
+                    fk = int(round(tk * self.fps))
+                    if typ in GROUND or not rockets or tk - RISE < 0:
+                        self.events.setdefault(fk, []).append(("fire", typ, ss))
+                    else:  # send it up early so it bursts on time
+                        fl = int(round((tk - RISE) * self.fps))
+                        self.events.setdefault(fl, []).append(("launch", typ, ss, fk - fl))
             j += 1
             t = first + j * per
 

@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.9
+- **Staggered finale:** when several fireworks go off for one beat (a finale with many at once, or "Up to 2/3"), they no longer all burst together. The first bursts on the beat and the rest follow one after another, at least about 1/6 of a second apart, like a real rapid-fire finale.
+
 ### New in 1.8.8
 - **The finale is one at a time too.** It now follows the "At once" choice like the rest of the show (the preview often shows the finale, because it plays the loudest part of the song, which is usually near the end). To have the finale set lots off together, tick "Let the finale set off many at once".
 
