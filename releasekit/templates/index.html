@@ -449,8 +449,8 @@ details.more[open]>summary{margin-bottom:4px}
             <p class="muted" style="font-size:12px;margin:0 0 6px">With "One at a time", the next one goes off on the first beat after the last one has faded.</p>
             <div class="ed-row"><label>Layer</label><div class="seg" id="edFwOrder"><button data-v="behind">Behind the foreground</button><button data-v="front">In front of it</button></div></div>
             <label class="chk"><input type="checkbox" id="edFwRockets">Show rockets going up</label>
-            <div class="ed-row"><label>Making it</label><div class="seg" id="edFwRender"><button data-v="best">Best quality</button><button data-v="fast">About 2× faster (long videos)</button></div></div>
-            <p class="muted" style="font-size:12px;margin:0 0 6px">Faster draws every other frame and blends the ones in between, so motion is a little softer (fast snow can look doubled). Only when the fireworks (and foreground) are the only moving layer.</p>
+            <div class="ed-row"><label>Making it</label><div class="seg wrap" id="edFwRender"><button data-v="best">Normal (30 fps)</button><button data-v="smooth">Smooth motion (60 fps)</button><button data-v="fast">About 2× faster</button></div></div>
+            <p class="muted" style="font-size:12px;margin:0 0 6px">Smooth makes the whole video 60 frames a second, with every frame of the fireworks really drawn (not guessed), so they move twice as smoothly. Faster draws every other frame and blends the ones in between: quicker for long videos, but motion is a little softer.</p>
             <div class="fwtl">
               <label class="chk" style="font-weight:600"><input type="checkbox" id="edFwTl">Plan a show with a timeline</label>
               <div id="edFwTlBox">

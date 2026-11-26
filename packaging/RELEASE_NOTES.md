@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.11
+- **Smooth motion (60 fps) for fireworks:** in the Fireworks layer, "Making it: Smooth motion" makes the video 60 frames a second with every frame of the fireworks really drawn (not guessed), so bursts, rockets and snow move twice as smoothly. The fireworks are drawn at up to 720p and scaled up, so it takes only about 10–15% longer than normal.
+
 ### New in 1.8.10
 - **Faster fireworks videos:** in the Fireworks layer, "Making it: About 2× faster" draws every other frame (at up to 720p) and blends the frames in between, so long fireworks videos take about half the time (a 40-minute 1080p video went from about 47 to about 25 minutes on a 2-core test machine). Motion is a little softer, and fast snow can look doubled. It's used when the fireworks (and foreground) are the only moving layer; "Best quality" is still the default.
 

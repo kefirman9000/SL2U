@@ -328,11 +328,12 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
         # "fast" fireworks (only fireworks and the foreground in the layer): drawn at half the frame rate and at most
         # 720 px, ffmpeg blends the in-between frames and scales it up
         fast = opts.get("fw_render") == "fast" and drawn_k == ["fireworks"] and bump == "none" and fps >= 20
+        smooth = opts.get("fw_render") == "smooth" and drawn_k == ["fireworks"]  # 60 fps at up to 720 p: about the same work
         lfps = fps / 2 if fast else fps
         ln = (n_frames + 1) // 2 + 1 if fast else n_frames
         lw, lh, feed = drawn.feeder(drawn_k, audio_path, w, h, lfps, start, dur, ln, rgb, opts, vertical,
                                     spin_period, rgb2=rgb2 if vis2 in drawn_k and len([k for k in drawn_k if k != "fireworks"]) > 1 else None,
-                                    with_fg=fg_in_layer, max_short=720 if fast else None)
+                                    with_fg=fg_in_layer, max_short=720 if (fast or smooth) else None)
         args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", f"{lfps:g}", "-i", "pipe:0"]
         scale = "" if (lw, lh) == (w, h) else f"scale={w}:{h}:flags=bicubic,"
         if fast:  # the blend filter drops transparency: blend the colour and the see-through mask separately
@@ -461,6 +462,10 @@ def release_video(audio_path, image, out, title="", artist="", resolution="1080p
     else:
         w, h = (1080, 1920) if vertical else RES[resolution]
     fps = fps or (30 if _reactive_on(opts) or vertical else 12)
+    if opts.get("fireworks") and opts.get("fw_render") == "smooth" and fps < 50:
+        fps = 60  # smooth fireworks: every frame drawn, twice as many of them
+        if enc:
+            enc = encoder(enc.get("format", "mp4"), enc.get("quality", "standard"), fps)
     tmp = _mkdtemp(prefix="rk_")
     vis_room = (bool(enc) or layout == "full") and (visualizer in reactive.BOTTOM or opts.get("vis2") in reactive.BOTTOM) \
         and (opts.get("vis_pos") or "bottom") == "bottom"
@@ -869,14 +874,15 @@ def encoder(fmt="mp4", quality="standard", fps=30):
     if fmt == "mov":
         video = ["-c:v", "prores_ks", "-profile:v", ("0", "2", "3")[q], "-vendor", "apl0", "-r", str(fps)]
         return {"video": video, "audio": ["-c:a", "pcm_s16le", "-ar", "48000"], "pix_fmt": "yuv422p10le",
-                "ext": ".mov", "faststart": True, "format": fmt, "fps": fps}
+                "ext": ".mov", "faststart": True, "format": fmt, "fps": fps, "quality": quality}
     if fmt == "webm":
         video = (["-c:v", "libvpx-vp9", "-crf", ("40", "32", "24")[q], "-b:v", "0", "-row-mt", "1",
                   "-deadline", ("realtime", "good", "good")[q], "-cpu-used", ("8", "4", "2")[q]] + gop)
         return {"video": video, "audio": ["-c:a", "libopus", "-b:a", "256k", "-ar", "48000"],
-                "pix_fmt": "yuv420p", "ext": ".webm", "faststart": False, "format": fmt, "fps": fps}
+                "pix_fmt": "yuv420p", "ext": ".webm", "faststart": False, "format": fmt, "fps": fps, "quality": quality}
     video = ff.h264(fps, q)  # graphics card when available
-    return {"video": video, "audio": AAC, "pix_fmt": "yuv420p", "ext": ".mp4", "faststart": True, "format": fmt, "fps": fps}
+    return {"video": video, "audio": AAC, "pix_fmt": "yuv420p", "ext": ".mp4", "faststart": True, "format": fmt, "fps": fps,
+            "quality": quality}
 
 
 def export_bytes(fmt, w, h, fps, seconds, quality="standard"):
