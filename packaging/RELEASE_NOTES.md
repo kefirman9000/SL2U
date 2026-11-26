@@ -4,6 +4,9 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.10
+- **Faster fireworks videos:** in the Fireworks layer, "Making it: About 2× faster" draws every other frame (at up to 720p) and blends the frames in between, so long fireworks videos take about half the time (a 40-minute 1080p video went from about 47 to about 25 minutes on a 2-core test machine). Motion is a little softer, and fast snow can look doubled. It's used when the fireworks (and foreground) are the only moving layer; "Best quality" is still the default.
+
 ### New in 1.8.9
 - **Staggered finale:** when several fireworks go off for one beat (a finale with many at once, or "Up to 2/3"), they no longer all burst together. The first bursts on the beat and the rest follow one after another, at least about 1/6 of a second apart, like a real rapid-fire finale.
 

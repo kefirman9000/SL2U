@@ -252,7 +252,7 @@ STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos",
               "fireworks", "fw_effect", "fw_palette", "fw_colors", "fw_mix", "fw_shape", "fw_exact", "fw_snow", "fw_size",
               "fw_trail", "fw_every", "fw_rockets", "fw_order", "fw_tl", "fw_parts", "fw_finale", "fw_finale_len",
               "fw_build", "fw_blend", "fg", "fg_image", "fg_light", "fw_snow_order",
-              "fw_snow_always", "fw_snow_type", "fw_snow_amount", "fw_snow_opacity", "fw_max", "fw_finale_many")
+              "fw_snow_always", "fw_snow_type", "fw_snow_amount", "fw_snow_opacity", "fw_max", "fw_finale_many", "fw_render")
 
 MOTIONS = {"still": "Still", "drift": "Slow drift", "zoom": "Slow zoom in and out", "breathe": "Breathing light",
            "grain": "Film grain"}
@@ -325,12 +325,23 @@ def reactive_render(bg_args, audio_path, out, w, h, fps, dur, opts, start=0.0, a
     fg_in_layer = bool(drawn_k)  # in front of fireworks and drawn scenes; bars and waves stay in front of it
     if drawn_k:
         # drawn in Python (with the bump element in the middle) and streamed in as one transparent layer
-        lw, lh, feed = drawn.feeder(drawn_k, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical,
+        # "fast" fireworks (only fireworks and the foreground in the layer): drawn at half the frame rate and at most
+        # 720 px, ffmpeg blends the in-between frames and scales it up
+        fast = opts.get("fw_render") == "fast" and drawn_k == ["fireworks"] and bump == "none" and fps >= 20
+        lfps = fps / 2 if fast else fps
+        ln = (n_frames + 1) // 2 + 1 if fast else n_frames
+        lw, lh, feed = drawn.feeder(drawn_k, audio_path, w, h, lfps, start, dur, ln, rgb, opts, vertical,
                                     spin_period, rgb2=rgb2 if vis2 in drawn_k and len([k for k in drawn_k if k != "fireworks"]) > 1 else None,
-                                    with_fg=fg_in_layer)
-        args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", str(fps), "-i", "pipe:0"]
+                                    with_fg=fg_in_layer, max_short=720 if fast else None)
+        args += ["-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{lw}x{lh}", "-framerate", f"{lfps:g}", "-i", "pipe:0"]
         scale = "" if (lw, lh) == (w, h) else f"scale={w}:{h}:flags=bicubic,"
-        fc += [f"[2:v]{scale}format=yuva420p[lay]", f"[{cur}][lay]overlay=0:0:format=yuv420[v1]"]  # no RGB round trip
+        if fast:  # the blend filter drops transparency: blend the colour and the see-through mask separately
+            fr = f"framerate=fps={fps:g}:interp_start=0:interp_end=255:scene=100"
+            fc += ["[2:v]split[lc][lm]", f"[lc]format=yuv444p,{fr}[lci]", f"[lm]alphaextract,format=gray,{fr}[lmi]",
+                   f"[lci][lmi]alphamerge,{scale}format=yuva420p[lay]"]
+        else:
+            fc.append(f"[2:v]{scale}format=yuva420p[lay]")
+        fc.append(f"[{cur}][lay]overlay=0:0:format=yuv420[v1]")  # no RGB round trip
         cur = "v1"
         bump = "none"  # already in the layer
     if fg_kind != "none" and not fg_in_layer:  # foreground over the background, under bars and waves

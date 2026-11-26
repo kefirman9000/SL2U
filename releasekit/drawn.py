@@ -23,8 +23,8 @@ OPAQUE = ("maze",)  # scenes that cover the whole background
 MAX_SHORT_SIDE = 1080  # draw at most this big, ffmpeg scales up (4K)
 
 
-def layer_size(w, h):
-    s = min(1.0, MAX_SHORT_SIDE / min(w, h))
+def layer_size(w, h, max_short=None):
+    s = min(1.0, (max_short or MAX_SHORT_SIDE) / min(w, h))
     even = lambda v: max(2, int(round(v * s / 2)) * 2)
     return even(w), even(h)
 
@@ -684,13 +684,13 @@ def foreground_for(opts, lw, lh):
 
 
 def feeder(kind, audio_path, w, h, fps, start, dur, n_frames, rgb, opts, vertical, spin_period=12.0, rgb2=None,
-           with_fg=True):
+           with_fg=True, max_short=None):
     """Returns (layer_w, layer_h, feed) where feed(write) writes n_frames RGBA frames for ffmpeg.
     kind: one style, or a list (first drawn first, i.e. behind; rgb2 colours the one behind).
     "fireworks" in the list is the fireworks show; with_fg puts the foreground in front (lit by the flashes).
     Snow from the show can fall in front of the foreground (fw_snow_order "front", the default) or behind it."""
     kinds = list(kind) if isinstance(kind, (list, tuple)) else [kind]
-    lw, lh = layer_size(w, h)
+    lw, lh = layer_size(w, h, max_short)
     data = analyse(audio_path, fps, start, dur, n_frames)  # analysed once, shared by all styles
     vis = [k for k in kinds if k != "fireworks"]
     styles = [STYLES[k](lw, lh, fps, rgb2 if (rgb2 and j < len(vis) - 1) else rgb, vertical, data,

@@ -449,6 +449,8 @@ details.more[open]>summary{margin-bottom:4px}
             <p class="muted" style="font-size:12px;margin:0 0 6px">With "One at a time", the next one goes off on the first beat after the last one has faded.</p>
             <div class="ed-row"><label>Layer</label><div class="seg" id="edFwOrder"><button data-v="behind">Behind the foreground</button><button data-v="front">In front of it</button></div></div>
             <label class="chk"><input type="checkbox" id="edFwRockets">Show rockets going up</label>
+            <div class="ed-row"><label>Making it</label><div class="seg" id="edFwRender"><button data-v="best">Best quality</button><button data-v="fast">About 2× faster (long videos)</button></div></div>
+            <p class="muted" style="font-size:12px;margin:0 0 6px">Faster draws every other frame and blends the ones in between, so motion is a little softer (fast snow can look doubled). Only when the fireworks (and foreground) are the only moving layer.</p>
             <div class="fwtl">
               <label class="chk" style="font-weight:600"><input type="checkbox" id="edFwTl">Plan a show with a timeline</label>
               <div id="edFwTlBox">
@@ -1097,7 +1099,7 @@ const SWATCHES=[["white","#ffffff","White"],["green","#39ff14","Green"],["cyan",
 const FW_PARTS0=[{t:"0:00",e:"peony",a:0.5},{t:"0:30",e:"willow",a:1},{t:"1:00",e:"mixed",a:1.5}];
 const LOOK_DEFAULT={fireworks:false,fw_effect:"mixed",fw_palette:"multi",fw_colors:["#ff2d3a","#21c45a","#ffd84a"],fw_mix:{peony:40,willow:20,ring:12,crackle:15,heart:5,xmas:0},
   fw_shape:"all",fw_exact:0.7,fw_snow:true,fw_size:1,fw_trail:0.55,fw_every:1,fw_rockets:true,fw_order:"behind",fw_tl:false,fw_parts:FW_PARTS0,fw_finale:"",fw_finale_len:20,
-  fw_build:true,fw_blend:6,fw_snow_order:"front",fw_max:1,fw_finale_many:false,fw_snow_always:false,fw_snow_type:"classic",fw_snow_amount:1,fw_snow_opacity:0.85,fg:"none",fg_image:"",fg_light:true,fg_last:"skyline",visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
+  fw_build:true,fw_blend:6,fw_snow_order:"front",fw_max:1,fw_finale_many:false,fw_render:"best",fw_snow_always:false,fw_snow_type:"classic",fw_snow_amount:1,fw_snow_opacity:0.85,fg:"none",fg_image:"",fg_light:true,fg_last:"skyline",visualizer:"none",bump:"none",vis_color:"white",bump_amount:0.12,logo:"",picture:"",vis_size:1,vis_pos:"bottom",bg:"cover",dim:"",motion:"still",center_size:1,text_on:true,text_title:"",text_artist:"",vis_last:"bars",bump_last:"logo",
   clips:[],clip_switch:"beat",clip_bars:4,clip_fit:"fill",progress:"off",prog_last:"bar_time",now_playing:true,
   fx_zoom:0,fx_shake:0,fx_flash:0,fx_color:false,fx_last:null,overlays:[],ovl_last:["dust"],overlay_amount:0.7,vis2:"none",vis2_color:""};
 let LOOK=(()=>{let saved={};try{saved=JSON.parse(localStorage.getItem("rk_look")||"{}")}catch(e){}
@@ -1237,7 +1239,7 @@ function fwRender(){const L=LOOK;
   const sa=+(L.fw_snow_amount??1),so=+(L.fw_snow_opacity??.85);if(document.activeElement!==$("edFwSnowAmt"))$("edFwSnowAmt").value=sa;if(document.activeElement!==$("edFwSnowOp"))$("edFwSnowOp").value=so;
   $("edFwSnowAmtV").textContent=Math.round(sa*100)+"%";$("edFwSnowOpV").textContent=Math.round(so*100)+"%";
   $("edFwSize").value=L.fw_size;$("edFwSizeV").textContent=Math.round(L.fw_size*100)+"%";$("edFwTrail").value=L.fw_trail;$("edFwTrailV").textContent=Math.round(L.fw_trail*100)+"%";
-  $("edFwEvery").value=String(L.fw_every||1);$("edFwMax").value=String(L.fw_max??1);$("edFwFinBig").checked=L.fw_finale_many===true;$("edFwRockets").checked=L.fw_rockets!==false;
+  $("edFwEvery").value=String(L.fw_every||1);$("edFwMax").value=String(L.fw_max??1);seg("edFwRender",L.fw_render||"best");$("edFwFinBig").checked=L.fw_finale_many===true;$("edFwRockets").checked=L.fw_rockets!==false;
   const tot=FW_MIXT.reduce((a,[k])=>a+(+(L.fw_mix||{})[k]||0),0);
   if(!$("edFwMix").children.length)$("edFwMix").innerHTML=FW_MIXT.map(([k,n])=>`<div class="ed-row"><label>${n}</label><input type="range" min="0" max="100" step="5" data-mix="${k}"><span class="val" id="fwMix_${k}"></span></div>`).join("");
   FW_MIXT.forEach(([k])=>{const v=+(L.fw_mix||{})[k]||0,el=$("edFwMix").querySelector(`[data-mix=${k}]`);if(document.activeElement!==el)el.value=v;$("fwMix_"+k).textContent=v?Math.round(v/(tot||1)*100)+"%":"never"});
@@ -1320,7 +1322,7 @@ function fwInit(){
   seg("edFwSnowWhen","xmas",v=>setLook(v==="off"?{fw_snow:false}:{fw_snow:true,fw_snow_always:v==="always"}));
   $("edFwSnowAmt").oninput=e=>setLook({fw_snow_amount:+e.target.value});$("edFwSnowOp").oninput=e=>setLook({fw_snow_opacity:+e.target.value});
   $("edFwSize").oninput=e=>setLook({fw_size:+e.target.value});$("edFwTrail").oninput=e=>setLook({fw_trail:+e.target.value});
-  $("edFwEvery").onchange=e=>setLook({fw_every:+e.target.value});$("edFwMax").onchange=e=>setLook({fw_max:+e.target.value});$("edFwFinBig").onchange=e=>setLook({fw_finale_many:e.target.checked});$("edFwRockets").onchange=e=>setLook({fw_rockets:e.target.checked});
+  $("edFwEvery").onchange=e=>setLook({fw_every:+e.target.value});$("edFwMax").onchange=e=>setLook({fw_max:+e.target.value});seg("edFwRender",LOOK.fw_render||"best",v=>setLook({fw_render:v}));$("edFwFinBig").onchange=e=>setLook({fw_finale_many:e.target.checked});$("edFwRockets").onchange=e=>setLook({fw_rockets:e.target.checked});
   $("edFwMix").oninput=e=>{const k=e.target.dataset.mix;if(k)setLook({fw_mix:Object.assign({},LOOK.fw_mix,{[k]:+e.target.value})})};
   $("edFwTl").onchange=e=>setLook({fw_tl:e.target.checked,fireworks:true});
   $("edFwFin").onchange=e=>{const v=e.target.value.trim();setLook({fw_finale:!v?"":/^(end|at the end)$/i.test(v)?"end":mmss(secs(v))})};
