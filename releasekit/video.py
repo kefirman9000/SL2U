@@ -252,7 +252,7 @@ STYLE_KEYS = ("bump", "logo", "vis_color", "bump_amount", "vis_size", "vis_pos",
               "fireworks", "fw_effect", "fw_palette", "fw_colors", "fw_mix", "fw_shape", "fw_exact", "fw_snow", "fw_size",
               "fw_trail", "fw_every", "fw_rockets", "fw_order", "fw_tl", "fw_parts", "fw_finale", "fw_finale_len",
               "fw_build", "fw_blend", "fg", "fg_image", "fg_light", "fw_snow_order",
-              "fw_snow_always", "fw_snow_type", "fw_snow_amount", "fw_snow_opacity", "fw_max", "fw_finale_many", "fw_render")
+              "fw_snow_always", "fw_snow_type", "fw_snow_amount", "fw_snow_opacity", "fw_max", "fw_finale_many", "fw_render", "fw_smooth_edges")
 
 MOTIONS = {"still": "Still", "drift": "Slow drift", "zoom": "Slow zoom in and out", "breathe": "Breathing light",
            "grain": "Film grain"}

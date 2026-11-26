@@ -4,6 +4,10 @@
 
 **Already have 1.2?** Unzip this over your old folder once. From 1.3 on, Release Kit updates itself (from 1.3, the update opens a fresh browser tab once).
 
+### New in 1.8.12
+- **Smooth edges (anti-aliasing) for fireworks:** sparks, trails, rings, lightning and snow are drawn 1.5 times as big and shrunk, so their edges are smooth instead of jagged. On by default; it makes fireworks videos take about 1.5 times as long, so you can switch it off in the Fireworks layer for long videos.
+- The built-in foregrounds (skyline, crowd, mountains and trees) have smooth edges too, at no extra time.
+
 ### New in 1.8.11
 - **Smooth motion (60 fps) for fireworks:** in the Fireworks layer, "Making it: Smooth motion" makes the video 60 frames a second with every frame of the fireworks really drawn (not guessed), so bursts, rockets and snow move twice as smoothly. The fireworks are drawn at up to 720p and scaled up, so it takes only about 10–15% longer than normal.
 

@@ -342,6 +342,42 @@ def _sprite(r):
     return _SPRITES[r]
 
 
+class _Big:
+    """ImageDraw on a picture s times bigger, taking the normal coordinates: shrunk afterwards, it gives smooth
+    (anti-aliased) edges on sparks, trails and snow."""
+
+    def __init__(self, d, s):
+        self.d, self.s = d, s
+
+    def _pts(self, pts):
+        s = self.s
+        return [(x * s, y * s) for x, y in pts]
+
+    def ellipse(self, box, fill=None, **k):
+        s = self.s
+        self.d.ellipse([v * s for v in box], fill=fill, **k)
+
+    def line(self, pts, fill=None, width=1, joint=None):
+        self.d.line(self._pts(pts), fill=fill, width=max(1, int(round(width * self.s))), joint=joint)
+
+    def polygon(self, pts, fill=None, **k):
+        self.d.polygon(self._pts(pts), fill=fill, **k)
+
+
+def _big_layer(w, h, s):
+    im = Image.new("RGBA", (int(round(w * s)), int(round(h * s))), (0, 0, 0, 0))
+    return im, _Big(ImageDraw.Draw(im), s)
+
+
+def _shrink(im, w, h):
+    """Back to w x h, averaging (alpha-weighted, so edges don't go dark)."""
+    if im.size == (w, h):
+        return im
+    a = im.convert("RGBa")
+    a = a.reduce(2) if a.size == (w * 2, h * 2) else a.resize((w, h), Image.BOX)
+    return a.convert("RGBA")
+
+
 # ---------------------------------------------------------------- the show
 
 class Show:
@@ -388,6 +424,7 @@ class Show:
         self.exact = max(0.0, min(1.0, float(o.get("fw_exact", 0.7))))
         self.snow_on = o.get("fw_snow", True) is not False
         self.snow_front = o.get("fw_snow_order", "front") != "behind"
+        self.ss = 1.5 if o.get("fw_smooth_edges") else 1  # anti-aliasing: draw 1.5x as big, then shrink
         self.snow_always = bool(o.get("fw_snow_always"))  # the whole video, not only with Christmas shapes
         self.snow_type = o.get("fw_snow_type") if o.get("fw_snow_type") in SNOW_TYPES else "classic"
         self.snow_amt = max(0.1, min(4.0, float(o.get("fw_snow_amount") or 1)))
@@ -706,11 +743,18 @@ class Show:
         p = self.p
         p.begin()
         d, g, gs = p.d, p.g, p.gs
+        ss = getattr(self, "ss", 1)
+        big = None
+        if ss > 1:  # smooth edges: the sharp parts are drawn twice as big and shrunk at the end
+            big, d = _big_layer(self.w, self.h, ss)
         self._sky_light(p.glow, gs)
         self.front, sd = None, d  # snow: in its own layer when it falls in front of the foreground
         if self.snow_front and any(q.kind == "snow" for q in self.parts):
-            self.front = Image.new("RGBA", (self.w, self.h), (0, 0, 0, 0))
-            sd = ImageDraw.Draw(self.front)
+            if ss > 1:
+                self.front, sd = _big_layer(self.w, self.h, ss)
+            else:
+                self.front = Image.new("RGBA", (self.w, self.h), (0, 0, 0, 0))
+                sd = ImageDraw.Draw(self.front)
 
         keep = []
         for r in self.rockets:  # rockets going up
@@ -823,6 +867,10 @@ class Show:
             bolts.append(b)
         self.bolts = bolts
 
+        if big is not None:
+            p.img = _shrink(big, self.w, self.h)
+            if self.front is not None:
+                self.front = _shrink(self.front, self.w, self.h)
         out = p.finish()
         for fl in self.flashes:
             fl[3] *= 0.86 ** k
@@ -856,11 +904,13 @@ def _seeded(seed):
     return lambda a, b: r.uniform(a, b)
 
 
-def make_foreground(kind, w, h):
+def make_foreground(kind, w, h, _big=False):
     """The foreground at w x h: a built-in one, or a transparent PNG (scaled to the width, sitting on the bottom)."""
-    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     if not kind or kind == "none":
         return None
+    if kind in FOREGROUNDS and not _big:  # drawn twice as big and shrunk: smooth edges (it's only drawn once)
+        return _shrink(make_foreground(kind, w * 2, h * 2, _big=True), w, h)
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     if kind not in FOREGROUNDS:
         if not os.path.isfile(kind):
             return None
